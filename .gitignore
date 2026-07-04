@@ -1,6 +1,9 @@
 # Database
 backend/swift.db
 
+# Scratch files
+scratch/
+
 # Python
 __pycache__/
 *.pyc
