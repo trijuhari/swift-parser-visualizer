@@ -1,0 +1,21 @@
+# Database
+backend/swift.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reference docs (too large for git)
+docs/*.pdf
