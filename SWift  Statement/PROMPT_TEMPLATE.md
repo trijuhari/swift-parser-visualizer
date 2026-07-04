@@ -31,14 +31,18 @@ Format JSON (array of objects):
 Aturan pengisian:
 - "msg": huruf kecil, contoh: "mt103", "mt202", "mt700"
 - "tag": huruf besar, contoh: "20", "32A", "50K", "71A"
-- "sub": kosong ("") untuk tag utama, isi dengan nomor/kode sub-field jika ada (misal "1", "2", "EREF")
+- "sub": kosong ("") untuk tag utama/induk, isi dengan nomor/kode sub-field jika ada (misal "1", "2", "EREF")
 - "mo": "m" untuk Mandatory, "o" untuk Optional
 - "len": format panjang SWIFT standard, contoh: "16x", "6!n3!a15d", "4!c[/35x]"
 - "sample": contoh nilai realistis
 - "desc" / "desc_en": deskripsi lengkap fungsi field tersebut
 - "rules" / "rules_en": aturan validasi dan batasan field
 
-Jika tag memiliki sub-field (contoh: Tag 60F memiliki sub-field Indikator C/D, Tanggal, Mata Uang, Jumlah), buatkan entry terpisah untuk masing-masing sub-field dengan "sub" diisi angka urut ("1", "2", "3", dst).
+PENTING UNTUK TAG DENGAN SUB-FIELD:
+Jika suatu tag memiliki sub-field (contoh: Tag 13C memiliki sub-field Kode Waktu, Waktu, Tanda Offset, dan Offset UTC):
+1. Kamu WAJIB membuat 1 entry induk (parent) terlebih dahulu untuk tag tersebut dengan "sub": "". Baris induk ini berfungsi sebagai kontainer utama di tabel UI.
+2. Kemudian buat entry terpisah untuk masing-masing sub-field di bawahnya dengan "sub" diisi angka urut ("1", "2", "3", dst).
+3. Jika baris induk ("sub": "") tidak dibuat, tag tersebut tidak akan muncul di daftar tabel utama UI.
 
 Buatkan data JSON lengkap untuk: [NAMA TIPE PESAN, misal: MT103 Customer Credit Transfer]
 ```
@@ -72,17 +76,32 @@ Buatkan data JSON lengkap untuk: MT103 Customer Credit Transfer
   },
   {
     "msg": "mt103",
-    "tag": "23B",
+    "tag": "13C",
     "sub": "",
-    "name": "Kode Operasi Bank",
-    "name_en": "Bank Operation Code",
-    "len": "4!c",
-    "mo": "m",
-    "sample": "CRED",
-    "desc": "Kode yang menunjukkan jenis operasi bank. CRED untuk kredit biasa, SPAY untuk pembayaran khusus.",
-    "desc_en": "Code indicating the type of bank operation. CRED for standard credit, SPAY for special payment.",
-    "rules": "Wajib diisi. Nilai valid: CRED, CRTS, SPAY, SPRI, SSTD.",
-    "rules_en": "Mandatory. Valid values: CRED, CRTS, SPAY, SPRI, SSTD.",
+    "name": "Indikasi Waktu",
+    "name_en": "Time Indication",
+    "len": "/8c/4!n1!x4!n",
+    "mo": "o",
+    "sample": "/CLSTIME/1230+0700",
+    "desc": "Spesifikasi waktu pemrosesan transaksi (Kode Waktu, Waktu, Tanda, Offset).",
+    "desc_en": "Time specifications for transaction processing (Time Code, Time, Sign, Offset).",
+    "rules": "Opsional (O). Terdiri dari Kode Waktu, Waktu, Tanda Offset, dan Offset UTC.",
+    "rules_en": "Optional (O). Consists of Time Code, Time, Sign, and UTC Offset.",
+    "source": "manual"
+  },
+  {
+    "msg": "mt103",
+    "tag": "13C",
+    "sub": "1",
+    "name": "Kode Waktu",
+    "name_en": "Time Indication Code",
+    "len": "8c",
+    "mo": "o",
+    "sample": "/CLSTIME/",
+    "desc": "Kode yang mengidentifikasi jenis indikasi waktu (misalnya CLSTIME, RNCTIME, SNDTIME), diapit garis miring.",
+    "desc_en": "Code identifying the type of time indication (e.g. CLSTIME, RNCTIME, SNDTIME), enclosed by slashes.",
+    "rules": "Opsional (O). Field lengkap berformat /8c/4!n1!x4!n.",
+    "rules_en": "Optional (O). Full field format /8c/4!n1!x4!n.",
     "source": "manual"
   }
 ]

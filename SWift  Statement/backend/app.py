@@ -46,23 +46,23 @@ def save_tag():
         if not data:
             return jsonify({"error": "Missing request body"}), 400
             
-        msg = data.get('msg', '').lower().strip()
-        tag = data.get('tag', '').upper().strip()
-        sub = data.get('sub', '').strip()
+        msg = (data.get('msg') or '').lower().strip()
+        tag = (data.get('tag') or '').upper().strip()
+        sub = (data.get('sub') or '').strip()
         
         if not msg or not tag:
             return jsonify({"error": "msg and tag are required fields"}), 400
             
-        name = data.get('name', '').strip()
-        name_en = data.get('name_en', '').strip()
-        length = data.get('len', '').strip()
-        mo = data.get('mo', 'o').lower().strip()
-        sample = data.get('sample', '').strip()
-        desc = data.get('desc', '').strip()
-        desc_en = data.get('desc_en', '').strip()
-        rules = data.get('rules', '').strip()
-        rules_en = data.get('rules_en', '').strip()
-        source = data.get('source', 'manual').strip()
+        name = (data.get('name') or '').strip()
+        name_en = (data.get('name_en') or '').strip()
+        length = (data.get('len') or '').strip()
+        mo = (data.get('mo') or 'o').lower().strip()
+        sample = (data.get('sample') or '').strip()
+        desc = (data.get('desc') or '').strip()
+        desc_en = (data.get('desc_en') or '').strip()
+        rules = (data.get('rules') or '').strip()
+        rules_en = (data.get('rules_en') or '').strip()
+        source = (data.get('source') or 'manual').strip()
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -120,23 +120,23 @@ def import_tags():
         
         imported_count = 0
         for item in items:
-            msg = item.get('msg', '').lower().strip()
-            tag = item.get('tag', '').upper().strip()
-            sub = item.get('sub', '').strip()
+            msg = (item.get('msg') or '').lower().strip()
+            tag = (item.get('tag') or '').upper().strip()
+            sub = (item.get('sub') or '').strip()
             
             if not msg or not tag:
                 continue
                 
-            name = item.get('name', '').strip()
-            name_en = item.get('name_en', '').strip()
-            length = item.get('len', '').strip()
-            mo = item.get('mo', 'o').lower().strip()
-            sample = item.get('sample', '').strip()
-            desc = item.get('desc', '').strip()
-            desc_en = item.get('desc_en', '').strip()
-            rules = item.get('rules', '').strip()
-            rules_en = item.get('rules_en', '').strip()
-            source = item.get('source', 'manual').strip()
+            name = (item.get('name') or '').strip()
+            name_en = (item.get('name_en') or '').strip()
+            length = (item.get('len') or '').strip()
+            mo = (item.get('mo') or 'o').lower().strip()
+            sample = (item.get('sample') or '').strip()
+            desc = (item.get('desc') or '').strip()
+            desc_en = (item.get('desc_en') or '').strip()
+            rules = (item.get('rules') or '').strip()
+            rules_en = (item.get('rules_en') or '').strip()
+            source = (item.get('source') or 'manual').strip()
 
             # Check if tag exists in swift_tags (system table)
             cursor.execute(
@@ -178,6 +178,45 @@ def import_tags():
         conn.commit()
         conn.close()
         return jsonify({"message": f"Successfully imported {imported_count} tags", "count": imported_count}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tags/delete-multiple', methods=['POST', 'OPTIONS'])
+def delete_multiple_tags():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "success"}), 200
+    try:
+        data = request.json
+        if not isinstance(data, list):
+            return jsonify({"error": "Request body must be a list of tags"}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        deleted_count = 0
+        for item in data:
+            msg = (item.get('msg') or '').lower().strip()
+            tag = (item.get('tag') or '').upper().strip()
+            sub = (item.get('sub') or '').strip()
+            
+            # Delete from system tags
+            cursor.execute("""
+            DELETE FROM swift_tags 
+            WHERE LOWER(msg) = ? AND UPPER(tag) = ? AND sub = ?
+            """, (msg, tag, sub))
+            deleted_count += cursor.rowcount
+            
+            # Also delete from swift_custom_tags
+            cursor.execute("""
+            DELETE FROM swift_custom_tags 
+            WHERE LOWER(msg) = ? AND UPPER(tag) = ? AND sub = ?
+            """, (msg, tag, sub))
+            deleted_count += cursor.rowcount
+            
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"message": f"Successfully deleted {deleted_count} records", "status": "success"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

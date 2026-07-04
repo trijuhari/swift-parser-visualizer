@@ -428,6 +428,10 @@
       background: #b45309;
     }
 
+    .badge-msg.mt101 {
+      background: #3730a3;
+    }
+
     .badge-msg.mt940 {
       background: #0f5c4f;
     }
@@ -1374,6 +1378,12 @@
         padding: 12px 16px;
       }
     }
+
+    .danger-btn:hover {
+      background: hsl(346, 77%, 43%) !important;
+      border-color: hsl(346, 77%, 43%) !important;
+      color: #fff !important;
+    }
   </style>
 </head>
 
@@ -1479,7 +1489,21 @@
     <div id="view-parser" style="display:none;">
       <!-- Input Panel -->
       <div class="parser-input-card" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <label id="lbl-pLabelInput" style="display: block; font-weight: 700; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;">Paste Raw Swift Message (MT940, MT942, MT950)</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 12px;">
+          <label id="lbl-pLabelInput" style="font-weight: 700; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin: 0;">Paste Raw SWIFT Message</label>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em;" id="lbl-parserSelectLabel">Parser:</span>
+            <select id="parserTypeSelect" onchange="handleParserTypeChange()" style="background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; font-family: var(--sans); cursor: pointer; outline: none; transition: border-color .12s;">
+              <option value="auto">Auto-Detect</option>
+              <option value="mt940">MT 940 (Account Statement)</option>
+              <option value="mt942">MT 942 (Interim Transaction Report)</option>
+              <option value="mt950">MT 950 (Statement Message)</option>
+              <option value="mt103">MT 103 (Single Customer Funds Transfer)</option>
+              <option value="mt101">MT 101 (Request for Transfer)</option>
+              <option value="mt564">MT 564 (Corporate Action Notification)</option>
+            </select>
+          </div>
+        </div>
         <textarea id="rawInput" style="width: 100%; height: 160px; padding: 12px; border: 1.5px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: 13px; background: var(--paper); color: var(--ink); resize: vertical; margin-bottom: 12px;" placeholder="{4:
 :20:TRN123456789
 :25:0123456789
@@ -1491,8 +1515,6 @@
 -}"></textarea>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="parseSwift()" id="pBtn">Parse Message</button>
-          <button class="btn btn-ghost" onclick="loadSampleData('mt940')" id="btnLoadSample">📋 Contoh MT940</button>
-          <button class="btn btn-ghost" onclick="loadSampleData('mt564')" id="btnLoadSample564">📋 Contoh MT564</button>
           <button class="btn btn-ghost" onclick="clearParser()" id="btnClearParser">✕ Bersihkan</button>
         </div>
       </div>
@@ -1517,7 +1539,8 @@
           <h2 style="margin:0; font-family:var(--serif); font-size:22px; color:var(--ink);" id="lbl-adminTitle">Dashboard Owner</h2>
           <p style="margin:4px 0 0; font-size:13.5px; color:var(--ink-soft);" id="lbl-adminSubtitle">Kelola data referensi kamus SWIFT di sini.</p>
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="btnDeleteSelected" class="icon-btn danger-btn" onclick="deleteSelectedRows()" style="background: hsl(346, 77%, 49%); color: #fff; border-color: hsl(346, 77%, 49%); font-weight: 700; padding: 6px 14px; display: none;">🗑️ <span id="lbl-btnDeleteSelected">Hapus Terpilih</span></button>
           <button class="icon-btn" onclick="openImportModal()" style="background: var(--panel); color: var(--ink); border-color: var(--line); font-weight: 700; padding: 6px 14px;">📥 <span id="lbl-btnImportRow">Impor JSON</span></button>
           <button class="icon-btn" onclick="openModal()" style="background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; padding: 6px 14px;">➕ <span id="lbl-btnAddRow">Tambah Baris</span></button>
         </div>
@@ -1528,6 +1551,7 @@
           <table id="adminDataTable">
             <thead>
               <tr>
+                <th style="width: 45px; text-align: center; vertical-align: middle;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px;"></th>
                 <th data-key="msg" style="width:100px;"><span id="lbl-adminTMsg">Pesan</span></th>
                 <th data-key="tag" style="width:90px;"><span id="lbl-adminTTag">Tag</span></th>
                 <th data-key="name"><span id="lbl-adminTName">Nama Field</span></th>
@@ -1746,15 +1770,28 @@
           const res = await fetch('swift-data.json' + bust);
           if (!res.ok) throw new Error('fetch failed');
           const gs = await res.json();
-          DATA = [...gs, ...CUSTOM];
+          window._systemData = gs;
+          
+          const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+          const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+          const filteredGs = gs.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+          DATA = [...filteredGs, ...activeCustom];
+          
           document.getElementById('dataSourceInfo').innerHTML =
             '<span class="source-dot gs"></span>GS Docs (' + gs.length + ')' +
-            (CUSTOM.length ? '&nbsp;+&nbsp;<span class="source-dot manual"></span>Manual (' + CUSTOM.length + ')' : '');
+            (activeCustom.length ? '&nbsp;+&nbsp;<span class="source-dot manual"></span>Manual (' + activeCustom.length + ')' : '');
         } catch (e2) {
-          DATA = [...FALLBACK_DATA, ...CUSTOM];
+          window._systemData = FALLBACK_DATA;
+          
+          const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+          const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+          const filteredFallback = FALLBACK_DATA.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+          DATA = [...filteredFallback, ...activeCustom];
+          
           document.getElementById('dataSourceInfo').innerHTML = '<span class="source-dot manual"></span>Data lokal';
         }
       }
+      renderFilters();
       init();
     }
 
@@ -1928,6 +1965,7 @@
     // ── Owner Mode ──────────────────────────────────────────────────────────
     const OWNER_PASS = 'swift2024'; // change this to your desired password
     let isOwner = sessionStorage.getItem('swift_owner') === '1';
+    let selectedRows = new Set();
 
     function applyOwnerUI() {
       const btnOwnerToggle = document.getElementById('btnOwnerToggle');
@@ -1990,6 +2028,8 @@
     function logoutOwner() {
       isOwner = false;
       sessionStorage.removeItem('swift_owner');
+      selectedRows.clear();
+      updateDeleteSelectedButton();
       applyOwnerUI();
       switchTab('reference');
     }
@@ -2117,20 +2157,215 @@
         })
         .then(() => {
           showToast('🗑️ Baris berhasil dihapus dari Database.');
+          selectedRows.delete(`${msg}|${tag}|${sub}`);
+          updateDeleteSelectedButton();
           loadData();
         })
         .catch(err => {
           alert('Gagal menghapus baris dari Database: ' + err.message);
         });
       } else {
-        const customIdx = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
-        if (customIdx !== -1) CUSTOM.splice(customIdx, 1);
+        // Fallback offline delete
+        const base = window._systemData || FALLBACK_DATA || [];
+        const isSystem = base.some(g => g.msg === msg && g.tag === tag && g.sub === sub);
+        
+        if (isSystem) {
+          // If system tag, mark it as inactive (soft delete) in CUSTOM
+          const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          const inactiveRow = { msg, tag, sub, name: '', is_active: 0, source: 'manual' };
+          if (ci !== -1) {
+            CUSTOM[ci] = inactiveRow;
+          } else {
+            CUSTOM.push(inactiveRow);
+          }
+        } else {
+          // If purely custom tag, we can just delete it from CUSTOM
+          const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          if (ci !== -1) {
+            CUSTOM.splice(ci, 1);
+          }
+        }
+        
         localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
 
-        const dataIdx = DATA.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
-        if (dataIdx !== -1) DATA.splice(dataIdx, 1);
+        // Re-merge data to ensure DATA is synchronized and deduplicated
+        const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+        const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+        const filteredBase = base.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+        DATA = [...filteredBase, ...activeCustom];
 
         showToast('🗑️ Baris berhasil dihapus.');
+        selectedRows.delete(`${msg}|${tag}|${sub}`);
+        updateDeleteSelectedButton();
+        renderFilters();
+        if (currentTab === 'admin') {
+          renderAdminTable();
+        } else {
+          render();
+        }
+      }
+    }
+
+    function toggleRowSelection(checkbox) {
+      const msg = checkbox.getAttribute('data-msg');
+      const tag = checkbox.getAttribute('data-tag');
+      const sub = checkbox.getAttribute('data-sub');
+      const key = `${msg}|${tag}|${sub}`;
+      
+      if (checkbox.checked) {
+        selectedRows.add(key);
+      } else {
+        selectedRows.delete(key);
+      }
+      
+      updateSelectAllCheckboxState();
+      updateDeleteSelectedButton();
+    }
+
+    function toggleSelectAll(headerCheckbox) {
+      const pageCheckboxes = document.querySelectorAll('.row-select-checkbox');
+      pageCheckboxes.forEach(cb => {
+        cb.checked = headerCheckbox.checked;
+        const msg = cb.getAttribute('data-msg');
+        const tag = cb.getAttribute('data-tag');
+        const sub = cb.getAttribute('data-sub');
+        const key = `${msg}|${tag}|${sub}`;
+        if (headerCheckbox.checked) {
+          selectedRows.add(key);
+        } else {
+          selectedRows.delete(key);
+        }
+      });
+      updateDeleteSelectedButton();
+    }
+
+    function updateSelectAllCheckboxState() {
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      if (!selectAllCheckbox) return;
+      const pageCheckboxes = document.querySelectorAll('.row-select-checkbox');
+      if (pageCheckboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.disabled = true;
+        return;
+      }
+      selectAllCheckbox.disabled = false;
+      let allChecked = true;
+      pageCheckboxes.forEach(cb => {
+        if (!cb.checked) allChecked = false;
+      });
+      selectAllCheckbox.checked = allChecked;
+    }
+
+    function updateDeleteSelectedButton() {
+      const btn = document.getElementById('btnDeleteSelected');
+      const lbl = document.getElementById('lbl-btnDeleteSelected');
+      if (!btn || !lbl) return;
+      
+      const count = selectedRows.size;
+      if (count > 0) {
+        btn.style.display = 'inline-flex';
+        btn.style.alignItems = 'center';
+        btn.style.gap = '6px';
+        lbl.textContent = currentLang === 'en' 
+          ? `Delete Selected (${count})` 
+          : `Hapus Terpilih (${count})`;
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    function deleteSelectedRows() {
+      if (!isOwner) return;
+      const count = selectedRows.size;
+      if (count === 0) return;
+      
+      const confirmMsg = currentLang === 'en'
+        ? `Are you sure you want to delete the ${count} selected tag(s) and all their sub-fields?`
+        : `Apakah Anda yakin ingin menghapus ${count} tag yang terpilih beserta seluruh sub-fieldnya?`;
+      if (!confirm(confirmMsg)) return;
+
+      const items = Array.from(selectedRows).map(key => {
+        const [msg, tag, sub] = key.split('|');
+        return { msg, tag, sub };
+      });
+
+      // Find all sub-fields in DATA that match the selected parent tags, and add them
+      const itemsWithSubfields = [];
+      items.forEach(item => {
+        itemsWithSubfields.push(item);
+        if (item.sub === '') {
+          const subfields = DATA.filter(d => d.msg === item.msg && d.tag === item.tag && d.sub !== '');
+          subfields.forEach(sf => {
+            if (!itemsWithSubfields.some(x => x.msg === sf.msg && x.tag === sf.tag && x.sub === sf.sub)) {
+              itemsWithSubfields.push({ msg: sf.msg, tag: sf.tag, sub: sf.sub });
+            }
+          });
+        }
+      });
+
+      if (isApiConnected) {
+        fetch('http://localhost:8766/api/tags/delete-multiple', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(itemsWithSubfields)
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('API delete failed');
+          return res.json();
+        })
+        .then(() => {
+          showToast(currentLang === 'en' 
+            ? `🗑️ Successfully deleted ${itemsWithSubfields.length} records.`
+            : `🗑️ Berhasil menghapus ${itemsWithSubfields.length} data.`);
+          selectedRows.clear();
+          updateDeleteSelectedButton();
+          loadData();
+        })
+        .catch(err => {
+          alert('Gagal menghapus baris dari Database: ' + err.message);
+        });
+      } else {
+        // Fallback offline delete
+        const base = window._systemData || FALLBACK_DATA || [];
+        
+        itemsWithSubfields.forEach(item => {
+          const { msg, tag, sub } = item;
+          const isSystem = base.some(g => g.msg === msg && g.tag === tag && g.sub === sub);
+          
+          if (isSystem) {
+            // If system tag, mark it as inactive (soft delete) in CUSTOM
+            const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            const inactiveRow = { msg, tag, sub, name: '', is_active: 0, source: 'manual' };
+            if (ci !== -1) {
+              CUSTOM[ci] = inactiveRow;
+            } else {
+              CUSTOM.push(inactiveRow);
+            }
+          } else {
+            // If purely custom tag, we can just delete it from CUSTOM
+            const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            if (ci !== -1) {
+              CUSTOM.splice(ci, 1);
+            }
+          }
+        });
+        
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+
+        // Re-merge data to ensure DATA is synchronized and deduplicated
+        const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+        const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+        const filteredBase = base.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+        DATA = [...filteredBase, ...activeCustom];
+
+        showToast(currentLang === 'en' 
+          ? `🗑️ Successfully deleted ${itemsWithSubfields.length} records.`
+          : `🗑️ Berhasil menghapus ${itemsWithSubfields.length} data.`);
+        selectedRows.clear();
+        updateDeleteSelectedButton();
+        renderFilters();
         if (currentTab === 'admin') {
           renderAdminTable();
         } else {
@@ -2215,25 +2450,51 @@
         }
       } else {
         // Fallback offline mode using localStorage
-        if (editKey) {
-          const [eMsg, eTag, eSub] = editKey.split('|');
-          const idx = DATA.findIndex(d => d.msg === eMsg && d.tag === eTag && d.sub === eSub);
-          if (idx !== -1) {
-            DATA[idx] = row;
-            const ci = CUSTOM.findIndex(d => d.msg === eMsg && d.tag === eTag && d.sub === eSub);
-            if (ci !== -1) {
-              CUSTOM[ci] = row;
-              localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        const keyMsg = editKey ? editKey.split('|')[0] : msg;
+        const keyTag = editKey ? editKey.split('|')[1] : tag;
+        const keySub = editKey ? editKey.split('|')[2] : sub;
+        
+        // Find existing custom tag
+        const ci = CUSTOM.findIndex(d => d.msg === keyMsg && d.tag === keyTag && d.sub === keySub);
+        
+        if (ci !== -1) {
+          if (editKey && (keyMsg !== msg || keyTag !== tag || keySub !== sub)) {
+            // Delete old one, and insert/update new one
+            CUSTOM.splice(ci, 1);
+            const newCi = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            if (newCi !== -1) {
+              CUSTOM[newCi] = row;
+            } else {
+              CUSTOM.push(row);
             }
+          } else {
+            CUSTOM[ci] = row;
           }
-          delete backdrop.dataset.editKey;
         } else {
-          CUSTOM.push(row);
-          localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
-          DATA.push(row);
+          // If not found in CUSTOM (either a new tag or editing a system tag for the first time)
+          const newCi = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          if (newCi !== -1) {
+            CUSTOM[newCi] = row;
+          } else {
+            CUSTOM.push(row);
+          }
         }
+        
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        if (editKey) {
+          delete backdrop.dataset.editKey;
+        }
+        
+        // Re-merge data to ensure DATA is synchronized and deduplicated
+        const base = window._systemData || FALLBACK_DATA || [];
+        const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+        const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+        const filteredBase = base.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+        DATA = [...filteredBase, ...activeCustom];
+        
         showToast('✓ Data berhasil disimpan ke penyimpanan lokal.');
         cleanUpModal();
+        renderFilters();
         if (currentTab === 'admin') {
           renderAdminTable();
         } else {
@@ -2426,23 +2687,25 @@
           } else {
             CUSTOM.push(normalizedItem);
           }
-
-          const dIdx = DATA.findIndex(d => d.msg === normalizedItem.msg && d.tag === normalizedItem.tag && d.sub === normalizedItem.sub);
-          if (dIdx !== -1) {
-            DATA[dIdx] = normalizedItem;
-          } else {
-            DATA.push(normalizedItem);
-          }
           importedCount++;
         });
 
         localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        
+        // Re-merge data to ensure DATA is synchronized and deduplicated
+        const base = window._systemData || FALLBACK_DATA || [];
+        const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+        const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+        const filteredBase = base.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+        DATA = [...filteredBase, ...activeCustom];
+
         showToast(
           currentLang === 'en' 
             ? `✓ Successfully imported ${importedCount} items.` 
             : `✓ Berhasil mengimpor ${importedCount} data.`
         );
         closeImportModal();
+        renderFilters();
         if (currentTab === 'admin') {
           renderAdminTable();
         } else {
@@ -2464,7 +2727,6 @@
 
     const tbody = document.getElementById('tableBody');
     const searchInput = document.getElementById('searchInput');
-    const chips = document.querySelectorAll('.chip');
     const emptyState = document.getElementById('emptyState');
     const countNum = document.getElementById('countNum');
     const countTotal = document.getElementById('countTotal');
@@ -2487,60 +2749,151 @@
     function highlight(text, q) {
       if (!q) return escapeHtml(text);
       const escaped = escapeHtml(text);
-      const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return escaped.replace(new RegExp('(' + safeQ + ')', 'ig'), '<mark>$1</mark>');
+      const terms = q.split(/\s+/).filter(Boolean);
+      if (terms.length === 0) return escaped;
+      
+      const sortedTerms = [...new Set(terms.map(t => t.toLowerCase()))].sort((a, b) => b.length - a.length);
+      
+      let result = escaped;
+      sortedTerms.forEach(term => {
+        if (!term) return;
+        const safeQ = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Split by existing HTML tags (like <mark>...</mark>) so we only replace in text parts
+        const parts = result.split(/(<[^>]+>)/g);
+        for (let i = 0; i < parts.length; i++) {
+          if (!parts[i].startsWith('<')) {
+            parts[i] = parts[i].replace(new RegExp('(' + safeQ + ')', 'ig'), '<mark>$1</mark>');
+          }
+        }
+        result = parts.join('');
+      });
+      return result;
     }
 
     function matchesFilters(row) {
-      const msgFilters = ['mt940', 'mt942', 'mt950', 'mt564'].filter(f => activeFilters.has(f));
-      const moFilters = ['m', 'o'].filter(f => activeFilters.has(f));
-      if (msgFilters.length && !msgFilters.includes(row.msg)) return false;
-      if (moFilters.length && !moFilters.includes(row.mo)) return false;
       return true;
     }
 
     function matchesColumnSearch(row, q, col) {
       if (!q) return true;
-      const lower = q.toLowerCase();
-      const dName = (currentLang === 'en' && row.name_en ? row.name_en : row.name) || '';
-      const dDesc = (currentLang === 'en' && row.desc_en ? row.desc_en : row.desc) || '';
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      if (terms.length === 0) return true;
+
+      // Check if ALL terms are matched
+      return terms.every(term => {
+        const dName = (currentLang === 'en' && row.name_en ? row.name_en : row.name) || '';
+        const dDesc = (currentLang === 'en' && row.desc_en ? row.desc_en : row.desc) || '';
+        const dRules = (currentLang === 'en' && row.rules_en ? row.rules_en : row.rules) || '';
+        
+        switch (col) {
+          case 'msg':
+            return row.msg.toLowerCase().includes(term) || getMsgLabel(row.msg).toLowerCase().includes(term);
+          case 'tag':
+            return row.tag.toLowerCase().includes(term);
+          case 'name':
+            return dName.toLowerCase().includes(term);
+          case 'mo':
+            const moText = row.mo === 'm' ? (currentLang === 'en' ? 'mandatory' : 'wajib') : (currentLang === 'en' ? 'optional' : 'opsional');
+            return moText.includes(term) || row.mo.toLowerCase() === term;
+          case 'len':
+            return (row.len || '').toLowerCase().includes(term);
+          case 'sample':
+            return (row.sample || '').toLowerCase().includes(term);
+          case 'desc':
+            return dDesc.toLowerCase().includes(term) || dRules.toLowerCase().includes(term);
+          case 'all':
+          default:
+            return (
+              row.tag.toLowerCase().includes(term) ||
+              row.msg.toLowerCase().includes(term) ||
+              getMsgLabel(row.msg).toLowerCase().includes(term) ||
+              dName.toLowerCase().includes(term) ||
+              dDesc.toLowerCase().includes(term) ||
+              (row.sample && row.sample.toLowerCase().includes(term)) ||
+              (row.rules && row.rules.toLowerCase().includes(term)) ||
+              (dRules && dRules.toLowerCase().includes(term))
+            );
+        }
+      });
+    }
+
+    function renderFilters() {
+      const container = document.getElementById('filtersContainer');
+      if (!container) return;
       
-      switch (col) {
-        case 'msg':
-          return row.msg.toLowerCase().includes(lower) || getMsgLabel(row.msg).toLowerCase().includes(lower);
-        case 'tag':
-          return row.tag.toLowerCase().includes(lower);
-        case 'name':
-          return dName.toLowerCase().includes(lower);
-        case 'mo':
-          const moText = row.mo === 'm' ? (currentLang === 'en' ? 'mandatory' : 'wajib') : (currentLang === 'en' ? 'optional' : 'opsional');
-          return moText.includes(lower) || row.mo.toLowerCase() === lower;
-        case 'len':
-          return (row.len || '').toLowerCase().includes(lower);
-        case 'sample':
-          return (row.sample || '').toLowerCase().includes(lower);
-        case 'desc':
-          const dRules = (currentLang === 'en' && row.rules_en ? row.rules_en : row.rules) || '';
-          return dDesc.toLowerCase().includes(lower) || dRules.toLowerCase().includes(lower);
-        case 'all':
-        default:
-          return (
-            row.tag.toLowerCase().includes(lower) ||
-            row.msg.toLowerCase().includes(lower) ||
-            getMsgLabel(row.msg).toLowerCase().includes(lower) ||
-            dName.toLowerCase().includes(lower) ||
-            dDesc.toLowerCase().includes(lower) ||
-            (row.sample && row.sample.toLowerCase().includes(lower)) ||
-            (row.rules && row.rules.toLowerCase().includes(lower))
-          );
-      }
+      // Get unique message types from DATA
+      const uniqueMsgs = [...new Set((DATA || []).map(r => r.msg.toLowerCase()))].sort();
+      
+      let html = '';
+      
+      // All chip
+      const allActive = activeFilters.has('all') ? 'active' : '';
+      const allText = currentLang === 'en' ? 'All Messages' : 'Semua Pesan';
+      html += `<div class="chip ${allActive}" data-filter="all" data-icon="📁">${allText}</div>`;
+      
+      // Message type chips
+      uniqueMsgs.forEach(msg => {
+        if (!msg) return;
+        const active = activeFilters.has(msg) ? 'active' : '';
+        const label = getMsgLabel(msg);
+        html += `<div class="chip ${active}" data-filter="${msg}" data-icon="📄">${label}</div>`;
+      });
+      
+      // Divider or spacer
+      html += `<div style="width: 1px; height: 16px; background: var(--line); margin: 0 8px;"></div>`;
+      
+      // Mandatory / Optional chips
+      const mActive = activeFilters.has('m') ? 'active' : '';
+      const mText = currentLang === 'en' ? 'Mandatory' : 'Wajib';
+      html += `<div class="chip ${mActive}" data-filter="m" data-icon="⭐">${mText}</div>`;
+      
+      const oActive = activeFilters.has('o') ? 'active' : '';
+      const oText = currentLang === 'en' ? 'Optional' : 'Opsional';
+      html += `<div class="chip ${oActive}" data-filter="o" data-icon="⚙">${oText}</div>`;
+      
+      container.innerHTML = html;
+      
+      // Re-bind click event listeners to the chips
+      const chips = container.querySelectorAll('.chip');
+      chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          const f = chip.dataset.filter;
+          if (f === 'all') {
+            activeFilters = new Set(['all']);
+          } else {
+            activeFilters.delete('all');
+            
+            // If it's a message type filter or m/o filter
+            if (activeFilters.has(f)) {
+              activeFilters.delete(f);
+            } else {
+              activeFilters.add(f);
+            }
+            
+            // If all message types are unchecked and all m/o filters are unchecked, revert to 'all'
+            if (activeFilters.size === 0) {
+              activeFilters.add('all');
+            }
+          }
+          
+          currentPage = 1;
+          adminCurrentPage = 1;
+          renderFilters(); // Re-render chips to show active state
+          if (currentTab === 'admin') {
+            renderAdminTable();
+          } else {
+            render();
+          }
+        });
+      });
     }
 
     function render() {
       const q = searchInput.value.trim();
       const col = document.getElementById('searchColumn').value;
       // Only show parent rows (sub === "") in the main table
-      let filteredRows = DATA.filter(r => r.sub === '' && matchesFilters(r) && matchesColumnSearch(r, q, col));
+      let filteredRows = DATA.filter(r => r.sub === '' && r.tag !== 'MSG_NAME' && matchesFilters(r) && matchesColumnSearch(r, q, col));
 
       if (sortKey) {
         filteredRows = filteredRows.slice().sort((a, b) => {
@@ -2637,7 +2990,7 @@
       const q = searchInput.value.trim();
       const col = document.getElementById('searchColumn').value;
       
-      let filteredRows = DATA.filter(r => r.sub === '' && matchesFilters(r) && matchesColumnSearch(r, q, col));
+      let filteredRows = DATA.filter(r => r.sub === '' && r.tag !== 'MSG_NAME' && matchesFilters(r) && matchesColumnSearch(r, q, col));
 
       if (sortKey) {
         filteredRows = filteredRows.slice().sort((a, b) => {
@@ -2686,8 +3039,12 @@
             : '';
 
           const delBtn = `<button class="act-btn act-del" onclick="deleteRow(event, '${r.msg}', '${r.tag}', '${r.sub}')" title="Hapus baris">Hapus</button>`;
+          const isChecked = selectedRows.has(`${r.msg}|${r.tag}|${r.sub}`);
 
           tr.innerHTML = `
+            <td onclick="event.stopPropagation()" style="text-align: center; vertical-align: middle;">
+              <input type="checkbox" class="row-select-checkbox" data-msg="${r.msg}" data-tag="${r.tag}" data-sub="${r.sub}" ${isChecked ? 'checked' : ''} onchange="toggleRowSelection(this)" style="cursor: pointer; width: 16px; height: 16px;">
+            </td>
             <td><span class="${badgeCls}">${getMsgLabel(r.msg)}</span></td>
             <td class="tag-cell">
               <span class="tag-copy" title="Copy ${tagFmt}" onclick="copyTag(event,'${tagFmt}')">${highlight(r.tag, q)}</span>
@@ -2705,7 +3062,7 @@
           `;
           tr._rowData = r;
           tr.addEventListener('click', e => {
-            if (e.target.closest('.tag-copy') || e.target.closest('.act-btn')) return;
+            if (e.target.closest('.tag-copy') || e.target.closest('.act-btn') || e.target.closest('.row-select-checkbox')) return;
             const subFields = DATA.filter(d => d.msg === r.msg && d.tag === r.tag && d.sub !== '');
             if (subFields.length > 0) {
               openSubPage(r, subFields);
@@ -2733,6 +3090,9 @@
       const btnNext = document.getElementById('btnAdminNextPage');
       if (btnPrev) btnPrev.disabled = adminCurrentPage === 1;
       if (btnNext) btnNext.disabled = adminCurrentPage === totalPages;
+
+      // Update Select All checkbox state
+      updateSelectAllCheckboxState();
     }
 
     function changePage(direction) {
@@ -2887,7 +3247,7 @@
     /* ── Export CSV ── */
     function exportCSV() {
       const q = searchInput.value.trim();
-      const rows = DATA.filter(r => matchesFilters(r) && matchesSearch(r, q));
+      const rows = DATA.filter(r => matchesFilters(r) && matchesColumnSearch(r, q, 'all'));
       const cols = ['msg', 'tag', 'sub', 'name', 'mo', 'len', 'sample', 'desc', 'source'];
       const esc = v => '"' + String(v || '').replace(/"/g, '""') + '"';
       const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
@@ -2946,7 +3306,17 @@
 
     function init() {
       applyOwnerUI(); // sets button UI only (no render yet)
-      render();       // first render
+      populateParserDropdown();
+      
+      if (currentTab === 'admin') {
+        renderAdminTable();
+      } else {
+        render();
+      }
+      
+      if (window._tableInitialized) {
+        return;
+      }
       window._tableInitialized = true; 
 
       const importTextarea = document.getElementById('importJsonTextarea');
@@ -2976,28 +3346,6 @@
           }
         });
       }
-
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          const f = chip.dataset.filter;
-          if (f === 'all') {
-            activeFilters = new Set(['all']);
-          } else {
-            activeFilters.delete('all');
-            if (activeFilters.has(f)) activeFilters.delete(f);
-            else activeFilters.add(f);
-            if (activeFilters.size === 0) activeFilters.add('all');
-          }
-          chips.forEach(c => c.classList.toggle('active', activeFilters.has(c.dataset.filter)));
-          currentPage = 1;
-          adminCurrentPage = 1;
-          if (currentTab === 'admin') {
-            renderAdminTable();
-          } else {
-            render();
-          }
-        });
-      });
 
       const fTag = document.getElementById('f_tag');
       const fTagSelect = document.getElementById('f_tag_select');
@@ -3034,6 +3382,11 @@
       document.getElementById('view-reference').style.display = tabId === 'reference' ? 'block' : 'none';
       document.getElementById('view-parser').style.display = tabId === 'parser' ? 'block' : 'none';
       document.getElementById('view-admin').style.display = tabId === 'admin' ? 'block' : 'none';
+
+      const filtersContainer = document.getElementById('filtersContainer');
+      if (filtersContainer) {
+        filtersContainer.style.display = (tabId === 'reference' || tabId === 'admin') ? 'flex' : 'none';
+      }
 
       // Update search input visibility and state
       const searchContainer = document.getElementById('searchContainer');
@@ -3161,6 +3514,348 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       }).format(amount);
+    }
+
+    function populateParserDropdown() {
+      const select = document.getElementById('parserTypeSelect');
+      if (!select) return;
+      
+      const currentVal = select.value;
+      const msgTypes = new Set();
+      
+      DATA.forEach(d => {
+        if (d.msg) {
+          msgTypes.add(d.msg.toUpperCase());
+        }
+      });
+      
+      const coreTypes = ['MT940', 'MT942', 'MT950', 'MT103', 'MT101', 'MT104', 'MT102', 'MT564'];
+      coreTypes.forEach(t => msgTypes.add(t));
+      
+      const sortedTypes = Array.from(msgTypes).sort();
+      
+      select.innerHTML = `<option value="auto">${currentLang === 'en' ? 'Auto-Detect' : 'Deteksi Otomatis'}</option>`;
+      
+      sortedTypes.forEach(t => {
+        let desc = '';
+        
+        // Dynamic search in DATA for a special tag 'MSG_NAME'
+        const msgNameRow = DATA.find(d => d.msg && d.msg.toUpperCase() === t && d.tag === 'MSG_NAME');
+        if (msgNameRow) {
+          desc = ' (' + (currentLang === 'en' ? (msgNameRow.name_en || msgNameRow.name) : (msgNameRow.name || msgNameRow.name_en)) + ')';
+        } else {
+          // Hardcoded fallback for core types if MSG_NAME row is not present
+          if (t === 'MT940') desc = currentLang === 'en' ? ' (Account Statement)' : ' (Laporan Rekening)';
+          else if (t === 'MT942') desc = currentLang === 'en' ? ' (Interim Transaction Report)' : ' (Laporan Interim)';
+          else if (t === 'MT950') desc = currentLang === 'en' ? ' (Statement Message)' : ' (Pernyataan Rekening)';
+          else if (t === 'MT103') desc = currentLang === 'en' ? ' (Single Customer Funds Transfer)' : ' (Transfer Dana Nasabah)';
+          else if (t === 'MT101') desc = currentLang === 'en' ? ' (Request for Transfer)' : ' (Permintaan Transfer)';
+          else if (t === 'MT104') desc = currentLang === 'en' ? ' (Direct Debit and Request for Debit Transfer)' : ' (Pesan Direct Debit dan Permintaan Transfer Debit)';
+          else if (t === 'MT102') desc = currentLang === 'en' ? ' (Multiple Customer Funds Transfer)' : ' (Transfer Dana Nasabah Multi)';
+          else if (t === 'MT564') desc = currentLang === 'en' ? ' (Corporate Action Notification)' : ' (Notifikasi Aksi Korporasi)';
+        }
+        
+        const option = document.createElement('option');
+        option.value = t.toLowerCase();
+        option.textContent = `${t}${desc}`;
+        select.appendChild(option);
+      });
+      
+      if (Array.from(select.options).some(opt => opt.value === currentVal)) {
+        select.value = currentVal;
+      } else {
+        select.value = 'auto';
+      }
+    }
+
+    function parseGeneralTags(rawText) {
+      let content = rawText;
+      const block4Match = rawText.match(/\{4:\s*([\s\S]*?)\s*-\}/);
+      if (block4Match) {
+        content = block4Match[1];
+      }
+
+      const lines = content.split('\n');
+      const tags = {};
+      let currentTag = '';
+      let currentVal = '';
+
+      function flushTag() {
+        if (!currentTag) return;
+        if (tags[currentTag]) {
+          if (Array.isArray(tags[currentTag])) {
+            tags[currentTag].push(currentVal.trim());
+          } else {
+            tags[currentTag] = [tags[currentTag], currentVal.trim()];
+          }
+        } else {
+          tags[currentTag] = currentVal.trim();
+        }
+        currentTag = '';
+        currentVal = '';
+      }
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+
+        const tagMatch = line.match(/^:([0-9]{2}[a-zA-Z]?):(.*)$/);
+        if (tagMatch) {
+          flushTag();
+          currentTag = tagMatch[1];
+          currentVal = tagMatch[2];
+        } else {
+          if (currentTag) {
+            currentVal += '\n' + line;
+          }
+        }
+      }
+      flushTag();
+      return tags;
+    }
+
+    function parseTag32A(val) {
+      if (!val) return null;
+      const match = val.match(/^([0-9]{6})([A-Z]{3})([0-9,]+)$/);
+      if (match) {
+        const yy = match[1].substring(0, 2);
+        const mm = match[1].substring(2, 4);
+        const dd = match[1].substring(4, 6);
+        const year = parseInt(yy) < 70 ? '20' + yy : '19' + yy;
+        const currency = match[2];
+        const amount = parseFloat(match[3].replace(',', '.'));
+        return {
+          date: `${dd}/${mm}/${year}`,
+          currency,
+          amount
+        };
+      }
+      return null;
+    }
+
+    // Parses currency and amount (e.g., IDR15000000,00)
+    function parseCurrencyAmount(val) {
+      if (!val) return null;
+      const match = val.match(/^([A-Z]{3})([0-9,]+)$/);
+      if (match) {
+        return {
+          currency: match[1],
+          amount: parseFloat(match[2].replace(',', '.'))
+        };
+      }
+      return null;
+    }
+
+    function parseMT103(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const bankOpCode = tags['23B'] || '';
+      const instructionCode = tags['23E'] || '';
+      const settled32A = parseTag32A(tags['32A']);
+      const instructed33B = parseCurrencyAmount(tags['33B']);
+      const exchangeRate = tags['36'] || '';
+      
+      let sender = { name: '', account: '', address: '' };
+      const tag50 = tags['50A'] || tags['50F'] || tags['50K'] || '';
+      if (tag50) {
+        const lines = tag50.split('\n');
+        if (lines[0].startsWith('/')) {
+          sender.account = lines[0].substring(1);
+          sender.name = lines.slice(1).join(', ');
+        } else {
+          sender.name = lines.join(', ');
+        }
+      }
+      
+      let beneficiary = { name: '', account: '', address: '' };
+      const tag59 = tags['59'] || tags['59A'] || '';
+      if (tag59) {
+        const lines = tag59.split('\n');
+        if (lines[0].startsWith('/')) {
+          beneficiary.account = lines[0].substring(1);
+          beneficiary.name = lines.slice(1).join(', ');
+        } else {
+          beneficiary.name = lines.join(', ');
+        }
+      }
+
+      const remittanceInfo = tags['70'] || '';
+      const charges = tags['71A'] || '';
+      
+      return {
+        msgType: 'MT103',
+        senderRef,
+        bankOpCode,
+        instructionCode,
+        settledAmount: settled32A,
+        instructedAmount: instructed33B,
+        exchangeRate,
+        sender,
+        beneficiary,
+        remittanceInfo,
+        charges,
+        tags
+      };
+    }
+
+    function parseMT101(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const clientRef = tags['21B'] || '';
+      const msgIndex = tags['28D'] || '';
+      const executionDate = tags['30'] || '';
+      
+      let executionDateFormatted = '';
+      if (executionDate && executionDate.length === 6) {
+        const yy = executionDate.substring(0, 2);
+        const mm = executionDate.substring(2, 4);
+        const dd = executionDate.substring(4, 6);
+        const year = parseInt(yy) < 70 ? '20' + yy : '19' + yy;
+        executionDateFormatted = `${dd}/${mm}/${year}`;
+      }
+
+      const txAmount = parseCurrencyAmount(tags['32B']);
+      
+      let sender = { name: '', account: '', address: '' };
+      const tag50 = tags['50A'] || tags['50H'] || tags['50K'] || '';
+      if (tag50) {
+        const lines = tag50.split('\n');
+        if (lines[0].startsWith('/')) {
+          sender.account = lines[0].substring(1);
+          sender.name = lines.slice(1).join(', ');
+        } else {
+          sender.name = lines.join(', ');
+        }
+      }
+      
+      let beneficiary = { name: '', account: '', address: '' };
+      const tag59 = tags['59'] || '';
+      if (tag59) {
+        const lines = tag59.split('\n');
+        if (lines[0].startsWith('/')) {
+          beneficiary.account = lines[0].substring(1);
+          beneficiary.name = lines.slice(1).join(', ');
+        } else {
+          beneficiary.name = lines.join(', ');
+        }
+      }
+
+      const remittanceInfo = tags['70'] || '';
+      const charges = tags['71A'] || '';
+
+      return {
+        msgType: 'MT101',
+        senderRef,
+        clientRef,
+        msgIndex,
+        executionDate: executionDateFormatted || executionDate,
+        amount: txAmount,
+        sender,
+        beneficiary,
+        remittanceInfo,
+        charges,
+        tags
+      };
+    }
+
+    function parseMT104(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const execDate = tags['30'] || '';
+      const settled32B = parseCurrencyAmount(tags['32B']);
+      
+      let creditor = { name: '', account: '', address: '' };
+      const tag50 = tags['50A'] || tags['50F'] || tags['50K'] || '';
+      if (tag50) {
+        const lines = tag50.split('\n');
+        if (lines[0].startsWith('/')) {
+          creditor.account = lines[0].substring(1);
+          creditor.name = lines.slice(1).join(', ');
+        } else {
+          creditor.name = lines.join(', ');
+        }
+      }
+      
+      let debtor = { name: '', account: '', address: '' };
+      const tag59 = tags['59'] || tags['59A'] || '';
+      if (tag59) {
+        const lines = tag59.split('\n');
+        if (lines[0].startsWith('/')) {
+          debtor.account = lines[0].substring(1);
+          debtor.name = lines.slice(1).join(', ');
+        } else {
+          debtor.name = lines.join(', ');
+        }
+      }
+
+      const remittanceInfo = tags['70'] || '';
+      const charges = tags['71A'] || '';
+      
+      let formattedDate = execDate;
+      if (execDate && execDate.length === 6) {
+        const yy = execDate.substring(0, 2);
+        const mm = execDate.substring(2, 4);
+        const dd = execDate.substring(4, 6);
+        formattedDate = `${dd}/${mm}/20${yy}`;
+      }
+
+      return {
+        msgType: 'MT104',
+        senderRef,
+        executionDate: formattedDate,
+        amount: settled32B,
+        creditor,
+        debtor,
+        remittanceInfo,
+        charges,
+        tags
+      };
+    }
+
+    function parseMT102(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const settled32A = parseTag32A(tags['32A']);
+      const instructed33B = parseCurrencyAmount(tags['33B']);
+      
+      let sender = { name: '', account: '', address: '' };
+      const tag50 = tags['50A'] || tags['50F'] || tags['50K'] || '';
+      if (tag50) {
+        const lines = tag50.split('\n');
+        if (lines[0].startsWith('/')) {
+          sender.account = lines[0].substring(1);
+          sender.name = lines.slice(1).join(', ');
+        } else {
+          sender.name = lines.join(', ');
+        }
+      }
+      
+      let beneficiary = { name: '', account: '', address: '' };
+      const tag59 = tags['59'] || tags['59A'] || '';
+      if (tag59) {
+        const lines = tag59.split('\n');
+        if (lines[0].startsWith('/')) {
+          beneficiary.account = lines[0].substring(1);
+          beneficiary.name = lines.slice(1).join(', ');
+        } else {
+          beneficiary.name = lines.join(', ');
+        }
+      }
+
+      const remittanceInfo = tags['70'] || '';
+      const charges = tags['71A'] || '';
+      
+      return {
+        msgType: 'MT102',
+        senderRef,
+        settledAmount: settled32A,
+        instructedAmount: instructed33B,
+        sender,
+        beneficiary,
+        remittanceInfo,
+        charges,
+        tags
+      };
     }
 
     let activeStatement = null;
@@ -3543,6 +4238,339 @@
       return str;
     }
 
+    function findTagInfo(msg, tag, sub = '') {
+      let found = DATA.find(d => d.msg.toLowerCase() === msg.toLowerCase() && d.tag.toUpperCase() === tag.toUpperCase() && d.sub === sub);
+      if (!found) {
+        found = DATA.find(d => d.msg.toLowerCase() === msg.toLowerCase() && d.tag.toUpperCase() === tag.toUpperCase());
+      }
+      if (!found) {
+        found = DATA.find(d => d.tag.toUpperCase() === tag.toUpperCase() && d.sub === sub);
+      }
+      if (!found) {
+        found = DATA.find(d => d.tag.toUpperCase() === tag.toUpperCase());
+      }
+      return found;
+    }
+
+    function renderParsedTagsTable(tags, msgType) {
+      let rowsHtml = '';
+      const keys = Object.keys(tags).sort();
+      
+      keys.forEach(key => {
+        const val = tags[key];
+        const valStr = Array.isArray(val) ? val.join('\n') : val;
+        const info = findTagInfo(msgType, key);
+        
+        const tagName = info ? (currentLang === 'en' && info.name_en ? info.name_en : info.name) : (currentLang === 'en' ? 'Custom Tag' : 'Tag Kustom');
+        const tagDesc = info ? (currentLang === 'en' && info.desc_en ? info.desc_en : info.desc) : '';
+        const tagRules = info ? (currentLang === 'en' && info.rules_en ? info.rules_en : info.rules) : '';
+        
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid var(--line);">
+            <td style="font-family: var(--mono); font-weight: 700; color: var(--primary-color); padding: 12px 16px; white-space: nowrap; vertical-align: top;">:${key}:</td>
+            <td style="padding: 12px 16px; vertical-align: top;">
+              <div style="font-weight: 700; color: var(--ink); margin-bottom: 4px;">${escapeHtml(tagName)}</div>
+              <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.4;">${escapeHtml(tagDesc)}</div>
+              ${tagRules ? `<div style="font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 4px; border: 1px dashed var(--line); padding: 4px 8px; border-radius: 4px; display: inline-block;">⚡ ${escapeHtml(tagRules)}</div>` : ''}
+            </td>
+            <td style="font-family: var(--mono); font-size: 13px; color: var(--ink); padding: 12px 16px; white-space: pre-wrap; vertical-align: top; max-width: 300px; overflow-x: auto;">${escapeHtml(valStr)}</td>
+          </tr>
+        `;
+      });
+
+      return `
+        <div style="margin-top: 24px;">
+          <h3 style="margin-bottom: 12px; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Tag Breakdown' : 'Rincian Tag SWIFT - Blok 4'}</h3>
+          <div class="table-wrap">
+            <div class="table-card">
+              <table>
+                <thead>
+                  <tr style="background: var(--panel);">
+                    <th style="width: 80px; padding: 12px 16px;">Tag</th>
+                    <th style="padding: 12px 16px;">${currentLang === 'en' ? 'Field Name & Description' : 'Nama Field & Keterangan'}</th>
+                    <th style="padding: 12px 16px;">${currentLang === 'en' ? 'Parsed Value' : 'Nilai Hasil Parsing'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMT103Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Payment Reference' : 'Referensi Pengiriman'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(valueDate)}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Charges Details' : 'Rincian Biaya'}</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${escapeHtml(statement.charges || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Settled Amount' : 'Jumlah Pembayaran'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 16px;">
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">👤 ${currentLang === 'en' ? 'Sender (Ordering Customer)' : 'Pengirim (Ordering Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.sender.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.sender.name || '—')}</div>
+          </div>
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">🎯 ${currentLang === 'en' ? 'Beneficiary Customer' : 'Penerima (Beneficiary Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.beneficiary.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.beneficiary.name || '—')}</div>
+          </div>
+        </div>
+      `;
+
+      const remittanceHtml = `
+        <div style="margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Remittance Information' : 'Berita / Keterangan Transfer'}</div>
+          <div style="font-family: var(--mono); font-size: 14px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.remittanceInfo || '—')}</div>
+        </div>
+      `;
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt103');
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg mt103" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">MT 103</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Single Customer Funds Transfer' : 'Transfer Dana Nasabah Tunggal'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${remittanceHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
+    function renderMT101Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.amount ? statement.amount.currency : 'USD';
+      const amountStr = statement.amount ? formatAmountRaw(statement.amount.amount) : '0.00';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Execution Date' : 'Tanggal Pelaksanaan'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.executionDate || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Client Reference' : 'Referensi Klien'}</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${escapeHtml(statement.clientRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Transfer Amount' : 'Jumlah Transfer'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 16px;">
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">👤 ${currentLang === 'en' ? 'Ordering Customer' : 'Pemberi Instruksi (Ordering Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.sender.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.sender.name || '—')}</div>
+          </div>
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">🎯 ${currentLang === 'en' ? 'Beneficiary Customer' : 'Penerima (Beneficiary Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.beneficiary.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.beneficiary.name || '—')}</div>
+          </div>
+        </div>
+      `;
+
+      const remittanceHtml = `
+        <div style="margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Remittance Information' : 'Berita / Keterangan Transfer'}</div>
+          <div style="font-family: var(--mono); font-size: 14px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.remittanceInfo || '—')}</div>
+        </div>
+      `;
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt101');
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg mt101" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">MT 101</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Request for Transfer' : 'Permintaan Transfer (Request for Transfer)'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${remittanceHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
+    function renderMT104Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.amount ? statement.amount.currency : 'EUR';
+      const amountStr = statement.amount ? formatAmountRaw(statement.amount.amount) : '0.00';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Execution Date' : 'Tanggal Pelaksanaan'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.executionDate || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Charges Details' : 'Rincian Biaya'}</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${escapeHtml(statement.charges || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Direct Debit Amount' : 'Jumlah Debit Langsung'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 16px;">
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">👤 ${currentLang === 'en' ? 'Creditor (Ordering Customer)' : 'Kreditor (Penerima Dana / Creditor)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.creditor.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.creditor.name || '—')}</div>
+          </div>
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">🎯 ${currentLang === 'en' ? 'Debtor (Beneficiary Customer)' : 'Debitur (Pembayar / Debtor)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.debtor.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.debtor.name || '—')}</div>
+          </div>
+        </div>
+      `;
+
+      const remittanceHtml = `
+        <div style="margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Remittance Information' : 'Berita / Informasi Penarikan'}</div>
+          <div style="font-family: var(--mono); font-size: 14px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.remittanceInfo || '—')}</div>
+        </div>
+      `;
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt104');
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);">MT 104</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Direct Debit Message' : 'Pesan Debit Langsung (Direct Debit)'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${remittanceHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
+    function renderMT102Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(valueDate)}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Charges Details' : 'Rincian Biaya'}</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gold);">${escapeHtml(statement.charges || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Total Settled Amount' : 'Total Pembayaran'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 16px;">
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">👤 ${currentLang === 'en' ? 'Ordering Customer (Sender)' : 'Pengirim (Ordering Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.sender.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.sender.name || '—')}</div>
+          </div>
+          <div class="dashboard-card" style="flex: 1; min-width: 250px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">🎯 ${currentLang === 'en' ? 'Beneficiary Customer' : 'Penerima (Beneficiary Customer)'}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Acc #: ${escapeHtml(statement.beneficiary.account || '—')}</div>
+            <div style="font-size: 14px; color: var(--ink); font-weight: 800; font-family: var(--serif);">${escapeHtml(statement.beneficiary.name || '—')}</div>
+          </div>
+        </div>
+      `;
+
+      const remittanceHtml = `
+        <div style="margin-top: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Remittance Information' : 'Berita / Informasi Transfer'}</div>
+          <div style="font-family: var(--mono); font-size: 14px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.remittanceInfo || '—')}</div>
+        </div>
+      `;
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt102');
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">MT 102</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Multiple Customer Funds Transfer' : 'Transfer Dana Nasabah Multi (MT102)'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${remittanceHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
     function renderMT564Output(statement) {
       const output = document.getElementById('parserOutput');
       const dict = i18n[currentLang];
@@ -3659,11 +4687,51 @@
       }
 
       try {
-        const isMT564 = /\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'));
-        if (isMT564) {
-          activeStatement = parseMT564(text);
+        let mtType = 'MT940';
+        const selectedParser = document.getElementById('parserTypeSelect').value;
+
+        if (selectedParser === 'auto') {
+          if (/\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'))) {
+            mtType = 'MT564';
+          } else if (/\{2:[IO]104/i.test(text) || text.includes('MT104')) {
+            mtType = 'MT104';
+          } else if (/\{2:[IO]102/i.test(text) || text.includes('MT102')) {
+            mtType = 'MT102';
+          } else if (/\{2:[IO]103/i.test(text) || text.includes(':23B:') || (text.includes(':32A:') && text.includes(':59:')) || (text.includes(':50K:') && text.includes(':59:')) || text.includes('MT103')) {
+            mtType = 'MT103';
+          } else if (/\{2:[IO]101/i.test(text) || (text.includes(':28D:') && text.includes(':30:')) || text.includes('MT101')) {
+            mtType = 'MT101';
+          } else if (/\{2:[IO]942/i.test(text) || text.includes(':34F:')) {
+            mtType = 'MT942';
+          } else if (/\{2:[IO]950/i.test(text)) {
+            mtType = 'MT950';
+          } else if (/\{2:[IO]940/i.test(text)) {
+            mtType = 'MT940';
+          }
         } else {
+          mtType = selectedParser.toUpperCase();
+        }
+
+        const statementTypes = ['MT940', 'MT942', 'MT950'];
+        if (mtType === 'MT564') {
+          activeStatement = parseMT564(text);
+        } else if (mtType === 'MT104') {
+          activeStatement = parseMT104(text);
+        } else if (mtType === 'MT102') {
+          activeStatement = parseMT102(text);
+        } else if (mtType === 'MT103') {
+          activeStatement = parseMT103(text);
+        } else if (mtType === 'MT101') {
+          activeStatement = parseMT101(text);
+        } else if (statementTypes.includes(mtType)) {
           activeStatement = parseMT940State(text);
+          activeStatement.msgType = mtType;
+        } else {
+          // Dynamic Generic Parser
+          activeStatement = {
+            msgType: mtType,
+            tags: parseGeneralTags(text)
+          };
         }
         renderParsedOutput();
       } catch (e) {
@@ -3680,6 +4748,46 @@
 
       if (activeStatement.msgType === 'MT564') {
         renderMT564Output(activeStatement);
+        return;
+      }
+      if (activeStatement.msgType === 'MT103') {
+        renderMT103Output(activeStatement);
+        return;
+      }
+      if (activeStatement.msgType === 'MT101') {
+        renderMT101Output(activeStatement);
+        return;
+      }
+      if (activeStatement.msgType === 'MT104') {
+        renderMT104Output(activeStatement);
+        return;
+      }
+      if (activeStatement.msgType === 'MT102') {
+        renderMT102Output(activeStatement);
+        return;
+      }
+
+      const statementTypes = ['MT940', 'MT942', 'MT950'];
+      if (!statementTypes.includes(activeStatement.msgType)) {
+        const tagBreakdownHtml = renderParsedTagsTable(activeStatement.tags, activeStatement.msgType.toLowerCase());
+        
+        output.innerHTML = `
+          <div class="visualizer-dashboard">
+            <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+              <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">${escapeHtml(activeStatement.msgType)}</span>
+              <span style="font-family: var(--sans); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Message Details' : 'Rincian Pesan SWIFT'}</span>
+            </div>
+            
+            <div class="dashboard-header-card" style="padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: 20px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? "Sender's Reference (Tag 20)" : 'Referensi Pengirim (Tag 20)'}</div>
+                <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(activeStatement.tags['20'] || '—')}</div>
+              </div>
+            </div>
+            
+            ${tagBreakdownHtml}
+          </div>
+        `;
         return;
       }
 
@@ -3967,6 +5075,13 @@
       document.querySelectorAll('.tx-row').forEach(row => row.classList.remove('selected-row'));
     }
 
+    function handleParserTypeChange() {
+      const select = document.getElementById('parserTypeSelect');
+      if (select && select.value !== 'auto') {
+        loadSampleData(select.value);
+      }
+    }
+
     function loadSampleData(type) {
       if (type === 'mt564') {
         const sample564 = `{1:F01SENDERBIC0000000000}{2:O5641234051025RECEIVERBIC0000000000N}{4:
@@ -4004,6 +5119,84 @@ Apple Inc Common Stock
 :16S:CAOPTN
 -}`;
         document.getElementById('rawInput').value = sample564;
+        document.getElementById('parserTypeSelect').value = 'mt564';
+      } else if (type === 'mt103') {
+        const sample103 = `{1:F01BANKDEFXAXXX0000000000}{2:I103BANKDEFXXXXXN}{4:
+:20:FT2306301234567
+:23B:CRED
+:32A:230630IDR15000000,00
+:33B:IDR15000000,00
+:50K:/1234567890
+PT MAJU MUNDUR SEJAHTERA
+JL. SUDIRMAN NO. 10
+JAKARTA, INDONESIA
+:59:/9876543210
+JOHN DOE
+JL. MERDEKA NO. 5
+BANDUNG, INDONESIA
+:70:PEMBAYARAN INVOICE #10294
+SUPPLY BAHAN BAKU
+:71A:SHA
+-}`;
+        document.getElementById('rawInput').value = sample103;
+        document.getElementById('parserTypeSelect').value = 'mt103';
+      } else if (type === 'mt101') {
+        const sample101 = `{1:F01BANKDEFXAXXX0000000000}{2:I101BANKDEFXXXXXN}{4:
+:20:REF10120230630
+:21B:CLIENTREF9988
+:28D:1/1
+:30:230630
+:32B:USD5000,00
+:50K:/1122334455
+PT MAJU JAYA
+JL. UTAMA NO. 1
+:59:/6677889900
+ALICE SMITH
+123 MAPLE STREET
+NEW YORK, USA
+:70:CONSULTING SERVICES
+JUNE 2023
+:71A:SHA
+-}`;
+        document.getElementById('rawInput').value = sample101;
+        document.getElementById('parserTypeSelect').value = 'mt101';
+      } else if (type === 'mt104') {
+        const sample104 = `{1:F01BANKDEFXAXXX0000000000}{2:I104BANKDEFXXXXXN}{4:
+:20:TRN10420230630
+:30:230630
+:32B:EUR1250,50
+:50K:/DE89370400440532013000
+PT SEJAHTERA ABADI
+JL. PAHLAWAN NO. 12
+JAKARTA, INDONESIA
+:59:/DE12345678901234567890
+CV MAKMUR UTAMA
+JL. MERDEKA NO. 45
+SURABAYA, INDONESIA
+:70:MONTHLY DIRECT DEBIT
+INVOICE #998877
+:71A:SHA
+-}`;
+        document.getElementById('rawInput').value = sample104;
+        document.getElementById('parserTypeSelect').value = 'mt104';
+      } else if (type === 'mt102') {
+        const sample102 = `{1:F01BANKDEFXAXXX0000000000}{2:I102BANKDEFXXXXXN}{4:
+:20:TRN10220230630
+:32A:230630IDR2500000000,00
+:50K:/1234567890
+PT MAJU MUNDUR SEJAHTERA
+JL. SUDIRMAN NO. 10
+JAKARTA, INDONESIA
+:59:/9876543210
+CV BERKAH MANDIRI
+JL. PAHLAWAN NO. 88
+SURABAYA, INDONESIA
+:70:MULTIPLE TRANSFER JUNE 2023
+SALARY PAYMENTS
+:71A:SHA
+-}`;
+        document.getElementById('rawInput').value = sample102;
+        document.getElementById('parserTypeSelect').value = 'mt102';
       } else {
         const sample = `{1:F01GSCRUS30XXXX3614000002}{2:I940GSCRUS30XXXXN}{4:
 :20:15486025400
@@ -4037,12 +5230,14 @@ Apple Inc Common Stock
 :62M:C250218USD2937898,77
 -}`;
         document.getElementById('rawInput').value = sample;
+        document.getElementById('parserTypeSelect').value = 'mt940';
       }
       parseSwift();
     }
 
     function clearParser() {
       document.getElementById('rawInput').value = '';
+      document.getElementById('parserTypeSelect').value = 'auto';
       document.getElementById('parserOutput').innerHTML = `
         <div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;">
           <span class="big">🤖</span>
@@ -4071,7 +5266,8 @@ Apple Inc Common Stock
         tMo: "M/O",
         tSample: "Contoh",
         tDesc: "Keterangan",
-        pLabelInput: "Paste Raw Swift Message (MT940, MT942, MT950, MT564)",
+        pLabelInput: "Tempel Pesan SWIFT Mentah",
+        lblParserSelectLabel: "Pilih Parser:",
         pBtn: "Parse Message",
         pLabelOutput: "Hasil Parsing",
         lblDari: "dari",
@@ -4142,7 +5338,8 @@ Apple Inc Common Stock
         tMo: "M/O",
         tSample: "Sample",
         tDesc: "Description",
-        pLabelInput: "Paste Raw Swift Message (MT940, MT942, MT950, MT564)",
+        pLabelInput: "Paste Raw SWIFT Message",
+        lblParserSelectLabel: "Select Parser:",
         pBtn: "Parse Message",
         pLabelOutput: "Parsing Result",
         lblDari: "of",
@@ -4232,6 +5429,8 @@ Apple Inc Common Stock
 
     function applyLang() {
       const dict = i18n[currentLang];
+      populateParserDropdown();
+      
       const exportBtn = document.getElementById('exportBtn');
       if (exportBtn) exportBtn.innerHTML = dict.export;
       
@@ -4250,14 +5449,8 @@ Apple Inc Common Stock
       const tabParser = document.getElementById('tab-parser');
       if (tabParser) tabParser.innerText = dict.tabParser;
       
-      const filterAll = document.querySelector('[data-filter="all"]');
-      if (filterAll) filterAll.innerText = dict.fAll;
-      
-      const filterM = document.querySelector('[data-filter="m"]');
-      if (filterM) filterM.innerText = dict.fM;
-      
-      const filterO = document.querySelector('[data-filter="o"]');
-      if (filterO) filterO.innerText = dict.fO;
+      // Update filters translations
+      renderFilters();
       
       const btnAdd = document.getElementById('btnAdd');
       if (btnAdd) btnAdd.innerText = dict.addBtn;
@@ -4279,6 +5472,7 @@ Apple Inc Common Stock
       document.getElementById('lbl-adminTAction').innerText = currentLang === 'en' ? 'Actions' : 'Aksi';
       
       document.getElementById('lbl-pLabelInput').innerText = dict.pLabelInput;
+      document.getElementById('lbl-parserSelectLabel').innerText = dict.lblParserSelectLabel;
       document.getElementById('pBtn').innerText = dict.pBtn;
       document.getElementById('lbl-pLabelOutput').innerText = dict.pLabelOutput;
       
@@ -4400,6 +5594,9 @@ Apple Inc Common Stock
       if (activeStatement) {
         renderParsedOutput();
       }
+
+      // Update Delete Selected button language translation
+      updateDeleteSelectedButton();
     }
 
     loadData().then(() => {
