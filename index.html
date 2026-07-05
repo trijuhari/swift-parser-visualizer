@@ -1730,6 +1730,104 @@
         padding: 20px;
       }
     }
+
+    /* ── Interactive Bank Pathway Diagram ── */
+    .pathway-diagram-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--card-shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .pathway-flow-container {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 16px 8px 24px 8px; /* Extra bottom padding for scrollbar */
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: auto;
+      scrollbar-color: var(--accent) var(--line);
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+    .pathway-flow-container::-webkit-scrollbar {
+      height: 8px;
+    }
+    .pathway-flow-container::-webkit-scrollbar-track {
+      background: var(--line);
+      border-radius: 6px;
+    }
+    .pathway-flow-container::-webkit-scrollbar-thumb {
+      background-color: var(--accent);
+      border-radius: 6px;
+    }
+    .pathway-node-card {
+      background: var(--paper);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 10px;
+      min-width: 135px;
+      max-width: 155px;
+      flex: 0 0 auto;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .pathway-node-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    .pathway-node-card.active-node {
+      border-color: var(--accent) !important;
+      background: color-mix(in srgb, var(--accent) 5%, var(--paper)) !important;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent) !important;
+      transform: translateY(-2px);
+    }
+    .pathway-node-card .node-icon {
+      font-size: 24px;
+      margin-bottom: 2px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+      transition: transform 0.2s ease;
+    }
+    .pathway-node-card:hover .node-icon {
+      transform: scale(1.15) rotate(5deg);
+    }
+    .pathway-arrow-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+    }
+    .pathway-flow-arrow {
+      color: var(--accent);
+      animation: arrowPulse 1.8s infinite ease-in-out;
+    }
+    
+    @keyframes arrowPulse {
+      0%, 100% {
+        transform: translateX(0);
+        opacity: 0.5;
+      }
+      50% {
+        transform: translateX(4px);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 
@@ -3870,6 +3968,7 @@ JOHN DOE
     }
 
     let activeStatement = null;
+    let currentPathwayNodes = [];
 
     function parseMT940State(rawText) {
       let content = rawText;
@@ -4792,10 +4891,388 @@ JOHN DOE
           </div>
           ${headerHtml}
           ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
           ${routeHtml}
           ${infoHtml}
           ${businessInsightHtml}
           ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
+    /* ── Pathway Diagram Helper Functions ── */
+    function renderPathwayDiagramHtml(statement) {
+      if (!statement || (statement.msgType !== 'MT103' && statement.msgType !== 'MT202')) {
+        return '';
+      }
+
+      const tags = statement.tags || {};
+      const nodes = [];
+
+      if (statement.msgType === 'MT103') {
+        // 1. Sender (Tag 50)
+        let senderName = (statement.sender && statement.sender.name) || '—';
+        let senderAcc = (statement.sender && statement.sender.account) || '';
+        let senderAddr = (statement.sender && statement.sender.address) || '';
+        nodes.push({
+          id: '50',
+          tag: tags['50A'] ? '50A' : (tags['50F'] ? '50F' : (tags['50K'] ? '50K' : '50')),
+          roleEn: 'Sender (Ordering Customer)',
+          roleId: 'Pengirim (Nasabah)',
+          icon: '👤',
+          name: senderName,
+          acc: senderAcc,
+          address: senderAddr,
+          details: currentLang === 'en' 
+            ? 'The customer ordering the funds transfer. This is the origin of the payment.' 
+            : 'Nasabah yang menginstruksikan pengiriman dana. Merupakan asal mula pembayaran.'
+        });
+
+        // 2. Ordering Institution (Tag 52)
+        let tag52Val = tags['52A'] || tags['52D'];
+        if (tag52Val) {
+          let inst = parseInstitution(tag52Val);
+          if (inst) {
+            nodes.push({
+              id: '52',
+              tag: tags['52A'] ? '52A' : '52D',
+              roleEn: "Sender's Bank (Ordering Institution)",
+              roleId: 'Bank Pengirim',
+              icon: '🏦',
+              name: inst.bicOrName || '—',
+              acc: inst.account || '',
+              address: inst.address || '',
+              details: currentLang === 'en'
+                ? "The financial institution that processes the sender's payment instruction."
+                : "Lembaga keuangan yang memproses instruksi pembayaran awal dari pengirim."
+            });
+          }
+        }
+
+        // 3. Sender's Correspondent (Tag 53)
+        let tag53Val = tags['53A'] || tags['53B'] || tags['53D'];
+        if (tag53Val) {
+          let inst = parseInstitution(tag53Val);
+          if (inst) {
+            nodes.push({
+              id: '53',
+              tag: tags['53A'] ? '53A' : (tags['53B'] ? '53B' : '53D'),
+              roleEn: "Sender's Correspondent Bank",
+              roleId: 'Koresponden Pengirim',
+              icon: '🏦',
+              name: inst.bicOrName || '—',
+              acc: inst.account || '',
+              address: inst.address || '',
+              details: currentLang === 'en'
+                ? "The bank where the sender bank maintains an account to settle the transaction."
+                : "Bank tempat bank pengirim memelihara rekening untuk penyelesaian dana."
+            });
+          }
+        }
+
+        // 4. Receiver's Correspondent (Tag 54)
+        let tag54Val = tags['54A'] || tags['54B'] || tags['54D'];
+        if (tag54Val) {
+          let inst = parseInstitution(tag54Val);
+          if (inst) {
+            nodes.push({
+              id: '54',
+              tag: tags['54A'] ? '54A' : (tags['54B'] ? '54B' : '54D'),
+              roleEn: "Receiver's Correspondent Bank",
+              roleId: 'Koresponden Penerima',
+              icon: '🏦',
+              name: inst.bicOrName || '—',
+              acc: inst.account || '',
+              address: inst.address || '',
+              details: currentLang === 'en'
+                ? "The bank where the receiver bank maintains an account to receive credit."
+                : "Bank tempat bank penerima memelihara rekening untuk menerima kredit dana."
+            });
+          }
+        }
+
+        // 5. Intermediary Institution (Tag 56)
+        let tag56Val = tags['56A'] || tags['56C'] || tags['56D'];
+        if (tag56Val) {
+          let inst = parseInstitution(tag56Val);
+          if (inst) {
+            nodes.push({
+              id: '56',
+              tag: tags['56A'] ? '56A' : (tags['56C'] ? '56C' : '56D'),
+              roleEn: "Intermediary Bank",
+              roleId: 'Bank Perantara',
+              icon: '🏦',
+              name: inst.bicOrName || '—',
+              acc: inst.account || '',
+              address: inst.address || '',
+              details: currentLang === 'en'
+                ? "An additional bank routing the transfer between correspondent banks."
+                : "Bank tambahan yang meneruskan rute transfer di antara bank koresponden."
+            });
+          }
+        }
+
+        // 6. Account With Institution (Tag 57)
+        let tag57Val = tags['57A'] || tags['57B'] || tags['57C'] || tags['57D'];
+        if (tag57Val) {
+          let inst = parseInstitution(tag57Val);
+          if (inst) {
+            nodes.push({
+              id: '57',
+              tag: tags['57A'] ? '57A' : (tags['57B'] ? '57B' : (tags['57C'] ? '57C' : '57D')),
+              roleEn: "Beneficiary's Bank (Account With)",
+              roleId: 'Bank Penerima',
+              icon: '🏦',
+              name: inst.bicOrName || '—',
+              acc: inst.account || '',
+              address: inst.address || '',
+              details: currentLang === 'en'
+                ? "The bank where the beneficiary holds their account. This bank pays the recipient."
+                : "Bank tempat nasabah penerima memiliki rekening. Bank ini yang akan membayarkan dana ke penerima."
+            });
+          }
+        }
+
+        // 7. Beneficiary (Tag 59)
+        let benefName = (statement.beneficiary && statement.beneficiary.name) || '—';
+        let benefAcc = (statement.beneficiary && statement.beneficiary.account) || '';
+        let benefAddr = (statement.beneficiary && statement.beneficiary.address) || '';
+        nodes.push({
+          id: '59',
+          tag: tags['59'] ? '59' : '59A',
+          roleEn: 'Beneficiary Customer',
+          roleId: 'Penerima Akhir',
+          icon: '🎯',
+          name: benefName,
+          acc: benefAcc,
+          address: benefAddr,
+          details: currentLang === 'en'
+            ? 'The final recipient of the transferred funds.'
+            : 'Nasabah akhir yang berhak menerima kiriman dana.'
+        });
+
+      } else if (statement.msgType === 'MT202') {
+        // 1. Ordering Institution (Tag 52)
+        if (statement.orderingInst) {
+          nodes.push({
+            id: '52',
+            tag: tags['52A'] ? '52A' : '52D',
+            roleEn: 'Ordering Institution',
+            roleId: 'Lembaga Pengirim',
+            icon: '🏦',
+            name: statement.orderingInst.bicOrName || '—',
+            acc: statement.orderingInst.account || '',
+            address: statement.orderingInst.address || '',
+            details: currentLang === 'en'
+              ? "The financial institution that initiates the transfer. This is a bank-to-bank transfer."
+              : "Lembaga keuangan yang memprakarsai transfer dana antar bank ini."
+          });
+        }
+
+        // 2. Sender's Correspondent (Tag 53)
+        if (statement.senderCorr) {
+          nodes.push({
+            id: '53',
+            tag: tags['53A'] ? '53A' : (tags['53B'] ? '53B' : '53D'),
+            roleEn: "Sender's Correspondent Bank",
+            roleId: 'Koresponden Pengirim',
+            icon: '🏦',
+            name: statement.senderCorr.bicOrName || '—',
+            acc: statement.senderCorr.account || '',
+            address: statement.senderCorr.address || '',
+            details: currentLang === 'en'
+              ? "The institution from which the sender's account is debited to settle the transaction."
+              : "Lembaga tempat rekening bank pengirim didebit untuk penyelesaian dana."
+          });
+        }
+
+        // 3. Receiver's Correspondent (Tag 54)
+        if (statement.receiverCorr) {
+          nodes.push({
+            id: '54',
+            tag: tags['54A'] ? '54A' : (tags['54B'] ? '54B' : '54D'),
+            roleEn: "Receiver's Correspondent Bank",
+            roleId: 'Koresponden Penerima',
+            icon: '🏦',
+            name: statement.receiverCorr.bicOrName || '—',
+            acc: statement.receiverCorr.account || '',
+            address: statement.receiverCorr.address || '',
+            details: currentLang === 'en'
+              ? "The institution where the receiver's account is credited to receive the funds."
+              : "Lembaga tempat rekening bank penerima dikreditkan untuk penyelesaian dana."
+          });
+        }
+
+        // 4. Intermediary Institution (Tag 56)
+        if (statement.intermediary) {
+          nodes.push({
+            id: '56',
+            tag: tags['56A'] ? '56A' : '56D',
+            roleEn: 'Intermediary Institution',
+            roleId: 'Lembaga Perantara',
+            icon: '🏦',
+            name: statement.intermediary.bicOrName || '—',
+            acc: statement.intermediary.account || '',
+            address: statement.intermediary.address || '',
+            details: currentLang === 'en'
+              ? "An intermediate institution through which the transfer must be routed."
+              : "Lembaga perantara yang digunakan untuk merutekan transfer dana ke bank tujuan."
+          });
+        }
+
+        // 5. Account With Institution (Tag 57)
+        if (statement.accountWithInst) {
+          nodes.push({
+            id: '57',
+            tag: tags['57A'] ? '57A' : (tags['57B'] ? '57B' : '57D'),
+            roleEn: 'Account With Institution',
+            roleId: 'Lembaga Pengelola Rekening',
+            icon: '🏦',
+            name: statement.accountWithInst.bicOrName || '—',
+            acc: statement.accountWithInst.account || '',
+            address: statement.accountWithInst.address || '',
+            details: currentLang === 'en'
+              ? "The institution where the beneficiary institution holds its account."
+              : "Lembaga tempat lembaga penerima memelihara rekeningnya."
+          });
+        }
+
+        // 6. Beneficiary Institution (Tag 58)
+        if (statement.beneficiary) {
+          nodes.push({
+            id: '58',
+            tag: tags['58A'] ? '58A' : '58D',
+            roleEn: 'Beneficiary Institution',
+            roleId: 'Lembaga Penerima',
+            icon: '🎯',
+            name: statement.beneficiary.bicOrName || '—',
+            acc: statement.beneficiary.account || '',
+            address: statement.beneficiary.address || '',
+            details: currentLang === 'en'
+              ? "The final financial institution recipient of the transfer."
+              : "Lembaga keuangan akhir yang menerima transfer dana."
+          });
+        }
+      }
+
+      currentPathwayNodes = nodes;
+
+      let nodesHtml = '';
+      nodes.forEach((node, idx) => {
+        nodesHtml += `
+          <div class="pathway-node-card" id="pathway-node-${idx}" onclick="showPathwayNodeDetail(${idx})">
+            <div class="node-icon">${node.icon}</div>
+            <div style="font-size: 9.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; line-height: 1.2; height: 24px; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden;" title="${currentLang === 'en' ? node.roleEn : node.roleId}">
+              ${currentLang === 'en' ? node.roleEn : node.roleId}
+            </div>
+            <div style="font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--ink); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px;" title="${escapeHtml(node.name)}">
+              ${escapeHtml(node.name)}
+            </div>
+            <span style="display: inline-block; font-size: 9px; font-weight: 800; background: var(--line); color: var(--ink-soft); padding: 1px 5px; border-radius: 3px; margin-top: 4px; font-family: var(--mono);">
+              :${node.tag}:
+            </span>
+          </div>
+        `;
+        
+        if (idx < nodes.length - 1) {
+          nodesHtml += `
+            <div class="pathway-arrow-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="pathway-flow-arrow">
+                <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          `;
+        }
+      });
+
+      const cardTitle = currentLang === 'en' ? 'Interactive Bank Pathway Diagram' : 'Diagram Alur Bank Interaktif';
+      const cardSubtitle = currentLang === 'en' 
+        ? 'Visualize international route and intermediate entities' 
+        : 'Visualisasi alur koresponden & rute transfer internasional';
+
+      return `
+        <div class="pathway-diagram-card" style="margin-top: 20px;">
+          <div style="margin-bottom: 16px; border-bottom: 1.5px dashed var(--line); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 15px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px;">
+                <span>🗺️</span> ${cardTitle}
+              </div>
+              <div style="font-size: 12px; color: var(--ink-soft); margin-top: 2px; font-weight: 600;">${cardSubtitle}</div>
+            </div>
+            <span style="font-size: 11px; font-weight: 800; background: var(--accent-soft); color: var(--accent); padding: 3px 8px; border-radius: 6px; font-family: var(--mono); text-transform: uppercase;">
+              ${statement.msgType} PATHWAY
+            </span>
+          </div>
+          
+          <div class="pathway-flow-container">
+            ${nodesHtml}
+          </div>
+
+          <div id="pathwayNodeDetailBox" style="margin-top: 16px; background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 18px; min-height: 85px; transition: all 0.2s ease;">
+            <div style="color: var(--ink-soft); font-size: 13px; text-align: center; padding: 10px 0; font-weight: 600;">
+              💡 ${currentLang === 'en' ? 'Click any node in the diagram above to inspect transaction party details.' : 'Klik salah satu pihak/node pada diagram di atas untuk melihat rincian peran.'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showPathwayNodeDetail(idx) {
+      const node = currentPathwayNodes[idx];
+      if (!node) return;
+
+      document.querySelectorAll('.pathway-node-card').forEach((el, i) => {
+        el.classList.toggle('active-node', i === idx);
+      });
+
+      const detailBox = document.getElementById('pathwayNodeDetailBox');
+      if (!detailBox) return;
+
+      const labels = currentLang === 'en' ? {
+        role: 'Role / Position',
+        tag: 'SWIFT Tag',
+        name: 'BIC / Customer Name',
+        acc: 'Account / IBAN',
+        addr: 'Address Details',
+        roleDesc: 'Business Interpretation'
+      } : {
+        role: 'Peran / Posisi',
+        tag: 'Tag SWIFT',
+        name: 'BIC / Nama Nasabah',
+        acc: 'Nomor Rekening / IBAN',
+        addr: 'Rincian Alamat',
+        roleDesc: 'Interpretasi Bisnis'
+      };
+
+      const rows = [];
+      rows.push([labels.role, `<strong>${currentLang === 'en' ? node.roleEn : node.roleId}</strong>`]);
+      rows.push([labels.tag, `<code style="font-family:var(--mono); font-weight:800; color:var(--gold);">:${node.tag}:</code>`]);
+      rows.push([labels.name, escapeHtml(node.name || '—')]);
+      if (node.acc) {
+        rows.push([labels.acc, `<span style="font-family:var(--mono); font-weight:700; color:var(--accent);">${escapeHtml(node.acc)}</span>`]);
+      }
+      if (node.address) {
+        rows.push([labels.addr, escapeHtml(node.address)]);
+      }
+
+      let detailRowsHtml = rows.map(([lbl, val]) => `
+        <div style="display: grid; grid-template-columns: 140px 1fr; border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 13px;" class="detail-row">
+          <span style="font-weight: 600; color: var(--ink-soft);">${lbl}</span>
+          <span style="color: var(--ink); word-break: break-all;">${val}</span>
+        </div>
+      `).join('');
+
+      detailBox.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 8px; animation: fadeIn 0.2s ease;">
+          <div style="font-size: 14px; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <span>🔍</span> ${currentLang === 'en' ? 'Entity Details' : 'Rincian Entitas'}
+          </div>
+          <div>
+            ${detailRowsHtml}
+          </div>
+          <div style="margin-top: 8px; background: rgba(59, 130, 246, 0.04); border-left: 3px solid var(--primary-color); padding: 8px 12px; border-radius: 4px; font-size: 12.5px; color: var(--ink); line-height: 1.5;">
+            <strong>ℹ️ ${labels.roleDesc}:</strong> ${node.details}
+          </div>
         </div>
       `;
     }
@@ -4871,6 +5348,7 @@ JOHN DOE
           </div>
           ${headerHtml}
           ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
           ${remittanceHtml}
           ${businessInsightHtml}
           ${tagBreakdownHtml}
