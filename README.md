@@ -41,7 +41,7 @@ The parser supports **9 SWIFT message types** with auto-detection:
 | **MT202** | General Financial Institution Transfer | ✅ Full parser + treasury/interbank settlement cards |
 
 **Advanced parser features:**
-- 🗺️ **Interactive Bank Pathway Diagram** — Visualizes the complex flow of funds across intermediate correspondent banks and institutions (MT103 & MT202), allowing operatives to inspect individual entity details (SWIFT tags, accounts, addresses, and transaction roles) in real-time.
+- 🗺️ **Interactive Bank Pathway Diagram** — Visualizes the complex flow of funds across intermediate correspondent banks and institutions (MT103, MT202, MT101, MT102, and MT104), allowing operatives to inspect individual entity details (SWIFT tags, accounts, addresses, and transaction roles) in real-time.
 - 💡 **Executive Business Insights** — Each parser type displays a dynamic, contextual business explanation (bilingual ID/EN)
 - ⚠️ **Format Validation** — Automatic detection of missing mandatory tags in the pasted message
 - ⚙️ **Developer Utilities** — View and copy the structured JSON output of the parsed message (for API integration / debugging)

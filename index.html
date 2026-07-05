@@ -3852,6 +3852,11 @@ JOHN DOE
       const remittanceInfo = tags['70'] || '';
       const charges = tags['71A'] || '';
 
+      const sendingInst = parseInstitution(tags['51A']);
+      const orderingInst = parseInstitution(tags['52A'] || tags['52C'] || tags['52D']);
+      const intermediary = parseInstitution(tags['56A'] || tags['56C'] || tags['56D']);
+      const accountWithInst = parseInstitution(tags['57A'] || tags['57C'] || tags['57D']);
+
       return {
         msgType: 'MT101',
         senderRef,
@@ -3908,6 +3913,11 @@ JOHN DOE
         formattedDate = `${dd}/${mm}/20${yy}`;
       }
 
+      const orderingInst = parseInstitution(tags['52A'] || tags['52B'] || tags['52D']);
+      const senderCorr = parseInstitution(tags['53A'] || tags['53B'] || tags['53D']);
+      const receiverCorr = parseInstitution(tags['54A'] || tags['54B'] || tags['54D']);
+      const accountWithInst = parseInstitution(tags['57A'] || tags['57B'] || tags['57C'] || tags['57D']);
+
       return {
         msgType: 'MT104',
         senderRef,
@@ -3917,6 +3927,10 @@ JOHN DOE
         debtor,
         remittanceInfo,
         charges,
+        orderingInst,
+        senderCorr,
+        receiverCorr,
+        accountWithInst,
         tags
       };
     }
@@ -3953,6 +3967,11 @@ JOHN DOE
 
       const remittanceInfo = tags['70'] || '';
       const charges = tags['71A'] || '';
+
+      const orderingInst = parseInstitution(tags['52A'] || tags['52B'] || tags['52D']);
+      const senderCorr = parseInstitution(tags['53A'] || tags['53B'] || tags['53D']);
+      const receiverCorr = parseInstitution(tags['54A'] || tags['54B'] || tags['54D']);
+      const accountWithInst = parseInstitution(tags['57A'] || tags['57B'] || tags['57C'] || tags['57D']);
       
       return {
         msgType: 'MT102',
@@ -3963,6 +3982,10 @@ JOHN DOE
         beneficiary,
         remittanceInfo,
         charges,
+        orderingInst,
+        senderCorr,
+        receiverCorr,
+        accountWithInst,
         tags
       };
     }
@@ -4902,7 +4925,7 @@ JOHN DOE
 
     /* ── Pathway Diagram Helper Functions ── */
     function renderPathwayDiagramHtml(statement) {
-      if (!statement || (statement.msgType !== 'MT103' && statement.msgType !== 'MT202')) {
+      if (!statement || (statement.msgType !== 'MT103' && statement.msgType !== 'MT202' && statement.msgType !== 'MT101' && statement.msgType !== 'MT102' && statement.msgType !== 'MT104')) {
         return '';
       }
 
@@ -5153,6 +5176,320 @@ JOHN DOE
               : "Lembaga keuangan akhir yang menerima transfer dana."
           });
         }
+      } else if (statement.msgType === 'MT101') {
+        // 1. Ordering Customer (Tag 50)
+        let senderName = (statement.sender && statement.sender.name) || '—';
+        let senderAcc = (statement.sender && statement.sender.account) || '';
+        let senderAddr = (statement.sender && statement.sender.address) || '';
+        nodes.push({
+          id: '50',
+          tag: tags['50A'] ? '50A' : (tags['50H'] ? '50H' : (tags['50K'] ? '50K' : '50')),
+          roleEn: 'Ordering Customer',
+          roleId: 'Nasabah Pengirim',
+          icon: '👤',
+          name: senderName,
+          acc: senderAcc,
+          address: senderAddr,
+          details: currentLang === 'en' 
+            ? 'The customer requesting the funds transfer.' 
+            : 'Nasabah yang meminta/memohon pengiriman dana.'
+        });
+
+        // 2. Sending Institution (Tag 51A)
+        if (statement.sendingInst) {
+          nodes.push({
+            id: '51',
+            tag: '51A',
+            roleEn: 'Sending Institution',
+            roleId: 'Lembaga Pengirim',
+            icon: '🏦',
+            name: statement.sendingInst.bicOrName || '—',
+            acc: statement.sendingInst.account || '',
+            address: statement.sendingInst.address || '',
+            details: currentLang === 'en'
+              ? "The institution that transmits the transfer request on behalf of the customer."
+              : "Lembaga keuangan yang mengirimkan permintaan transfer atas nama nasabah."
+          });
+        }
+
+        // 3. Account Servicing Institution (Tag 52)
+        if (statement.orderingInst) {
+          nodes.push({
+            id: '52',
+            tag: tags['52A'] ? '52A' : (tags['52C'] ? '52C' : '52D'),
+            roleEn: 'Account Servicing Institution',
+            roleId: 'Bank Pengirim',
+            icon: '🏛️',
+            name: statement.orderingInst.bicOrName || '—',
+            acc: statement.orderingInst.account || '',
+            address: statement.orderingInst.address || '',
+            details: currentLang === 'en'
+              ? "The bank that services the sender's account and executes the transfer."
+              : "Bank yang mengelola rekening pengirim dan mengeksekusi transfer."
+          });
+        }
+
+        // 4. Intermediary Institution (Tag 56)
+        if (statement.intermediary) {
+          nodes.push({
+            id: '56',
+            tag: tags['56A'] ? '56A' : (tags['56C'] ? '56C' : '56D'),
+            roleEn: 'Intermediary Institution',
+            roleId: 'Lembaga Perantara',
+            icon: '🏦',
+            name: statement.intermediary.bicOrName || '—',
+            acc: statement.intermediary.account || '',
+            address: statement.intermediary.address || '',
+            details: currentLang === 'en'
+              ? "An intermediate institution through which the transfer must be routed."
+              : "Lembaga perantara yang digunakan untuk merutekan transfer dana ke bank tujuan."
+          });
+        }
+
+        // 5. Account With Institution (Tag 57)
+        if (statement.accountWithInst) {
+          nodes.push({
+            id: '57',
+            tag: tags['57A'] ? '57A' : (tags['57C'] ? '57C' : '57D'),
+            roleEn: 'Account With Institution',
+            roleId: 'Lembaga Penerima',
+            icon: '🏦',
+            name: statement.accountWithInst.bicOrName || '—',
+            acc: statement.accountWithInst.account || '',
+            address: statement.accountWithInst.address || '',
+            details: currentLang === 'en'
+              ? "The bank where the beneficiary holds their account."
+              : "Bank tempat nasabah penerima memiliki rekening."
+          });
+        }
+
+        // 6. Beneficiary Customer (Tag 59)
+        let benefName = (statement.beneficiary && statement.beneficiary.name) || '—';
+        let benefAcc = (statement.beneficiary && statement.beneficiary.account) || '';
+        let benefAddr = (statement.beneficiary && statement.beneficiary.address) || '';
+        nodes.push({
+          id: '59',
+          tag: tags['59'] ? '59' : '59A',
+          roleEn: 'Beneficiary Customer',
+          roleId: 'Penerima Akhir',
+          icon: '🎯',
+          name: benefName,
+          acc: benefAcc,
+          address: benefAddr,
+          details: currentLang === 'en'
+            ? 'The final recipient of the transferred funds.'
+            : 'Nasabah akhir yang berhak menerima kiriman dana.'
+        });
+
+      } else if (statement.msgType === 'MT102') {
+        // 1. Ordering Customer (Tag 50)
+        let senderName = (statement.sender && statement.sender.name) || '—';
+        let senderAcc = (statement.sender && statement.sender.account) || '';
+        let senderAddr = (statement.sender && statement.sender.address) || '';
+        nodes.push({
+          id: '50',
+          tag: tags['50A'] ? '50A' : (tags['50F'] ? '50F' : (tags['50K'] ? '50K' : '50')),
+          roleEn: 'Ordering Customers',
+          roleId: 'Nasabah Pengirim (Kolektif)',
+          icon: '👥',
+          name: senderName,
+          acc: senderAcc,
+          address: senderAddr,
+          details: currentLang === 'en' 
+            ? 'The group of customers ordering the funds transfer.' 
+            : 'Kumpulan nasabah yang menginstruksikan pengiriman dana massal.'
+        });
+
+        // 2. Ordering Institution (Tag 52)
+        if (statement.orderingInst) {
+          nodes.push({
+            id: '52',
+            tag: tags['52A'] ? '52A' : (tags['52B'] ? '52B' : '52D'),
+            roleEn: 'Ordering Institution',
+            roleId: 'Lembaga Pemrakarsa',
+            icon: '🏛️',
+            name: statement.orderingInst.bicOrName || '—',
+            acc: statement.orderingInst.account || '',
+            address: statement.orderingInst.address || '',
+            details: currentLang === 'en'
+              ? "The financial institution processing the bulk instruction."
+              : "Lembaga keuangan pemrakarsa pengiriman dana massal."
+          });
+        }
+
+        // 3. Sender's Correspondent (Tag 53)
+        if (statement.senderCorr) {
+          nodes.push({
+            id: '53',
+            tag: tags['53A'] ? '53A' : (tags['53B'] ? '53B' : '53D'),
+            roleEn: "Sender's Correspondent Bank",
+            roleId: 'Koresponden Pengirim',
+            icon: '🏦',
+            name: statement.senderCorr.bicOrName || '—',
+            acc: statement.senderCorr.account || '',
+            address: statement.senderCorr.address || '',
+            details: currentLang === 'en'
+              ? "The bank settling the transaction for the sender bank."
+              : "Bank tempat bank pengirim menyelesaikan dana penyelesaian transaksi."
+          });
+        }
+
+        // 4. Receiver's Correspondent (Tag 54)
+        if (statement.receiverCorr) {
+          nodes.push({
+            id: '54',
+            tag: tags['54A'] ? '54A' : (tags['54B'] ? '54B' : '54D'),
+            roleEn: "Receiver's Correspondent Bank",
+            roleId: 'Koresponden Penerima',
+            icon: '🏦',
+            name: statement.receiverCorr.bicOrName || '—',
+            acc: statement.receiverCorr.account || '',
+            address: statement.receiverCorr.address || '',
+            details: currentLang === 'en'
+              ? "The bank receiving the credit settlement for the receiver bank."
+              : "Bank tempat bank penerima menerima penyelesaian dana transaksi."
+          });
+        }
+
+        // 5. Account With Institution (Tag 57)
+        if (statement.accountWithInst) {
+          nodes.push({
+            id: '57',
+            tag: tags['57A'] ? '57A' : (tags['57B'] ? '57B' : (tags['57C'] ? '57C' : '57D')),
+            roleEn: 'Account With Institution',
+            roleId: 'Lembaga Penerima',
+            icon: '🏦',
+            name: statement.accountWithInst.bicOrName || '—',
+            acc: statement.accountWithInst.account || '',
+            address: statement.accountWithInst.address || '',
+            details: currentLang === 'en'
+              ? "The bank where the ultimate beneficiaries' accounts are held."
+              : "Bank tempat nasabah penerima akhir memelihara rekeningnya."
+          });
+        }
+
+        // 6. Beneficiary Customers (Tag 59)
+        let benefName = (statement.beneficiary && statement.beneficiary.name) || '—';
+        let benefAcc = (statement.beneficiary && statement.beneficiary.account) || '';
+        let benefAddr = (statement.beneficiary && statement.beneficiary.address) || '';
+        nodes.push({
+          id: '59',
+          tag: tags['59'] ? '59' : '59A',
+          roleEn: 'Beneficiary Customers',
+          roleId: 'Penerima Kolektif',
+          icon: '🎯',
+          name: benefName,
+          acc: benefAcc,
+          address: benefAddr,
+          details: currentLang === 'en'
+            ? 'The multiple final recipients of the bulk transfer.'
+            : 'Beberapa nasabah penerima akhir dari dana massal.'
+        });
+
+      } else if (statement.msgType === 'MT104') {
+        // 1. Creditor (Tag 50)
+        let senderName = (statement.creditor && statement.creditor.name) || '—';
+        let senderAcc = (statement.creditor && statement.creditor.account) || '';
+        let senderAddr = (statement.creditor && statement.creditor.address) || '';
+        nodes.push({
+          id: '50',
+          tag: tags['50A'] ? '50A' : (tags['50F'] ? '50F' : (tags['50K'] ? '50K' : '50')),
+          roleEn: 'Creditor (Drawer)',
+          roleId: 'Kreditur (Penarik)',
+          icon: '👤',
+          name: senderName,
+          acc: senderAcc,
+          address: senderAddr,
+          details: currentLang === 'en' 
+            ? 'The entity initiating the direct debit collection.' 
+            : 'Entitas/Kreditur yang memprakarsai penarikan debit langsung.'
+        });
+
+        // 2. Ordering Institution (Tag 52)
+        if (statement.orderingInst) {
+          nodes.push({
+            id: '52',
+            tag: tags['52A'] ? '52A' : (tags['52B'] ? '52B' : '52D'),
+            roleEn: 'Ordering Institution',
+            roleId: 'Lembaga Pemrakarsa',
+            icon: '🏛️',
+            name: statement.orderingInst.bicOrName || '—',
+            acc: statement.orderingInst.account || '',
+            address: statement.orderingInst.address || '',
+            details: currentLang === 'en'
+              ? "The institution processing the direct debit collection."
+              : "Lembaga keuangan pemrakarsa penarikan debit."
+          });
+        }
+
+        // 3. Sender's Correspondent (Tag 53)
+        if (statement.senderCorr) {
+          nodes.push({
+            id: '53',
+            tag: tags['53A'] ? '53A' : (tags['53B'] ? '53B' : '53D'),
+            roleEn: "Sender's Correspondent Bank",
+            roleId: 'Koresponden Pengirim',
+            icon: '🏦',
+            name: statement.senderCorr.bicOrName || '—',
+            acc: statement.senderCorr.account || '',
+            address: statement.senderCorr.address || '',
+            details: currentLang === 'en'
+              ? "The bank through which settlement funds are processed for direct debit."
+              : "Bank koresponden tempat penyelesaian dana debit pengirim diproses."
+          });
+        }
+
+        // 4. Receiver's Correspondent (Tag 54)
+        if (statement.receiverCorr) {
+          nodes.push({
+            id: '54',
+            tag: tags['54A'] ? '54A' : (tags['54B'] ? '54B' : '54D'),
+            roleEn: "Receiver's Correspondent Bank",
+            roleId: 'Koresponden Penerima',
+            icon: '🏦',
+            name: statement.receiverCorr.bicOrName || '—',
+            acc: statement.receiverCorr.account || '',
+            address: statement.receiverCorr.address || '',
+            details: currentLang === 'en'
+              ? "The bank through which settlement funds are received for direct debit."
+              : "Bank koresponden tempat penyelesaian dana debit penerima diproses."
+          });
+        }
+
+        // 5. Account With Institution (Tag 57)
+        if (statement.accountWithInst) {
+          nodes.push({
+            id: '57',
+            tag: tags['57A'] ? '57A' : (tags['57B'] ? '57B' : (tags['57C'] ? '57C' : '57D')),
+            roleEn: 'Account With Institution',
+            roleId: 'Lembaga Penerima',
+            icon: '🏦',
+            name: statement.accountWithInst.bicOrName || '—',
+            acc: statement.accountWithInst.account || '',
+            address: statement.accountWithInst.address || '',
+            details: currentLang === 'en'
+              ? "The bank where the debtor's account is maintained."
+              : "Bank tempat nasabah pembayar (debitur) memiliki rekening."
+          });
+        }
+
+        // 6. Debtor (Tag 59)
+        let benefName = (statement.debtor && statement.debtor.name) || '—';
+        let benefAcc = (statement.debtor && statement.debtor.account) || '';
+        let benefAddr = (statement.debtor && statement.debtor.address) || '';
+        nodes.push({
+          id: '59',
+          tag: tags['59'] ? '59' : '59A',
+          roleEn: 'Debtor (Payer)',
+          roleId: 'Debitur (Nasabah Pembayar)',
+          icon: '🎯',
+          name: benefName,
+          acc: benefAcc,
+          address: benefAddr,
+          details: currentLang === 'en'
+            ? 'The payer/debtor whose account is debited.'
+            : 'Nasabah pembayar yang rekeningnya didebit.'
+        });
       }
 
       currentPathwayNodes = nodes;
@@ -5426,6 +5763,7 @@ JOHN DOE
           </div>
           ${headerHtml}
           ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
           ${remittanceHtml}
           ${businessInsightHtml}
           ${tagBreakdownHtml}
@@ -5503,6 +5841,7 @@ JOHN DOE
           </div>
           ${headerHtml}
           ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
           ${remittanceHtml}
           ${businessInsightHtml}
           ${tagBreakdownHtml}
@@ -5581,6 +5920,7 @@ JOHN DOE
           </div>
           ${headerHtml}
           ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
           ${remittanceHtml}
           ${businessInsightHtml}
           ${tagBreakdownHtml}
@@ -6284,6 +6624,14 @@ SUPPLY BAHAN BAKU
 :50K:/1122334455
 PT MAJU JAYA
 JL. UTAMA NO. 1
+:51A:/99887766
+SENDINGINSTBIC
+:52A:/11223344
+ORDERINGBANKBIC
+:56A:/44556677
+INTERMEDIARYBIC
+:57A:/55667788
+RECEIVERBANKBIC
 :59:/6677889900
 ALICE SMITH
 123 MAPLE STREET
@@ -6303,6 +6651,14 @@ JUNE 2023
 PT SEJAHTERA ABADI
 JL. PAHLAWAN NO. 12
 JAKARTA, INDONESIA
+:52A:/11223344
+ORDERINGINSTBIC
+:53A:/22334455
+SENDERCORRBIC
+:54A:/33445566
+RECEIVERCORRBIC
+:57A:/55667788
+ACCOUNTWITHBIC
 :59:/DE12345678901234567890
 CV MAKMUR UTAMA
 JL. MERDEKA NO. 45
@@ -6321,6 +6677,14 @@ INVOICE #998877
 PT MAJU MUNDUR SEJAHTERA
 JL. SUDIRMAN NO. 10
 JAKARTA, INDONESIA
+:52A:/11223344
+ORDERINGINSTBIC
+:53A:/22334455
+SENDERCORRBIC
+:54A:/33445566
+RECEIVERCORRBIC
+:57A:/55667788
+ACCOUNTWITHBIC
 :59:/9876543210
 CV BERKAH MANDIRI
 JL. PAHLAWAN NO. 88
