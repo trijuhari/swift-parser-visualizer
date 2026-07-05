@@ -3231,13 +3231,15 @@
       const lines = content.split('\n');
       let currentTransaction = null;
       const transactions = [];
+      const rawTags = {};
       const statement = {
         account: '',
         statementNum: '',
         sequenceNum: '',
         openingBalance: null,
         closingBalance: null,
-        transactions: []
+        transactions: [],
+        tags: {}
       };
 
       let currentTag = '';
@@ -3247,6 +3249,14 @@
         if (!currentTag) return;
         const tag = currentTag;
         const val = currentVal.trim();
+
+        // Collect raw tags for breakdown table
+        if (tag === '61' || tag === '86') {
+          if (!rawTags[tag]) rawTags[tag] = [];
+          rawTags[tag].push(val);
+        } else {
+          rawTags[tag] = val;
+        }
 
         if (tag === '25') {
           statement.account = val;
@@ -3294,6 +3304,7 @@
       flushTag();
 
       statement.transactions = transactions;
+      statement.tags = rawTags;
       return statement;
     }
 
@@ -3648,6 +3659,7 @@
       }
 
       const lines = content.split('\n');
+      const rawTags = {};
       const info = {
         msgType: 'MT564',
         seme: '',
@@ -3674,6 +3686,15 @@
         if (!currentTag) return;
         const tag = currentTag;
         const val = currentVal.trim();
+
+        if (!rawTags[tag]) {
+          rawTags[tag] = val;
+        } else {
+          if (!Array.isArray(rawTags[tag])) {
+            rawTags[tag] = [rawTags[tag]];
+          }
+          rawTags[tag].push(val);
+        }
 
         if (tag === '20C') {
           if (val.startsWith(':SEME//')) info.seme = val.replace(':SEME//', '');
@@ -3744,6 +3765,7 @@
         });
       }
 
+      info.tags = rawTags;
       return info;
     }
 
@@ -3824,6 +3846,10 @@
           </div>
         </div>
       `;
+    }
+
+    function renderStatementTagsTable(tags, msgType) {
+      return renderParsedTagsTable(tags, msgType);
     }
 
     function renderMT103Output(statement) {
@@ -4231,11 +4257,14 @@
         </div>
       `;
 
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt564');
+
       output.innerHTML = `
         <div class="visualizer-dashboard">
           ${headerHtml}
           ${cardsHtml}
           ${detailsHtml}
+          ${tagBreakdownHtml}
         </div>
       `;
     }
@@ -4480,6 +4509,9 @@
             </div>
           `;
 
+          // Build Tag Breakdown for MT940/942/950
+          const tagBreakdownHtml = renderStatementTagsTable(statement.tags, statement.msgType.toLowerCase());
+
           output.innerHTML = `
             <div class="visualizer-dashboard">
               ${headerHtml}
@@ -4487,6 +4519,7 @@
               ${bannerHtml}
               ${tableHtml}
               <div id="transactionDetailCard" class="transaction-detail-card" style="display: none;"></div>
+              ${tagBreakdownHtml}
             </div>
           `;
         }
