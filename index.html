@@ -965,9 +965,27 @@
       background: color-mix(in srgb, var(--accent) 12%, transparent);
       border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
       padding: 2px 7px;
-      border-radius: 5px;
-      white-space: nowrap;
       width: fit-content;
+    }
+
+    .sf-modal-item {
+      background: var(--paper);
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .sf-modal-item:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: var(--panel);
+      box-shadow: var(--shadow-md);
     }
 
     /* Toast Notification */
@@ -1880,8 +1898,35 @@
     
     <div id="view-reference" style="display:none;">
 
-    <!-- Main table -->
-    <div id="sf-main-view">
+
+      <!-- Interactive Tag Sandbox -->
+      <div class="sandbox-card" style="background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: var(--card-shadow);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin: 0; font-family: var(--serif); font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px;">
+            🧩 <span id="lbl-sandboxTitle">SWIFT Tag Interactive Sandbox (Uji Coba Tag Langsung)</span>
+          </h3>
+          <span style="font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent); padding: 4px 10px; border-radius: 6px; text-transform: uppercase;" id="lbl-sandboxBadge">Live Testing</span>
+        </div>
+        <p style="font-size: 13px; color: var(--ink-soft); margin: 0 0 16px 0;" id="lbl-sandboxDesc">
+          Ketikkan atau tempel nilai tag SWIFT mentah untuk menganalisis format dan melihat pemecahan sub-field secara instan.
+        </p>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+          <div style="flex: 1; min-width: 280px; position: relative;">
+            <input type="text" id="sandboxInput" placeholder="Contoh: :61:2303010228CK366336,2NTRF atau :20:REF12345" 
+                   onkeydown="if(event.key === 'Enter') runSandboxTest()"
+                   style="width: 100%; padding: 12px 16px; border: 1.5px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 14px; background: var(--paper); color: var(--ink); outline: none; transition: border-color 0.2s;" />
+          </div>
+          <button class="home-card-btn home-card-btn-primary" onclick="runSandboxTest()" style="padding: 12px 24px; font-size: 13px; font-weight: 700; margin: 0; height: 46px;">
+            🧪 <span id="lbl-sandboxBtn">Uji Tag</span>
+          </button>
+        </div>
+        <div id="sandboxResult" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+          <!-- Result will be populated here -->
+        </div>
+      </div>
+
+      <!-- Main table -->
+      <div id="sf-main-view">
     <div class="table-wrap">
       <div class="table-card">
         <table id="dataTable">
@@ -2109,13 +2154,23 @@ JOHN DOE
   <div id="toast"></div>
 
   <!-- Detail Panel -->
-  <div class="detail-backdrop" id="detailBackdrop" onclick="closeDetail(event)">
+  <div class="detail-backdrop" id="detailBackdrop" onclick="closeDetail(event)" style="z-index: 210;">
     <div class="detail-panel" id="detailPanel">
       <button class="dp-close" onclick="document.getElementById('detailBackdrop').classList.remove('open')">✕
         Tutup</button>
       <h3 id="dp-name"></h3>
       <div class="dp-sub" id="dp-sub"></div>
       <div class="dp-grid" id="dp-grid"></div>
+    </div>
+  </div>
+
+  <!-- Subfields Popup Modal -->
+  <div class="detail-backdrop" id="subfieldModalBackdrop" onclick="closeSubfieldModal(event)">
+    <div class="detail-panel" style="width: min(580px, 94vw); max-height: 80vh; padding: 24px;" id="subfieldModalPanel">
+      <button class="dp-close" onclick="document.getElementById('subfieldModalBackdrop').classList.remove('open')">✕ Tutup</button>
+      <h3 id="sf-modal-title" style="margin-top: 0; font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.4; padding-right: 24px;"></h3>
+      <div class="sf-header-meta" id="sf-modal-sub" style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;"></div>
+      <div id="sf-modal-list-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 48vh; overflow-y: auto; padding-right: 4px; margin-top: 12px;"></div>
     </div>
   </div>
 
@@ -2168,7 +2223,6 @@ JOHN DOE
           document.getElementById('dataSourceInfo').innerHTML = '<span class="source-dot manual"></span>Data lokal';
         }
       }
-      renderFilters();
       init();
     }
 
@@ -2469,71 +2523,6 @@ JOHN DOE
       });
     }
 
-    function renderFilters() {
-      const container = document.getElementById('filtersContainer');
-      if (!container) return;
-      
-      // Get unique message types from DATA
-      const uniqueMsgs = [...new Set((DATA || []).map(r => r.msg.toLowerCase()))].sort();
-      
-      let html = '';
-      
-      // All chip
-      const allActive = activeFilters.has('all') ? 'active' : '';
-      const allText = currentLang === 'en' ? 'All Messages' : 'Semua Pesan';
-      html += `<div class="chip ${allActive}" data-filter="all" data-icon="📁">${allText}</div>`;
-      
-      // Message type chips
-      uniqueMsgs.forEach(msg => {
-        if (!msg) return;
-        const active = activeFilters.has(msg) ? 'active' : '';
-        const label = getMsgLabel(msg);
-        html += `<div class="chip ${active}" data-filter="${msg}" data-icon="📄">${label}</div>`;
-      });
-      
-      // Divider or spacer
-      html += `<div style="width: 1px; height: 16px; background: var(--line); margin: 0 8px;"></div>`;
-      
-      // Mandatory / Optional chips
-      const mActive = activeFilters.has('m') ? 'active' : '';
-      const mText = currentLang === 'en' ? 'Mandatory' : 'Wajib';
-      html += `<div class="chip ${mActive}" data-filter="m" data-icon="⭐">${mText}</div>`;
-      
-      const oActive = activeFilters.has('o') ? 'active' : '';
-      const oText = currentLang === 'en' ? 'Optional' : 'Opsional';
-      html += `<div class="chip ${oActive}" data-filter="o" data-icon="⚙">${oText}</div>`;
-      
-      container.innerHTML = html;
-      
-      // Re-bind click event listeners to the chips
-      const chips = container.querySelectorAll('.chip');
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          const f = chip.dataset.filter;
-          if (f === 'all') {
-            activeFilters = new Set(['all']);
-          } else {
-            activeFilters.delete('all');
-            
-            // If it's a message type filter or m/o filter
-            if (activeFilters.has(f)) {
-              activeFilters.delete(f);
-            } else {
-              activeFilters.add(f);
-            }
-            
-            // If all message types are unchecked and all m/o filters are unchecked, revert to 'all'
-            if (activeFilters.size === 0) {
-              activeFilters.add('all');
-            }
-          }
-          
-          currentPage = 1;
-          renderFilters(); // Re-render chips to show active state
-          render();
-        });
-      });
-    }
 
     function render() {
       const q = searchInput.value.trim();
@@ -2639,6 +2628,56 @@ JOHN DOE
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    /* ── Subfield Popup Modal ── */
+    function openSubfieldModal(parentRow, subFields) {
+      const dName = currentLang === 'en' && parentRow.name_en ? parentRow.name_en : parentRow.name;
+      const tagLabel = `:${parentRow.tag}:`;
+      const msgLabel = getMsgLabel(parentRow.msg);
+      const moText = parentRow.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
+
+      document.getElementById('sf-modal-title').textContent = tagLabel + ' — ' + dName;
+      document.getElementById('sf-modal-sub').innerHTML = `
+        <span class="sf-meta-chip">${msgLabel}</span>
+        <span class="sf-meta-chip">${moText}</span>
+        ${parentRow.len ? `<span class="sf-meta-chip">${parentRow.len}</span>` : ''}
+        <span class="sf-meta-chip" style="background:color-mix(in srgb,var(--gold) 15%,transparent);color:var(--gold);">${subFields.length} sub-field${subFields.length > 1 ? 's' : ''}</span>
+      `;
+
+      const listContainer = document.getElementById('sf-modal-list-container');
+      listContainer.innerHTML = subFields.map((sf, i) => {
+        const sfName = currentLang === 'en' && sf.name_en ? sf.name_en : sf.name;
+        const sfMo = sf.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
+        const subLabel = sf.sub.match(/^\d+$/) ? `Sub-field ${sf.sub}` : `/${sf.sub}/`;
+        return `
+          <div class="sf-modal-item" onclick="openDetailFromSubfieldModal('${sf.msg}', '${sf.tag}', '${sf.sub}')">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 6px; white-space: nowrap; font-family: var(--mono);">${subLabel}</span>
+              <span style="font-weight: 600; color: var(--ink); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sfName}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              <span style="font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); background: var(--panel); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line);">${sf.len || '—'}</span>
+              <span class="mo ${sf.mo}" style="font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">${sfMo}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('subfieldModalBackdrop').classList.add('open');
+    }
+
+    function closeSubfieldModal(e) {
+      if (e.target === document.getElementById('subfieldModalBackdrop')) {
+        document.getElementById('subfieldModalBackdrop').classList.remove('open');
+      }
+    }
+
+    function openDetailFromSubfieldModal(msg, tag, sub) {
+      const row = DATA.find(d => d.msg === msg && d.tag === tag && d.sub === sub);
+      if (row) {
+        openDetail(row);
+      }
+    }
+
     /* ── Sub-field page ── */
     function openSubPage(parentRow, subFields) {
       const dName = currentLang === 'en' && parentRow.name_en ? parentRow.name_en : parentRow.name;
@@ -2707,6 +2746,396 @@ JOHN DOE
         mainView.style.display = 'block';
       }, 250);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function convertSwiftFormatToRegexPattern(formatStr) {
+      if (!formatStr) return null;
+      let cleanFmt = formatStr.replace(/\s+/g, '');
+      
+      function convertToken(len, exact, type) {
+        let regexType = '';
+        if (type === 'n') {
+          regexType = '\\d';
+        } else if (type === 'a') {
+          regexType = '[A-Za-z]';
+        } else if (type === 'c') {
+          regexType = '[A-Za-z0-9]';
+        } else if (type === 'x') {
+          regexType = '[\\s\\S]';
+        } else if (type === 'd') {
+          return `(\\d{1,${len}}(?:,\\d*)?)`;
+        }
+        
+        if (exact) {
+          return `(${regexType}{${len}})`;
+        } else {
+          return `(${regexType}{1,${len}})`;
+        }
+      }
+      
+      let regexStr = '^';
+      let i = 0;
+      
+      while (i < cleanFmt.length) {
+        let isOptional = false;
+        let segment = '';
+        
+        if (cleanFmt[i] === '[') {
+          isOptional = true;
+          i++;
+          let start = i;
+          let brackets = 1;
+          while (i < cleanFmt.length && brackets > 0) {
+            if (cleanFmt[i] === '[') brackets++;
+            if (cleanFmt[i] === ']') brackets--;
+            if (brackets > 0) i++;
+          }
+          segment = cleanFmt.substring(start, i);
+          i++;
+        } else {
+          let start = i;
+          while (i < cleanFmt.length && cleanFmt[i] !== '[') {
+            i++;
+          }
+          segment = cleanFmt.substring(start, i);
+        }
+        
+        let segmentRegex = '';
+        let sIdx = 0;
+        
+        while (sIdx < segment.length) {
+          let literalMatch = segment.substring(sIdx).match(/^([^\d\[\]]+)/);
+          if (literalMatch) {
+            let lit = literalMatch[1];
+            let escapedLit = lit.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            segmentRegex += escapedLit;
+            sIdx += lit.length;
+          }
+          
+          if (sIdx >= segment.length) break;
+          
+          let tokenPart = segment.substring(sIdx);
+          let tokenMatch = tokenPart.match(/^(\d+)(!)?([nacxd])/);
+          
+          if (tokenMatch) {
+            let length = parseInt(tokenMatch[1]);
+            let exact = tokenMatch[2] === '!';
+            let type = tokenMatch[3];
+            
+            segmentRegex += convertToken(length, exact, type);
+            sIdx += tokenMatch[0].length;
+          } else {
+            let char = segment[sIdx];
+            segmentRegex += char.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            sIdx++;
+          }
+        }
+        
+        if (isOptional) {
+          regexStr += `(?:${segmentRegex})?`;
+        } else {
+          regexStr += segmentRegex;
+        }
+      }
+      
+      regexStr += '$';
+      try {
+        return new RegExp(regexStr, 'i');
+      } catch (e) {
+        console.error('Error compiling generated regex:', regexStr, e);
+        return null;
+      }
+    }
+
+    function runSandboxTest() {
+      const inputEl = document.getElementById('sandboxInput');
+      const resultEl = document.getElementById('sandboxResult');
+      if (!inputEl || !resultEl) return;
+
+      const rawVal = inputEl.value.trim();
+      if (!rawVal) {
+        resultEl.style.display = 'none';
+        return;
+      }
+
+      // Pattern 1: :TAG:VALUE or TAG:VALUE (e.g. :61:2303010228CK366336,2NTRF)
+      const match = rawVal.match(/^:?([0-9A-Z]+):([\s\S]*)$/i);
+      
+      let tagName = '';
+      let tagVal = '';
+      if (match) {
+        tagName = match[1].toUpperCase();
+        tagVal = match[2];
+      } else {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+          <div style="color: var(--debit-color); font-weight: 700; font-size: 14px; margin-bottom: 8px;">
+            ⚠️ Format Input Tidak Dikenali / Invalid Input Format
+          </div>
+          <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5;">
+            Harap masukkan data dengan format lengkap <b>:TAG:NILAI</b>.<br>
+            <i>Contoh:</i> <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">:61:2303010228CK366336,2NTRF</code> atau <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">:20:REFERENSI123</code>
+          </div>
+        `;
+        return;
+      }
+
+      // Find matching tag in DATA
+      const matches = DATA.filter(d => d.tag.toUpperCase() === tagName && d.sub === '' && d.msg && d.msg.toLowerCase() !== 'category' && d.tag !== 'MSG_NAME');
+      
+      if (matches.length === 0) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+          <div style="color: var(--debit-color); font-weight: 700; font-size: 14px; margin-bottom: 8px;">
+            🔍 Tag :${tagName}: Tidak Ditemukan / Tag Not Found
+          </div>
+          <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5;">
+            Tag ini tidak terdaftar dalam kamus referensi pesan SWIFT (MT103, MT202, MT940, dll.) di database.
+          </div>
+        `;
+        return;
+      }
+
+      // Render the sandbox results
+      resultEl.style.display = 'block';
+
+      let html = '';
+      
+      // Header of the tag details
+      const primaryMatch = matches[0];
+      const name = currentLang === 'en' && primaryMatch.name_en ? primaryMatch.name_en : primaryMatch.name;
+      const desc = currentLang === 'en' && primaryMatch.desc_en ? primaryMatch.desc_en : primaryMatch.desc;
+      
+      html += `
+        <div style="border-bottom: 1.5px dashed var(--line); padding-bottom: 14px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+            <div style="font-family: var(--mono); font-size: 16.5px; font-weight: 800; color: var(--ink);">
+              Tag :${tagName}: <span style="font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--ink-soft);">${name}</span>
+            </div>
+            <span style="font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: var(--line); color: var(--ink-soft); text-transform: uppercase;">
+              ${primaryMatch.mo.toLowerCase() === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional')}
+            </span>
+          </div>
+          <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5;">${desc}</div>
+        </div>
+      `;
+
+      // Try custom parsing
+      let parsedObj = null;
+      let parsedFields = [];
+
+      if (tagName === '61') {
+        parsedObj = parseStatementLine61(tagVal);
+        if (parsedObj) {
+          parsedFields = [
+            { label: currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta', value: parsedObj.valueDate },
+            { label: currentLang === 'en' ? 'Entry Date' : 'Tanggal Entri', value: parsedObj.entryDate },
+            { label: currentLang === 'en' ? 'Debit/Credit' : 'Debit/Kredit', value: parsedObj.sign === '+' ? 'Credit (+)' : 'Debit (-)' },
+            { label: currentLang === 'en' ? 'Amount' : 'Nominal', value: formatAmountRaw(parsedObj.amount) },
+            { label: currentLang === 'en' ? 'Transaction Type' : 'Tipe Transaksi', value: parsedObj.typeCode },
+            { label: currentLang === 'en' ? 'Customer Reference' : 'Referensi Nasabah', value: parsedObj.customerRef },
+            { label: currentLang === 'en' ? 'Bank Reference' : 'Referensi Bank', value: parsedObj.bankRef }
+          ];
+        }
+      } 
+      else if (['60F', '60M', '62F', '62M', '64', '65'].includes(tagName)) {
+        parsedObj = parseBalanceVal(tagVal);
+        if (parsedObj) {
+          parsedFields = [
+            { label: currentLang === 'en' ? 'Debit/Credit' : 'Debit/Kredit', value: parsedObj.sign === '+' ? 'Credit (+)' : 'Debit (-)' },
+            { label: currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta', value: parsedObj.date },
+            { label: currentLang === 'en' ? 'Currency' : 'Mata Uang', value: parsedObj.currency },
+            { label: currentLang === 'en' ? 'Amount' : 'Nominal', value: formatAmountRaw(parsedObj.amount) + ' ' + parsedObj.currency }
+          ];
+        }
+      }
+      else if (tagName === '32A') {
+        parsedObj = parseTag32A(tagVal);
+        if (parsedObj) {
+          parsedFields = [
+            { label: currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta', value: parsedObj.date },
+            { label: currentLang === 'en' ? 'Currency' : 'Mata Uang', value: parsedObj.currency },
+            { label: currentLang === 'en' ? 'Amount' : 'Nominal', value: formatAmountRaw(parsedObj.amount) + ' ' + parsedObj.currency }
+          ];
+        }
+      }
+      else if (['52A', '52D', '53A', '53D', '54A', '54D', '56A', '56D', '57A', '57D', '58A', '58D', '59', '59A'].includes(tagName)) {
+        parsedObj = parseInstitution(tagVal);
+        if (parsedObj) {
+          parsedFields = [
+            { label: currentLang === 'en' ? 'Account Number' : 'Nomor Rekening', value: parsedObj.account || '—' },
+            { label: currentLang === 'en' ? 'BIC Code / Name' : 'Kode BIC / Nama', value: parsedObj.bicOrName || '—' },
+            { label: currentLang === 'en' ? 'Address' : 'Alamat', value: parsedObj.address || '—' }
+          ];
+        }
+      }
+
+      if (parsedFields.length > 0) {
+        html += `
+          <div style="background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--accent); font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              ✅ Hasil Analisis Sub-field / Sub-field Parsing Result
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              ${parsedFields.map(f => `
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-size: 11px; color: var(--ink-soft); font-weight: 600;">${f.label}</span>
+                  <span style="font-size: 13.5px; font-weight: 700; color: var(--ink); word-break: break-all;">${escapeHtml(f.value)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        const subfields = DATA.filter(d => d.msg === primaryMatch.msg && d.tag === primaryMatch.tag && d.sub !== '').sort((a,b) => parseInt(a.sub) - parseInt(b.sub));
+        
+        let dynamicParsedFields = [];
+        let parsedSuccess = false;
+
+        function autoFormatValue(val) {
+          if (!val) return '—';
+          if (/^\d{8}$/.test(val)) {
+            return `${val.substring(0,4)}-${val.substring(4,6)}-${val.substring(6,8)}`;
+          }
+          if (/^\d{6}$/.test(val)) {
+            return formatYYMMDD(val);
+          }
+          return val;
+        }
+
+        if (subfields.length > 0 && primaryMatch.len) {
+          const regex = convertSwiftFormatToRegexPattern(primaryMatch.len);
+          if (regex) {
+            const dynamicMatch = tagVal.match(regex);
+            if (dynamicMatch) {
+              parsedSuccess = true;
+              
+              const hasQualifier = primaryMatch.len.startsWith(':4!c');
+              let qualifierSub = null;
+              
+              if (hasQualifier && dynamicMatch[1]) {
+                const qualVal = dynamicMatch[1].toUpperCase();
+                qualifierSub = subfields.find(s => s.sub.toUpperCase() === qualVal);
+              }
+              
+              if (qualifierSub) {
+                const qualName = currentLang === 'en' && qualifierSub.name_en ? qualifierSub.name_en : qualifierSub.name;
+                dynamicParsedFields.push({
+                  sub: qualifierSub.sub,
+                  label: currentLang === 'en' ? 'Qualifier' : 'Kualifikasi',
+                  value: `${qualifierSub.sub} — ${qualName}`
+                });
+                
+                for (let j = 1; j < dynamicMatch.length - 1; j++) {
+                  const val = dynamicMatch[j + 1];
+                  if (val !== undefined) {
+                    dynamicParsedFields.push({
+                      sub: '',
+                      label: `${currentLang === 'en' ? 'Value Component' : 'Komponen Nilai'} #${j}`,
+                      value: autoFormatValue(val)
+                    });
+                  }
+                }
+              } else {
+                for (let j = 0; j < subfields.length; j++) {
+                  const sfVal = dynamicMatch[j + 1];
+                  const sfName = currentLang === 'en' && subfields[j].name_en ? subfields[j].name_en : subfields[j].name;
+                  dynamicParsedFields.push({
+                    sub: subfields[j].sub,
+                    label: sfName,
+                    value: sfVal !== undefined ? autoFormatValue(sfVal) : '—'
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        if (parsedSuccess && dynamicParsedFields.length > 0) {
+          html += `
+            <div style="background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+              <div style="font-weight: 700; color: var(--accent); font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                ✅ Hasil Analisis Sub-field Otomatis / Automatic Sub-field Parsing Result
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                ${dynamicParsedFields.map(f => `
+                  <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span style="font-size: 11.5px; color: var(--ink-soft); font-weight: 600;">
+                      ${f.sub ? `<span style="font-family: var(--mono); font-weight:700; background: var(--accent-soft); color: var(--accent); padding: 1px 4px; border-radius: 3px; font-size: 10px; margin-right: 4px;">#${f.sub}</span>` : ''}${f.label}
+                    </span>
+                    <span style="font-size: 13.5px; font-weight: 700; color: var(--ink); word-break: break-all;">${escapeHtml(f.value)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        } else {
+          if (subfields.length > 0) {
+            html += `
+              <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                <div style="font-weight: 700; color: var(--ink-soft); font-size: 13px; margin-bottom: 8px;">
+                  📋 Definisi Struktur Sub-field (Database)
+                </div>
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; font-size: 12.5px; border-collapse: collapse; text-align: left;">
+                    <thead>
+                      <tr style="border-bottom: 1.5px solid var(--line); color: var(--ink-soft);">
+                        <th style="padding: 6px 8px; width: 60px;">Sub</th>
+                        <th style="padding: 6px 8px;">Nama Field</th>
+                        <th style="padding: 6px 8px; width: 80px;">Format</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${subfields.map(sf => `
+                        <tr style="border-bottom: 1px solid var(--line);">
+                          <td style="padding: 8px; font-family: var(--mono); font-weight: 700;">#${sf.sub}</td>
+                          <td style="padding: 8px; font-weight: 600;">${currentLang === 'en' && sf.name_en ? sf.name_en : sf.name}</td>
+                          <td style="padding: 8px; font-family: var(--mono); color: var(--gold);">${sf.len || '—'}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          }
+
+          html += `
+            <div style="background: var(--line); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 13px; color: var(--ink); word-break: break-all; margin-bottom: 16px;">
+              <span style="font-weight: 700; color: var(--ink-soft); font-family: var(--sans); font-size: 11px; display: block; margin-bottom: 4px;">NILAI RAW / RAW VALUE</span>
+              ${escapeHtml(tagVal)}
+            </div>
+          `;
+        }
+      }
+
+      const formatRule = primaryMatch.len || '';
+      let formatValidationHtml = '';
+
+      if (formatRule) {
+        formatValidationHtml = `
+          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px;">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 11px; color: var(--ink-soft); font-weight: 600;">Aturan Format / Format Specification</span>
+              <code style="font-family: var(--mono); font-size: 13px; color: var(--gold); font-weight: 700; margin-top: 2px;">${formatRule}</code>
+            </div>
+            <div style="font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px; color: #10b981;">
+              <span style="font-size: 14px;">✓</span> Specs Active
+            </div>
+          </div>
+        `;
+      }
+
+      html += formatValidationHtml;
+
+      const relatedMsgs = [...new Set(matches.map(m => m.msg.toUpperCase()))].join(', ');
+      html += `
+        <div style="font-size: 11px; color: var(--ink-soft); font-weight: 600; margin-top: 14px; text-align: right;">
+          Terdaftar pada tipe pesan: <span style="color: var(--accent); font-weight: 700;">${relatedMsgs}</span>
+        </div>
+      `;
+
+      resultEl.innerHTML = html;
     }
 
     /* ── Toast ── */
@@ -2886,7 +3315,7 @@ JOHN DOE
       initSort();
     }
 
-    function switchTab(tabId) {
+    function switchTab(tabId, keepFilters = false) {
       currentTab = tabId;
       
       // Update tab buttons active state
@@ -2911,22 +3340,19 @@ JOHN DOE
       const viewDetail = document.getElementById('view-detail');
       if (viewDetail) viewDetail.style.display = tabId === 'detail' ? 'block' : 'none';
 
-      const filtersContainer = document.getElementById('filtersContainer');
-      if (filtersContainer) {
-        filtersContainer.style.display = tabId === 'reference' ? 'flex' : 'none';
-      }
-
       // Update search input visibility and state
       const searchContainer = document.getElementById('searchContainer');
       const searchInput = document.getElementById('searchInput');
       
       if (tabId === 'reference') {
+        if (!keepFilters) {
+          activeFilters = new Set(['all']);
+        }
         if (searchContainer) searchContainer.style.display = 'flex';
         if (searchInput) {
           searchInput.disabled = false;
           searchInput.placeholder = i18n[currentLang].searchPlaceholder;
         }
-        renderFilters();
         render();
       } else {
         if (searchContainer) searchContainer.style.display = 'none';
@@ -5526,6 +5952,10 @@ BENEFICIARYBIC
         fM: "Wajib",
         fO: "Opsional",
         addBtn: "+ Tambah Baris",
+        lblSandboxTitle: "SWIFT Tag Interactive Sandbox (Uji Coba Tag Langsung)",
+        lblSandboxDesc: "Ketikkan atau tempel nilai tag SWIFT mentah untuk menganalisis format dan melihat pemecahan sub-field secara instan.",
+        lblSandboxBtn: "Uji Tag",
+        lblSandboxPlaceholder: "Contoh: :61:2303010228CK366336,2NTRF atau :20:REF12345",
         tMsg: "Pesan",
         tTag: "Tag",
         tSub: "Sub",
@@ -5631,6 +6061,10 @@ BENEFICIARYBIC
         fM: "Mandatory",
         fO: "Optional",
         addBtn: "+ Add Row",
+        lblSandboxTitle: "SWIFT Tag Interactive Sandbox",
+        lblSandboxDesc: "Type or paste a raw SWIFT tag value to analyze the format and view the sub-field breakdown instantly.",
+        lblSandboxBtn: "Test Tag",
+        lblSandboxPlaceholder: "Example: :61:2303010228CK366336,2NTRF or :20:REF12345",
         tMsg: "Message",
         tTag: "Tag",
         tSub: "Sub",
@@ -6156,7 +6590,7 @@ BENEFICIARYBIC
       const searchInputElement = document.getElementById('searchInput');
       if (searchInputElement) searchInputElement.value = '';
 
-      switchTab('reference');
+      switchTab('reference', true);
     }
 
     function isParserSupported(msg) {
@@ -6248,15 +6682,23 @@ BENEFICIARYBIC
             const tagDesc = currentLang === 'en' ? (t.desc_en || t.desc) : (t.desc || t.desc_en);
             const moClass = t.mo ? t.mo.toLowerCase() : 'o';
             const moLabel = t.mo ? t.mo.toUpperCase() : 'O';
+            const subCount = DATA.filter(d => d.msg === t.msg && d.tag === t.tag && d.sub !== '').length;
+            const subIndicator = subCount > 0
+              ? `<br><span class="has-sub-indicator" style="display:inline-block; margin-top:4px; font-family: var(--sans);">✦ ${subCount} sub-field${subCount > 1 ? 's' : ''}</span>`
+              : '';
+
             rowsHtml += `
-              <tr onclick="handleDetailTagClick('${t.msg}', '${t.tag}')">
-                <td style="font-family: var(--mono); font-weight: 700; color: var(--accent); padding: 12px 8px;">:${t.tag}</td>
-                <td style="font-weight: 600; color: var(--ink); padding: 12px 8px;">${tagName}</td>
-                <td style="text-align: center; padding: 12px 8px;">
+              <tr onclick="handleDetailTagClick('${t.msg}', '${t.tag}')" style="cursor: pointer;">
+                <td style="font-family: var(--mono); font-weight: 700; color: var(--accent); padding: 12px 8px; vertical-align: top;">
+                  :${t.tag}
+                  ${subIndicator}
+                </td>
+                <td style="font-weight: 600; color: var(--ink); padding: 12px 8px; vertical-align: top;">${tagName}</td>
+                <td style="text-align: center; padding: 12px 8px; vertical-align: top;">
                   <span class="detail-tag-mo-badge ${moClass}">${moLabel}</span>
                 </td>
-                <td style="font-family: var(--mono); font-size: 13px; color: var(--ink-soft); padding: 12px 8px;">${t.len || '-'}</td>
-                <td style="color: var(--ink-soft); font-size: 13.5px; line-height: 1.5; padding: 12px 8px; text-align: left;">${tagDesc || '-'}</td>
+                <td style="font-family: var(--mono); font-size: 13px; color: var(--ink-soft); padding: 12px 8px; vertical-align: top;">${t.len || '-'}</td>
+                <td style="color: var(--ink-soft); font-size: 13.5px; line-height: 1.5; padding: 12px 8px; text-align: left; vertical-align: top;">${tagDesc || '-'}</td>
               </tr>
             `;
           });
@@ -6272,8 +6714,7 @@ BENEFICIARYBIC
       if (!row) return;
       const subFields = DATA.filter(d => d.msg === row.msg && d.tag === row.tag && d.sub !== '');
       if (subFields.length > 0) {
-        switchTab('reference');
-        openSubPage(row, subFields);
+        openSubfieldModal(row, subFields);
       } else {
         openDetail(row);
       }
@@ -6422,6 +6863,15 @@ BENEFICIARYBIC
       const lblThDetailDesc = document.getElementById('lbl-thDetailDesc');
       if (lblThDetailDesc) lblThDetailDesc.innerText = dict.thDetailDesc;
 
+      const lblSandboxTitle = document.getElementById('lbl-sandboxTitle');
+      if (lblSandboxTitle) lblSandboxTitle.innerText = dict.lblSandboxTitle;
+      const lblSandboxDesc = document.getElementById('lbl-sandboxDesc');
+      if (lblSandboxDesc) lblSandboxDesc.innerText = dict.lblSandboxDesc;
+      const lblSandboxBtn = document.getElementById('lbl-sandboxBtn');
+      if (lblSandboxBtn) lblSandboxBtn.innerText = dict.lblSandboxBtn;
+      const sandboxInput = document.getElementById('sandboxInput');
+      if (sandboxInput) sandboxInput.placeholder = dict.lblSandboxPlaceholder;
+
       // Re-render home content with updated lang
       renderHome();
       
@@ -6429,9 +6879,6 @@ BENEFICIARYBIC
       if (currentTab === 'detail' && activeDetailMsg) {
         showMsgDetails(activeDetailMsg);
       }
-      
-      // Update filters translations
-      renderFilters();
       
       const btnAdd = document.getElementById('btnAdd');
       if (btnAdd) btnAdd.innerText = dict.addBtn;
