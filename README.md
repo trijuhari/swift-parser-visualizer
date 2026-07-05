@@ -26,7 +26,7 @@ A professional web portal for browsing, managing, and validating the SWIFT messa
 - Filter by message type, mandatory/optional status, and free-text keywords
 
 ### 🔍 Visualizer / Raw SWIFT Parser
-The parser supports **8 SWIFT message types** with auto-detection:
+The parser supports **9 SWIFT message types** with auto-detection:
 
 | Message Type | Description | Parser |
 |------------|-----------|--------|
@@ -38,6 +38,7 @@ The parser supports **8 SWIFT message types** with auto-detection:
 | **MT102** | Multiple Customer Funds Transfer | ✅ Full parser + bulk payment overview |
 | **MT104** | Direct Debit Message | ✅ Full parser + creditor/debtor cards |
 | **MT564** | Corporate Action Notification | ✅ Full parser + corporate action options |
+| **MT202** | General Financial Institution Transfer | ✅ Full parser + treasury/interbank settlement cards |
 
 **Advanced parser features:**
 - 💡 **Executive Business Insights** — Each parser type displays a dynamic, contextual business explanation (bilingual ID/EN)
@@ -110,25 +111,23 @@ cd backend
 python3 init_db.py
 ```
 
-This creates the `swift.db` file and imports all data from `swift-data.json` into the system tables.
+### 2. Start Both Backend & Frontend Automatically
 
-### 2. Start the Backend API
+To run both servers concurrently with a single command:
 
 ```bash
-python3 backend/app.py
+./start.sh
 ```
 
-The Flask server will start on `http://localhost:8766` with CORS enabled.
-
-### 3. Start the Frontend
+Or execute using Python directly:
 
 ```bash
-python3 -m http.server 8765
+python3 start.py
 ```
 
 Open your browser → **`http://localhost:8765`**
 
-> **💡 Note:** If the backend is not running, the frontend will automatically fall back to the local `swift-data.json` data (offline mode).
+> **💡 Note:** The launcher script hosts the Frontend on `http://localhost:8765` and the Backend API on `http://localhost:8766`. Press `Ctrl+C` to terminate both processes safely.
 
 ---
 

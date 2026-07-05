@@ -2984,12 +2984,12 @@ JOHN DOE
       const msgTypes = new Set();
       
       DATA.forEach(d => {
-        if (d.msg) {
+        if (d.msg && d.msg.toLowerCase() !== 'category') {
           msgTypes.add(d.msg.toUpperCase());
         }
       });
       
-      const coreTypes = ['MT940', 'MT942', 'MT950', 'MT103', 'MT101', 'MT104', 'MT102', 'MT564'];
+      const coreTypes = ['MT940', 'MT942', 'MT950', 'MT103', 'MT101', 'MT104', 'MT102', 'MT564', 'MT202'];
       coreTypes.forEach(t => msgTypes.add(t));
       
       const sortedTypes = Array.from(msgTypes).sort();
@@ -3013,6 +3013,7 @@ JOHN DOE
           else if (t === 'MT104') desc = currentLang === 'en' ? ' (Direct Debit and Request for Debit Transfer)' : ' (Pesan Direct Debit dan Permintaan Transfer Debit)';
           else if (t === 'MT102') desc = currentLang === 'en' ? ' (Multiple Customer Funds Transfer)' : ' (Transfer Dana Nasabah Multi)';
           else if (t === 'MT564') desc = currentLang === 'en' ? ' (Corporate Action Notification)' : ' (Notifikasi Aksi Korporasi)';
+          else if (t === 'MT202') desc = currentLang === 'en' ? ' (General Financial Institution Transfer)' : ' (Transfer Antar Lembaga Keuangan)';
         }
         
         const option = document.createElement('option');
@@ -3104,6 +3105,65 @@ JOHN DOE
         };
       }
       return null;
+    }
+
+    function parseInstitution(val) {
+      if (!val) return null;
+      const lines = val.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length === 0) return null;
+      
+      let account = '';
+      let bicOrName = '';
+      let address = [];
+      
+      let startIdx = 0;
+      if (lines[0].startsWith('/')) {
+        account = lines[0];
+        startIdx = 1;
+      }
+      
+      if (startIdx < lines.length) {
+        bicOrName = lines[startIdx];
+        address = lines.slice(startIdx + 1);
+      }
+      
+      return {
+        account,
+        bicOrName,
+        address: address.join(', ')
+      };
+    }
+
+    function parseMT202(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const relatedRef = tags['21'] || '';
+      const timeIndication = tags['13C'] || '';
+      const settled32A = parseTag32A(tags['32A']);
+      
+      let orderingInst = parseInstitution(tags['52A'] || tags['52D']);
+      let senderCorr = parseInstitution(tags['53A'] || tags['53B'] || tags['53D']);
+      let receiverCorr = parseInstitution(tags['54A'] || tags['54B'] || tags['54D']);
+      let intermediary = parseInstitution(tags['56A'] || tags['56D']);
+      let accountWithInst = parseInstitution(tags['57A'] || tags['57B'] || tags['57D']);
+      let beneficiary = parseInstitution(tags['58A'] || tags['58D']);
+      const senderToReceiver = tags['72'] || '';
+
+      return {
+        msgType: 'MT202',
+        senderRef,
+        relatedRef,
+        timeIndication,
+        settledAmount: settled32A,
+        orderingInst,
+        senderCorr,
+        receiverCorr,
+        intermediary,
+        accountWithInst,
+        beneficiary,
+        senderToReceiver,
+        tags
+      };
     }
 
     function parseMT103(rawText) {
@@ -3898,6 +3958,110 @@ JOHN DOE
       return found;
     }
 
+    function renderSubfieldsHtml(key, val) {
+      const keyClean = key.toUpperCase();
+      
+      // 1. Institution Tags (50, 52, 53, 54, 56, 57, 58, 59 series)
+      if (/^(50|52|53|54|56|57|58|59)/.test(keyClean)) {
+        const inst = parseInstitution(val);
+        if (inst && (inst.account || inst.bicOrName || inst.address)) {
+          return `
+            <div class="subfields-container" style="margin-top: 8px; font-size: 12px; background: rgba(59, 130, 246, 0.04); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 6px; padding: 8px 12px; font-family: var(--sans);">
+              <div style="font-weight: 800; color: var(--primary-color); margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;">📋 Subfields Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                ${inst.account ? `<div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Account/Clearing:' : 'Rekening/Kliring:'}</span> <code style="font-family: var(--mono); font-weight: 700; color: var(--ink);">${escapeHtml(inst.account)}</code></div>` : ''}
+                ${inst.bicOrName ? `<div><span style="font-weight: 700; color: var(--ink-soft);">BIC/Name:</span> <span style="font-weight: 800; color: var(--ink);">${escapeHtml(inst.bicOrName)}</span></div>` : ''}
+                ${inst.address ? `<div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Address:' : 'Alamat:'}</span> <span style="color: var(--ink);">${escapeHtml(inst.address)}</span></div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+      }
+      
+      // 2. Value Date/Currency/Amount (32A, 33B, etc.)
+      if (keyClean === '32A' || keyClean === '32B' || keyClean === '33B' || keyClean === '34F') {
+        const parsed = parseTag32A(val) || parseCurrencyAmount(val);
+        if (parsed) {
+          return `
+            <div class="subfields-container" style="margin-top: 8px; font-size: 12px; background: rgba(59, 130, 246, 0.04); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 6px; padding: 8px 12px; font-family: var(--sans);">
+              <div style="font-weight: 800; color: var(--primary-color); margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;">📋 Subfields Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                ${parsed.date ? `<div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Date:' : 'Tanggal:'}</span> <span style="font-weight: 700; color: var(--ink);">${escapeHtml(parsed.date)}</span></div>` : ''}
+                ${parsed.currency ? `<div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Currency:' : 'Mata Uang:'}</span> <span style="font-weight: 800; color: var(--ink);">${escapeHtml(parsed.currency)}</span></div>` : ''}
+                ${parsed.amount ? `<div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Amount:' : 'Jumlah:'}</span> <span style="font-weight: 800; color: var(--credit-color);">${formatAmountRaw(parsed.amount)}</span></div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // 3. Balances (60F, 60M, 62F, 62M, 64, 65 series)
+      if (/^6(0|2|4|5)/.test(keyClean)) {
+        const parsed = parseBalanceVal(val);
+        if (parsed) {
+          return `
+            <div class="subfields-container" style="margin-top: 8px; font-size: 12px; background: rgba(59, 130, 246, 0.04); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 6px; padding: 8px 12px; font-family: var(--sans);">
+              <div style="font-weight: 800; color: var(--primary-color); margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;">📋 Subfields Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Type/Sign:' : 'Tipe/Tanda:'}</span> <span style="font-weight: 800; color: ${parsed.sign === '+' ? 'var(--credit-color)' : 'var(--debit-color)'};">${parsed.sign} (${parsed.sign === '+' ? (currentLang === 'en' ? 'Credit' : 'Kredit') : (currentLang === 'en' ? 'Debit' : 'Debit')})</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Date:' : 'Tanggal:'}</span> <span style="font-weight: 700; color: var(--ink);">${escapeHtml(parsed.date)}</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Currency:' : 'Mata Uang:'}</span> <span style="font-weight: 800; color: var(--ink);">${escapeHtml(parsed.currency)}</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Amount:' : 'Jumlah:'}</span> <span style="font-weight: 800; color: var(--ink);">${formatAmountRaw(parsed.amount)}</span></div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // 4. Statement Line (61)
+      if (keyClean === '61') {
+        const parsed = parseStatementLine61(val);
+        if (parsed) {
+          return `
+            <div class="subfields-container" style="margin-top: 8px; font-size: 12px; background: rgba(59, 130, 246, 0.04); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 6px; padding: 8px 12px; font-family: var(--sans);">
+              <div style="font-weight: 800; color: var(--primary-color); margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;">📋 Subfields Breakdown</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Value Date:' : 'Tgl Valuta:'}</span> <span style="font-weight: 700; color: var(--ink);">${escapeHtml(parsed.valueDate)}</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Entry Date:' : 'Tgl Entri:'}</span> <span style="font-weight: 700; color: var(--ink);">${escapeHtml(parsed.entryDate)}</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Type:' : 'Tanda:'}</span> <span style="font-weight: 800; color: ${parsed.sign === '+' ? 'var(--credit-color)' : 'var(--debit-color)'};">${parsed.sign} (${parsed.sign === '+' ? 'CR' : 'DR'})</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Amount:' : 'Jumlah:'}</span> <span style="font-weight: 800; color: var(--ink);">${formatAmountRaw(parsed.amount)}</span></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Type Code:' : 'Kode Transaksi:'}</span> <code style="font-family: var(--mono); font-weight: 700; color: var(--ink);">${escapeHtml(parsed.typeCode)}</code></div>
+                <div><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Bank Ref:' : 'Ref Bank:'}</span> <code style="font-family: var(--mono); color: var(--ink);">${escapeHtml(parsed.bankRef || '—')}</code></div>
+                <div style="grid-column: span 2;"><span style="font-weight: 700; color: var(--ink-soft);">${currentLang === 'en' ? 'Customer Ref:' : 'Ref Nasabah:'}</span> <code style="font-family: var(--mono); color: var(--ink);">${escapeHtml(parsed.customerRef || '—')}</code></div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // 5. Narrative / Information to Account Owner (86)
+      if (keyClean === '86') {
+        const parsed = parseNarrative86(val);
+        const keys = Object.keys(parsed);
+        if (keys.length > 0 && !parsed.RAW) {
+          let fieldsHtml = '';
+          keys.forEach(k => {
+            fieldsHtml += `
+              <div style="margin-bottom: 2px;">
+                <span style="font-weight: 700; color: var(--ink-soft); font-family: var(--mono); font-size: 11px;">/${escapeHtml(k)}/</span>
+                <span style="color: var(--ink);">${escapeHtml(parsed[k])}</span>
+              </div>
+            `;
+          });
+          return `
+            <div class="subfields-container" style="margin-top: 8px; font-size: 12px; background: rgba(59, 130, 246, 0.04); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 6px; padding: 8px 12px; font-family: var(--sans);">
+              <div style="font-weight: 800; color: var(--primary-color); margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;">📋 Subfields Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                ${fieldsHtml}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      return '';
+    }
+
     function renderParsedTagsTable(tags, msgType) {
       let rowsHtml = '';
       const keys = Object.keys(tags).sort();
@@ -3910,6 +4074,7 @@ JOHN DOE
         const tagName = info ? (currentLang === 'en' && info.name_en ? info.name_en : info.name) : (currentLang === 'en' ? 'Custom Tag' : 'Tag Kustom');
         const tagDesc = info ? (currentLang === 'en' && info.desc_en ? info.desc_en : info.desc) : '';
         const tagRules = info ? (currentLang === 'en' && info.rules_en ? info.rules_en : info.rules) : '';
+        const subfieldsHtml = renderSubfieldsHtml(key, valStr);
         
         rowsHtml += `
           <tr style="border-bottom: 1px solid var(--line);">
@@ -3918,6 +4083,7 @@ JOHN DOE
               <div style="font-weight: 700; color: var(--ink); margin-bottom: 4px;">${escapeHtml(tagName)}</div>
               <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.4;">${escapeHtml(tagDesc)}</div>
               ${tagRules ? `<div style="font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 4px; border: 1px dashed var(--line); padding: 4px 8px; border-radius: 4px; display: inline-block;">⚡ ${escapeHtml(tagRules)}</div>` : ''}
+              ${subfieldsHtml}
             </td>
             <td style="font-family: var(--mono); font-size: 13px; color: var(--ink); padding: 12px 16px; white-space: pre-wrap; vertical-align: top; max-width: 300px; overflow-x: auto;">${escapeHtml(valStr)}</td>
           </tr>
@@ -3949,6 +4115,198 @@ JOHN DOE
 
     function renderStatementTagsTable(tags, msgType) {
       return renderParsedTagsTable(tags, msgType);
+    }
+
+    function getMT202BusinessExplanation(statement) {
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      const beneficiary = statement.beneficiary ? (statement.beneficiary.bicOrName + (statement.beneficiary.account ? ` (${statement.beneficiary.account})` : '')) : '—';
+
+      if (currentLang === 'id') {
+        return `
+          Pesan ini adalah <strong>MT 202 (General Financial Institution Transfer)</strong>, sebuah instruksi transfer dana antar lembaga keuangan (bank-ke-bank) untuk memindahkan dana sebesar <strong>${amountStr} ${currency}</strong> dengan tanggal valuta <strong>${valueDate}</strong>. 
+          <br/><br/>
+          <strong>Arti Bisnis:</strong>
+          <ul>
+            <li><strong>Transfer Bank-ke-Bank:</strong> Transaksi ini digunakan untuk kliring, penyelesaian transaksi valuta asing (FX settlement), atau penempatan dana antar bank. Tidak melibatkan nasabah ritel/non-bank.</li>
+            <li><strong>Penerima Akhir:</strong> Dana ditransfer ke lembaga penerima manfaat (Beneficiary Institution) dengan identitas/BIC <code>${escapeHtml(beneficiary)}</code>.</li>
+            <li><strong>Referensi Terkait:</strong> Transaksi ini merujuk ke referensi terkait <code>${escapeHtml(statement.relatedRef || '—')}</code>, biasanya mengacu pada instruksi pembayaran nasabah (seperti MT103) atau kesepakatan FX.</li>
+          </ul>
+        `;
+      } else {
+        return `
+          This message is an <strong>MT 202 (General Financial Institution Transfer)</strong>, which is a bank-to-bank funds transfer instruction to move <strong>${amountStr} ${currency}</strong> with a value date of <strong>${valueDate}</strong>.
+          <br/><br/>
+          <strong>Business Interpretation:</strong>
+          <ul>
+            <li><strong>Bank-to-Bank Settlement:</strong> This transaction is executed for interbank settlement, treasury operations, FX cover payment, or money market placements. No retail/non-bank customers are involved.</li>
+            <li><strong>Beneficiary Institution:</strong> Funds are routed to the beneficiary financial institution identified by BIC/address <code>${escapeHtml(beneficiary)}</code>.</li>
+            <li><strong>Related Reference:</strong> This transfer is tied to the related reference <code>${escapeHtml(statement.relatedRef || '—')}</code>, linking it to an underlying customer payment (e.g. MT103) or FX deal.</li>
+          </ul>
+        `;
+      }
+    }
+
+    function renderInstitutionHtml(label, inst) {
+      if (!inst) {
+        return `
+          <div class="dashboard-card">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">${label}</div>
+            <div style="font-size: 14px; color: var(--ink-soft); font-style: italic;">—</div>
+          </div>
+        `;
+      }
+      
+      return `
+        <div class="dashboard-card">
+          <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">${label}</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            ${inst.account ? `
+              <div>
+                <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;">${currentLang === 'en' ? 'Account / Clearing' : 'Rekening / Kliring'}</div>
+                <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 1px;">${escapeHtml(inst.account)}</div>
+              </div>
+            ` : ''}
+            <div>
+              <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;">${currentLang === 'en' ? 'BIC / Name' : 'BIC / Nama'}</div>
+              <div style="font-family: var(--sans); font-size: 13.5px; font-weight: 800; color: var(--primary-color); margin-top: 1px;">${escapeHtml(inst.bicOrName)}</div>
+            </div>
+            ${inst.address ? `
+              <div>
+                <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;">${currentLang === 'en' ? 'Address' : 'Alamat'}</div>
+                <div style="font-family: var(--sans); font-size: 12.5px; color: var(--ink); margin-top: 1px; line-height: 1.4;">${escapeHtml(inst.address)}</div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRoutingFieldHtml(label, inst) {
+      if (!inst) return '';
+      return `
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px dashed var(--line); padding-bottom: 3px;">${label}</div>
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px;">
+            ${inst.account ? `
+              <div>
+                <span style="color: var(--ink-soft); font-size: 10px; font-weight: 700; text-transform: uppercase;">Acc:</span>
+                <span style="font-family: var(--mono); font-weight: 700; color: var(--ink);">${escapeHtml(inst.account)}</span>
+              </div>
+            ` : ''}
+            <div>
+              <span style="color: var(--ink-soft); font-size: 10px; font-weight: 700; text-transform: uppercase;">BIC/Name:</span>
+              <span style="font-weight: 700; color: var(--primary-color);">${escapeHtml(inst.bicOrName)}</span>
+            </div>
+            ${inst.address ? `
+              <div>
+                <span style="color: var(--ink-soft); font-size: 10px; font-weight: 700; text-transform: uppercase;">Addr:</span>
+                <span style="color: var(--ink); font-size: 12.5px;">${escapeHtml(inst.address)}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMT202Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Related Reference' : 'Referensi Terkait'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.relatedRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(valueDate)}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Settled Amount' : 'Jumlah Pembayaran'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          ${renderInstitutionHtml(currentLang === 'en' ? '🏦 Ordering Institution (Tag 52A/D)' : '🏦 Lembaga Pengirim (Tag 52A/D)', statement.orderingInst)}
+          ${renderInstitutionHtml(currentLang === 'en' ? '🎯 Beneficiary Institution (Tag 58A/D)' : '🎯 Lembaga Penerima (Tag 58A/D)', statement.beneficiary)}
+        </div>
+      `;
+
+      let routeHtml = '';
+      if (statement.senderCorr || statement.receiverCorr || statement.intermediary || statement.accountWithInst) {
+        routeHtml = `
+          <div class="dashboard-card" style="margin-top: 20px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">⚙️ ${currentLang === 'en' ? 'Routing Details' : 'Rute Perjalanan & Koresponden'}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+              ${renderRoutingFieldHtml(currentLang === 'en' ? "Sender's Correspondent (53A)" : 'Koresponden Pengirim (53A)', statement.senderCorr)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? "Receiver's Correspondent (54A)" : 'Koresponden Penerima (54A)', statement.receiverCorr)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? 'Intermediary Institution (56A)' : 'Lembaga Perantara (56A)', statement.intermediary)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? 'Account With Institution (57A)' : 'Lembaga Pengelola Rekening (57A)', statement.accountWithInst)}
+            </div>
+          </div>
+        `;
+      }
+
+      let infoHtml = '';
+      if (statement.senderToReceiver || statement.timeIndication) {
+        infoHtml = `
+          <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            ${statement.senderToReceiver ? `
+              <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+                <div style="font-weight: 800; color: var(--primary-color); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Sender to Receiver Info' : 'Info Pengirim ke Penerima (72)'}</div>
+                <div style="font-family: var(--mono); font-size: 13.5px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.senderToReceiver)}</div>
+              </div>
+            ` : ''}
+            ${statement.timeIndication ? `
+              <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+                <div style="font-weight: 800; color: var(--primary-color); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">🕒 ${currentLang === 'en' ? 'Time Indication' : 'Indikasi Waktu (13C)'}</div>
+                <div style="font-family: var(--mono); font-size: 13.5px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.timeIndication)}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt202');
+
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT202BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">MT 202</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'General Financial Institution Transfer' : 'Transfer Antar Lembaga Keuangan'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${routeHtml}
+          ${infoHtml}
+          ${businessInsightHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
     }
 
     function renderMT103Output(statement) {
@@ -4386,6 +4744,8 @@ JOHN DOE
         if (selectedParser === 'auto') {
           if (/\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'))) {
             mtType = 'MT564';
+          } else if (/\{2:[IO]202/i.test(text) || text.includes('MT202')) {
+            mtType = 'MT202';
           } else if (/\{2:[IO]104/i.test(text) || text.includes('MT104')) {
             mtType = 'MT104';
           } else if (/\{2:[IO]102/i.test(text) || text.includes('MT102')) {
@@ -4408,6 +4768,8 @@ JOHN DOE
         const statementTypes = ['MT940', 'MT942', 'MT950'];
         if (mtType === 'MT564') {
           activeStatement = parseMT564(text);
+        } else if (mtType === 'MT202') {
+          activeStatement = parseMT202(text);
         } else if (mtType === 'MT104') {
           activeStatement = parseMT104(text);
         } else if (mtType === 'MT102') {
@@ -4441,6 +4803,8 @@ JOHN DOE
 
       if (activeStatement.msgType === 'MT564') {
         renderMT564Output(activeStatement);
+      } else if (activeStatement.msgType === 'MT202') {
+        renderMT202Output(activeStatement);
       } else if (activeStatement.msgType === 'MT103') {
         renderMT103Output(activeStatement);
       } else if (activeStatement.msgType === 'MT101') {
@@ -4998,6 +5362,28 @@ SALARY PAYMENTS
 -}`;
         document.getElementById('rawInput').value = sample102;
         document.getElementById('parserTypeSelect').value = 'mt102';
+      } else if (type === 'mt202') {
+        const sample202 = `{1:F01BANKDEFXAXXX0000000000}{2:I202BANKDEFXXXXXN}{4:
+:20:REF20220230705
+:21:CLIENTREF1234
+:13C:/CLSTIME/1030+0200
+:32A:230705USD500000,00
+:52A:/11223344
+ORDERINGBANKBIC
+:53A:/22334455
+SENDERCORRBIC
+:54A:/33445566
+RECEIVERCORRBIC
+:56A:/44556677
+INTERMEDIARYBIC
+:57A:/55667788
+ACCOUNTPARTYBIC
+:58A:/66778899
+BENEFICIARYBIC
+:72:/REJT/INCORRECT DETAILS
+-}`;
+        document.getElementById('rawInput').value = sample202;
+        document.getElementById('parserTypeSelect').value = 'mt202';
       } else {
         const sample = `{1:F01GSCRUS30XXXX3614000002}{2:I940GSCRUS30XXXXN}{4:
 :20:15486025400
@@ -5526,7 +5912,7 @@ SALARY PAYMENTS
     }
 
     function isParserSupported(msg) {
-      const supported = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564'];
+      const supported = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564', 'mt202'];
       return supported.includes(msg.toLowerCase());
     }
 
