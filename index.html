@@ -1300,6 +1300,348 @@
       border-color: hsl(346, 77%, 43%) !important;
       color: #fff !important;
     }
+
+    /* Homepage (Beranda) Styles */
+    #view-home {
+      display: block;
+      margin-top: 15px;
+    }
+    
+    .home-hero {
+      background: linear-gradient(135deg, var(--accent-soft) 0%, var(--paper) 100%);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px 32px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    
+    .home-hero::after {
+      content: "";
+      position: absolute;
+      right: -50px;
+      bottom: -50px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, var(--gold) 0%, transparent 70%);
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    
+    .hero-content {
+      max-width: 680px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      display: block;
+      margin-bottom: 12px;
+    }
+    
+    .home-hero h1 {
+      font-family: var(--serif);
+      font-size: 36px;
+      color: var(--ink);
+      margin: 0 0 12px 0;
+      line-height: 1.2;
+    }
+    
+    .home-hero p {
+      font-size: 15px;
+      color: var(--ink-soft);
+      margin: 0 0 24px 0;
+      line-height: 1.6;
+    }
+    
+    /* Homepage search box */
+    .home-search-box {
+      position: relative;
+      max-width: 500px;
+      box-shadow: 0 4px 12px var(--shadow);
+      border-radius: 10px;
+    }
+    
+    .home-search-box input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      font-size: 15px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--ink);
+      font-family: var(--sans);
+      transition: all 0.2s ease;
+    }
+    
+    .home-search-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    }
+    
+    .home-search-box .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      color: var(--ink-soft);
+      pointer-events: none;
+    }
+    
+    /* Stats bar */
+    .home-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px var(--shadow);
+    }
+    
+    .stat-icon {
+      font-size: 28px;
+      background: var(--accent-soft);
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+    
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--ink);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+    
+    /* Homepage filters */
+    .home-filter-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+    
+    .home-filter-title {
+      font-family: var(--serif);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    
+    .home-filter-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    /* Homepage Cards Grid */
+    .home-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    
+    .home-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 2px 10px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      overflow: hidden;
+    }
+    
+    .home-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px var(--shadow);
+      border-color: var(--accent);
+    }
+    
+    .home-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .home-card:hover::before {
+      opacity: 1;
+    }
+    
+    .home-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    
+    .home-card-cat-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+      background: color-mix(in srgb, var(--gold) 10%, var(--panel));
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
+    }
+    
+    .home-card-badge {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+    
+    .home-card-title {
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 8px 0;
+    }
+    
+    .home-card-desc {
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      margin: 0 0 18px 0;
+      flex-grow: 1;
+    }
+    
+    .home-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      margin-top: auto;
+    }
+    
+    .home-card-stats {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 600;
+    }
+    
+    .home-card-stats b {
+      color: var(--accent);
+    }
+    
+    .home-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .home-card-btn {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .home-card-btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent);
+    }
+    
+    .home-card-btn-primary:hover {
+      background: color-mix(in srgb, var(--accent) 85%, #000);
+      border-color: color-mix(in srgb, var(--accent) 85%, #000);
+    }
+    
+    .home-card-btn-secondary {
+      background: var(--panel);
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+    }
+    
+    .home-card-btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    @media (max-width: 600px) {
+      .home-hero {
+        padding: 24px;
+      }
+      .home-hero h1 {
+        font-size: 28px;
+      }
+      .home-filter-section {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 
@@ -1331,7 +1673,8 @@
 
     <div class="nav-actions">
       <span id="lastUpdated" style="font-size:12px;color:var(--ink-soft);margin-right:10px;"></span>
-      <button class="nav-btn active" id="tab-reference" onclick="switchTab('reference')" title="Kamus Referensi">📖 <span id="lbl-tabKamus">Kamus</span></button>
+      <button class="nav-btn active" id="tab-home" onclick="switchTab('home')" title="Beranda">🏠 <span id="lbl-tabHome">Beranda</span></button>
+      <button class="nav-btn" id="tab-reference" onclick="switchTab('reference')" title="Kamus Referensi">📖 <span id="lbl-tabKamus">Kamus</span></button>
       <button class="nav-btn" id="tab-parser" onclick="switchTab('parser')" title="Visualizer / Parser Raw SWIFT">🔍 <span id="lbl-tabParser">Parser</span></button>
       <a href="admin.html" class="icon-btn" id="btnOwnerToggle" title="Login sebagai Owner" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">🔒 <span id="lbl-ownerBtn">Owner</span></a>
       <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 ID</button>
@@ -1341,7 +1684,63 @@
 
   <div class="wrap">
     
-    <div id="view-reference">
+    <!-- Homepage (Beranda) View -->
+    <div id="view-home">
+      <!-- Hero Section -->
+      <div class="home-hero">
+        <div class="hero-content">
+          <span class="hero-eyebrow" id="lbl-heroEyebrow">Referensi Standar SWIFT</span>
+          <h1 id="lbl-homeTitle">Pusat Referensi & Visualisasi SWIFT</h1>
+          <p id="lbl-homeSubtitle">Aplikasi kamus interaktif untuk menganalisis, memvalidasi, dan mengurai pesan standar SWIFT MT (Financial Messaging).</p>
+          
+          <!-- Homepage Search -->
+          <div class="home-search-box">
+            <input type="text" id="homeSearchInput" placeholder="Cari kategori pesan... (misal: MT940, cash, transfer)">
+            <span class="search-icon">⌕</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Stats Dashboard -->
+      <div class="home-stats-bar">
+        <div class="stat-card">
+          <div class="stat-icon">📁</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-statLabelCat">Kategori Pesan</span>
+            <span class="stat-value" id="stat-count-cat">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏷️</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-statLabelTags">Total Tag Referensi</span>
+            <span class="stat-value" id="stat-count-tags">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔧</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-statLabelCustom">Tag Kustom Aktif</span>
+            <span class="stat-value" id="stat-count-custom">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Categories Filter Section -->
+      <div class="home-filter-section">
+        <div class="home-filter-title" id="lbl-filterTitle">Filter Kategori</div>
+        <div class="home-filter-chips" id="homeFilterChips">
+          <!-- Will be populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Categories Cards Grid -->
+      <div class="home-cards-grid" id="homeCardsContainer">
+        <!-- Will be populated dynamically -->
+      </div>
+    </div>
+    
+    <div id="view-reference" style="display:none;">
 
     <!-- Main table -->
     <div id="sf-main-view">
@@ -1731,7 +2130,7 @@
     let currentPage = 1;
     const rowsPerPage = 15;
 
-    let currentTab = 'reference';
+    let currentTab = 'home';
 
 
     function escapeHtml(str) {
@@ -2177,6 +2576,7 @@
       applyOwnerUI();
       populateParserDropdown();
       render();
+      renderHome();
       
       if (window._tableInitialized) {
         return;
@@ -2196,6 +2596,13 @@
         });
       }
 
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      if (homeSearchInput) {
+        homeSearchInput.addEventListener('input', () => {
+          renderHomeCards();
+        });
+      }
+
       initSort();
     }
 
@@ -2203,14 +2610,20 @@
       currentTab = tabId;
       
       // Update tab buttons active state
+      const tabHome = document.getElementById('tab-home');
+      if (tabHome) tabHome.classList.toggle('active', tabId === 'home');
       const tabRef = document.getElementById('tab-reference');
       if (tabRef) tabRef.classList.toggle('active', tabId === 'reference');
       const tabParser = document.getElementById('tab-parser');
       if (tabParser) tabParser.classList.toggle('active', tabId === 'parser');
 
       // Update views visibility
-      document.getElementById('view-reference').style.display = tabId === 'reference' ? 'block' : 'none';
-      document.getElementById('view-parser').style.display = tabId === 'parser' ? 'block' : 'none';
+      const viewHome = document.getElementById('view-home');
+      if (viewHome) viewHome.style.display = tabId === 'home' ? 'block' : 'none';
+      const viewRef = document.getElementById('view-reference');
+      if (viewRef) viewRef.style.display = tabId === 'reference' ? 'block' : 'none';
+      const viewParser = document.getElementById('view-parser');
+      if (viewParser) viewParser.style.display = tabId === 'parser' ? 'block' : 'none';
 
       const filtersContainer = document.getElementById('filtersContainer');
       if (filtersContainer) {
@@ -4133,7 +4546,24 @@ SALARY PAYMENTS
         optColMo: "M/O",
         optColLen: "Format",
         optColSample: "Contoh",
-        optColDesc: "Keterangan"
+        optColDesc: "Keterangan",
+        
+        lblTabHome: "Beranda",
+        homeTitle: "Pusat Referensi & Visualisasi SWIFT",
+        homeSubtitle: "Aplikasi kamus interaktif untuk menganalisis, memvalidasi, dan mengurai pesan standar SWIFT MT (Financial Messaging).",
+        homeSearchPlaceholder: "Cari kategori pesan... (misal: MT940, cash, transfer)",
+        homeStatsCategories: "Kategori Pesan",
+        homeStatsTags: "Total Tag Referensi",
+        homeStatsCustom: "Tag Kustom Aktif",
+        homeCatAll: "Semua Kategori",
+        homeCat1: "Kategori 1: Pembayaran",
+        homeCat9: "Kategori 9: Manajemen Kas",
+        homeCat5: "Kategori 5: Sekuritas",
+        homeCardViewRef: "Buka Kamus Referensi",
+        homeCardViewParser: "Buka Parser",
+        homeCardTagsCount: "Tag terdaftar",
+        homeCardMandatory: "Wajib",
+        homeCardOptional: "Opsional"
       },
       en: {
         export: "⬇ Export CSV",
@@ -4195,15 +4625,353 @@ SALARY PAYMENTS
         optColMo: "M/O",
         optColLen: "Format",
         optColSample: "Sample",
-        optColDesc: "Description"
+        optColDesc: "Description",
+        
+        lblTabHome: "Home",
+        homeTitle: "SWIFT Reference & Visualization Center",
+        homeSubtitle: "Interactive dictionary application to analyze, validate, and parse standard SWIFT MT (Financial Messaging) messages.",
+        homeSearchPlaceholder: "Search message categories... (e.g., MT940, cash, transfer)",
+        homeStatsCategories: "Message Categories",
+        homeStatsTags: "Total Reference Tags",
+        homeStatsCustom: "Active Custom Tags",
+        homeCatAll: "All Categories",
+        homeCat1: "Category 1: Payments",
+        homeCat9: "Category 9: Cash Management",
+        homeCat5: "Category 5: Securities",
+        homeCardViewRef: "Open Reference Dictionary",
+        homeCardViewParser: "Open Parser",
+        homeCardTagsCount: "Registered tags",
+        homeCardMandatory: "Mandatory",
+        homeCardOptional: "Optional"
       }
     };
+
+    const HOME_MSG_INFO = {
+      mt940: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Laporan Rekening (Account Statement)",
+          desc: "Format standar SWIFT yang dikirimkan oleh bank untuk memberikan rincian transaksi harian dan saldo akhir rekening kepada nasabah."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Account Statement",
+          desc: "Standard SWIFT format sent by bank to provide detailed account transactions and end-of-day balances to the account owner."
+        }
+      },
+      mt942: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Laporan Interim Rekening (Interim Transaction Report)",
+          desc: "Menyediakan rincian mutasi debit dan kredit sementara pada rekening selama hari berjalan sebelum laporan akhir hari dikirim."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Interim Transaction Report",
+          desc: "Provides details of temporary debit and credit entries booked to the account during the day prior to final statement generation."
+        }
+      },
+      mt950: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Pernyataan Rekening Ringkas (Statement Message)",
+          desc: "Laporan saldo dan rincian transaksi ringkas yang dikirim oleh bank kepada bank koresponden atau institusi keuangan lain."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Statement Message",
+          desc: "Summarized account statement sent from one financial institution to another containing transaction logs and balance checks."
+        }
+      },
+      mt103: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Transfer Dana Nasabah Tunggal (Single Customer Transfer)",
+          desc: "Digunakan untuk mengirimkan instruksi pembayaran dana tunggal dari nasabah pengirim ke nasabah penerima di bank lain."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Single Customer Funds Transfer",
+          desc: "Used to execute single customer funds transfer instructions between accounts at different banking institutions globally."
+        }
+      },
+      mt101: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Permintaan Transfer Dana (Request for Transfer)",
+          desc: "Dikirim oleh pemilik rekening untuk meminta bank mendebit rekeningnya dan melakukan transfer dana ke pihak penerima."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Request for Transfer",
+          desc: "Sent by the account owner to instruct a bank to debit their account and transfer funds to specified beneficiaries."
+        }
+      },
+      mt102: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Transfer Dana Nasabah Multi (Multiple Customer Transfer)",
+          desc: "Digunakan untuk mengirimkan instruksi beberapa pembayaran dari nasabah pengirim secara massal/batch ke bank penerima."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Multiple Customer Funds Transfer",
+          desc: "Sent to process multiple credit transfer instructions in a single message payload for batch processing."
+        }
+      },
+      mt104: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Direct Debit & Transfer Debit (Direct Debit Message)",
+          desc: "Digunakan untuk menagih pembayaran dari rekening pembayar di bank lain melalui mekanisme direct debit standar."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Direct Debit & Request for Debit Transfer",
+          desc: "Used to collect payments from accounts at other banks via authorized pre-arranged direct debit schemes."
+        }
+      },
+      mt111: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Instruksi Kartu Kredit (Credit Card Instruction)",
+          desc: "Mengirimkan instruksi pembayaran terkait tagihan kartu kredit antar bank atau jaringan pembayaran terafiliasi."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Credit Card Instruction",
+          desc: "Used to transmit interbank processing requests for credit card bill payments and settlements."
+        }
+      },
+      mt564: {
+        id: {
+          category: "Kategori 5: Aksi Korporasi",
+          title: "Notifikasi Aksi Korporasi (Corporate Action Notification)",
+          desc: "Menginformasikan pemegang akun mengenai detail peristiwa korporat seperti pembagian dividen, stock split, atau merger."
+        },
+        en: {
+          category: "Category 5: Securities Market",
+          title: "Corporate Action Notification",
+          desc: "Informs account holders about details regarding corporate events such as dividend distributions, stock splits, or mergers."
+        }
+      }
+    };
+
+    let homeSelectedCategory = 'all';
+
+    function resolveCategory(msgType, categoryKeyFromDb) {
+      let catKey = categoryKeyFromDb;
+      if (!catKey) {
+        const mt = msgType.toLowerCase();
+        if (mt.startsWith('mt1')) catKey = '1';
+        else if (mt.startsWith('mt9')) catKey = '9';
+        else if (mt.startsWith('mt5')) catKey = '5';
+        else catKey = 'other';
+      }
+      
+      const catRow = DATA.find(d => d.msg === 'category' && d.tag === catKey);
+      if (catRow) {
+        return {
+          key: catKey,
+          icon: catRow.len || '📄',
+          name: currentLang === 'en' ? (catRow.name_en || catRow.name) : (catRow.name || catRow.name_en)
+        };
+      }
+      
+      if (catKey === '1') {
+        return {
+          key: '1',
+          icon: '💸',
+          name: currentLang === 'en' ? 'Category 1: Customer Payments' : 'Kategori 1: Pembayaran & Cek'
+        };
+      } else if (catKey === '9') {
+        return {
+          key: '9',
+          icon: '🏦',
+          name: currentLang === 'en' ? 'Category 9: Cash Management' : 'Kategori 9: Manajemen Kas'
+        };
+      } else if (catKey === '5') {
+        return {
+          key: '5',
+          icon: '📈',
+          name: currentLang === 'en' ? 'Category 5: Securities' : 'Kategori 5: Sekuritas & Korporasi'
+        };
+      }
+      
+      return {
+        key: 'other',
+        icon: '📁',
+        name: currentLang === 'en' ? 'Other Categories' : 'Kategori Lainnya'
+      };
+    }
+
+    function renderHome() {
+      const uniqueMsgs = [...new Set(DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category').map(d => d.msg.toLowerCase()))];
+      const totalTags = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME' && d.msg && d.msg.toLowerCase() !== 'category').length;
+      const customTags = DATA.filter(d => d.source === 'manual' && d.msg && d.msg.toLowerCase() !== 'category' && d.tag !== 'MSG_NAME').length;
+      
+      const statCountCat = document.getElementById('stat-count-cat');
+      if (statCountCat) statCountCat.innerText = uniqueMsgs.length;
+      const statCountTags = document.getElementById('stat-count-tags');
+      if (statCountTags) statCountTags.innerText = totalTags;
+      const statCountCustom = document.getElementById('stat-count-custom');
+      if (statCountCustom) statCountCustom.innerText = customTags;
+
+      renderHomeChips();
+      renderHomeCards();
+    }
+
+    function renderHomeChips() {
+      const container = document.getElementById('homeFilterChips');
+      if (!container) return;
+
+      const dict = i18n[currentLang];
+      
+      const categories = [
+        { key: 'all', icon: '📁', label: dict.homeCatAll || 'Semua Kategori' },
+        { key: '1', icon: '💸', label: dict.homeCat1 || 'Kategori 1: Pembayaran' },
+        { key: '9', icon: '🏦', label: dict.homeCat9 || 'Kategori 9: Manajemen Kas' },
+        { key: '5', icon: '📈', label: dict.homeCat5 || 'Kategori 5: Sekuritas' }
+      ];
+
+      const dbCategories = DATA.filter(d => d.msg === 'category');
+      dbCategories.forEach(cat => {
+        if (cat.tag !== '1' && cat.tag !== '9' && cat.tag !== '5') {
+          categories.push({
+            key: cat.tag,
+            icon: cat.len || '⚙️',
+            label: currentLang === 'en' ? (cat.name_en || cat.name) : (cat.name || cat.name_en)
+          });
+        }
+      });
+
+      let html = '';
+      categories.forEach(cat => {
+        const active = homeSelectedCategory === cat.key ? 'active' : '';
+        html += `<div class="chip ${active}" data-homecat="${cat.key}" data-icon="${cat.icon}">${cat.label}</div>`;
+      });
+
+      container.innerHTML = html;
+
+      const chips = container.querySelectorAll('.chip');
+      chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          homeSelectedCategory = chip.dataset.homecat;
+          renderHomeChips();
+          renderHomeCards();
+        });
+      });
+    }
+
+    function renderHomeCards() {
+      const container = document.getElementById('homeCardsContainer');
+      if (!container) return;
+
+      const searchInput = document.getElementById('homeSearchInput');
+      const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      const msgTypesSet = new Set(DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category').map(d => d.msg.toLowerCase()));
+      const coreTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564'];
+      coreTypes.forEach(t => msgTypesSet.add(t));
+
+      const sortedMsgTypes = Array.from(msgTypesSet).sort();
+      const dict = i18n[currentLang];
+
+      let html = '';
+
+      sortedMsgTypes.forEach(msg => {
+        const msgNameRow = DATA.find(d => d.msg && d.msg.toLowerCase() === msg && d.tag === 'MSG_NAME');
+        
+        let title = '';
+        let desc = '';
+        let catKey = '';
+
+        if (msgNameRow) {
+          title = currentLang === 'en' ? (msgNameRow.name_en || msgNameRow.name) : (msgNameRow.name || msgNameRow.name_en);
+          desc = currentLang === 'en' ? (msgNameRow.desc_en || msgNameRow.desc) : (msgNameRow.desc || msgNameRow.desc_en);
+          catKey = msgNameRow.len;
+        }
+
+        if (!title && HOME_MSG_INFO[msg]) {
+          title = HOME_MSG_INFO[msg][currentLang].title;
+        }
+        if (!desc && HOME_MSG_INFO[msg]) {
+          desc = HOME_MSG_INFO[msg][currentLang].desc;
+        }
+
+        const catInfo = resolveCategory(msg, catKey);
+
+        if (homeSelectedCategory !== 'all' && catInfo.key !== homeSelectedCategory) {
+          return;
+        }
+
+        const matchesQuery = !q || 
+                            msg.includes(q) || 
+                            title.toLowerCase().includes(q) || 
+                            desc.toLowerCase().includes(q);
+        
+        if (!matchesQuery) return;
+
+        const typeTags = DATA.filter(d => d.msg && d.msg.toLowerCase() === msg && d.sub === '' && d.tag !== 'MSG_NAME');
+        const countTotal = typeTags.length;
+        const countMandatory = typeTags.filter(t => t.mo === 'm').length;
+        const countOptional = typeTags.filter(t => t.mo === 'o').length;
+
+        html += `
+          <div class="home-card" onclick="goToReference('${msg}')">
+            <div class="home-card-header">
+              <span class="home-card-cat-badge">${catInfo.icon} ${catInfo.name}</span>
+              <span class="home-card-badge">${getMsgLabel(msg)}</span>
+            </div>
+            <h3 class="home-card-title">${title || msg.toUpperCase()}</h3>
+            <p class="home-card-desc">${desc || (currentLang === 'en' ? 'SWIFT Financial Message reference details.' : 'Rincian referensi pesan keuangan SWIFT.')}</p>
+            <div class="home-card-meta">
+              <div class="home-card-stats">
+                <b>${countTotal}</b> ${dict.homeCardTagsCount || 'Tag'} (${countMandatory} ${dict.homeCardMandatory || 'Wajib'} • ${countOptional} ${dict.homeCardOptional || 'Opsional'})
+              </div>
+              <div class="home-card-actions">
+                <a href="#" class="home-card-btn home-card-btn-secondary" onclick="event.stopPropagation(); goToReference('${msg}')">📖 Kamus</a>
+                ${(msg === 'mt940' || msg === 'mt564') ? `<a href="#" class="home-card-btn home-card-btn-primary" onclick="event.stopPropagation(); goToParser('${msg}')">🔍 Parser</a>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      if (!html) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:60px 20px;">
+            ${dict.lblEmpty || 'Tidak ada kategori yang cocok.'}
+          </div>
+        `;
+      } else {
+        container.innerHTML = html;
+      }
+    }
+
+    function goToReference(msgType) {
+      activeFilters = new Set([msgType.toLowerCase()]);
+      currentPage = 1;
+      
+      const searchColumn = document.getElementById('searchColumn');
+      if (searchColumn) searchColumn.value = 'all';
+      
+      const searchInputElement = document.getElementById('searchInput');
+      if (searchInputElement) searchInputElement.value = '';
+
+      switchTab('reference');
+    }
+
+    function goToParser(msgType) {
+      switchTab('parser');
+      loadSampleData(msgType.toLowerCase());
+    }
 
     let currentLang = localStorage.getItem('swift_lang') || 'id';
 
     function resetToHome() {
-      // Switch to Reference Dictionary tab
-      switchTab('reference');
+      // Switch to Home tab
+      switchTab('home');
 
       // Clear parser state
       activeStatement = null;
@@ -4244,11 +5012,44 @@ SALARY PAYMENTS
         searchInput.placeholder = parserActive ? dict.searchDisabled : dict.searchPlaceholder;
       }
       
+      const lblTabHome = document.getElementById('lbl-tabHome');
+      if (lblTabHome) lblTabHome.innerText = dict.lblTabHome;
+
       const tabRef = document.getElementById('tab-reference');
-      if (tabRef) tabRef.innerText = dict.tabRef;
+      if (tabRef) {
+        const lblKamus = document.getElementById('lbl-tabKamus');
+        if (lblKamus) lblKamus.innerText = dict.lblTabKamus;
+      }
       
       const tabParser = document.getElementById('tab-parser');
-      if (tabParser) tabParser.innerText = dict.tabParser;
+      if (tabParser) {
+        const lblParser = document.getElementById('lbl-tabParser');
+        if (lblParser) lblParser.innerText = dict.lblTabParser;
+      }
+
+      // Homepage translation updates
+      const lblHomeTitle = document.getElementById('lbl-homeTitle');
+      if (lblHomeTitle) lblHomeTitle.innerText = dict.homeTitle;
+      const lblHomeSubtitle = document.getElementById('lbl-homeSubtitle');
+      if (lblHomeSubtitle) lblHomeSubtitle.innerText = dict.homeSubtitle;
+      const homeSearchInput = document.getElementById('homeSearchInput');
+      if (homeSearchInput) homeSearchInput.placeholder = dict.homeSearchPlaceholder;
+
+      const lblHeroEyebrow = document.getElementById('lbl-heroEyebrow');
+      if (lblHeroEyebrow) lblHeroEyebrow.innerText = currentLang === 'en' ? "SWIFT Standard Reference" : "Referensi Standar SWIFT";
+      
+      const lblStatLabelCat = document.getElementById('lbl-statLabelCat');
+      if (lblStatLabelCat) lblStatLabelCat.innerText = dict.homeStatsCategories;
+      const lblStatLabelTags = document.getElementById('lbl-statLabelTags');
+      if (lblStatLabelTags) lblStatLabelTags.innerText = dict.homeStatsTags;
+      const lblStatLabelCustom = document.getElementById('lbl-statLabelCustom');
+      if (lblStatLabelCustom) lblStatLabelCustom.innerText = dict.homeStatsCustom;
+      
+      const lblFilterTitle = document.getElementById('lbl-filterTitle');
+      if (lblFilterTitle) lblFilterTitle.innerText = currentLang === 'en' ? "Filter Categories" : "Filter Kategori";
+
+      // Re-render home content with updated lang
+      renderHome();
       
       // Update filters translations
       renderFilters();
@@ -4334,6 +5135,7 @@ SALARY PAYMENTS
 
     loadData().then(() => {
       applyLang();
+      switchTab(currentTab);
     });
   </script>
 </body>
