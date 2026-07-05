@@ -53,6 +53,15 @@ The parser supports **8 SWIFT message types** with auto-detection:
 - System tag deactivation (soft-delete) to hide without permanently removing
 - Message type category & metadata management
 
+### 🔄 Reconciliation Simulator
+- **Multi-Message Processing**: Supports loading and parsing multiple statement messages and payment messages at once (separated by double newlines or `---`).
+- **Tiered Matching Engine**: Client-side stateless algorithm executing:
+  1. **Exact Match**: Exact amount + payment reference (`:20:`) found in statement narrative.
+  2. **Partial Match**: Exact amount + payment reference not found (needs manual review).
+  3. **Amount-only Match**: Reference matched + amount within small tolerance (up to 5% or 50.00 units, accounting for fees/charges).
+- **Interactive Dashboard**: Bilingual summary cards, comparison tables, side-by-side details, and executive business insights.
+- **Developer Utilities**: Export matched output as structured JSON for easy debugging.
+
 ### 🌐 Bilingual Support (ID / EN)
 - Full support for Bahasa Indonesia (default) and English
 - Real-time language toggle without page reload
