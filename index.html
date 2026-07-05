@@ -1464,166 +1464,77 @@
       margin-top: 2px;
     }
     
-    /* Modal Styles */
-    .home-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(6px);
-      z-index: 1000;
+    /* Detail Page Styles */
+    .detail-nav-back {
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
     }
-    .home-modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
+    .detail-nav-back .back-link {
+      color: var(--gold);
+      font-weight: 600;
+      font-size: 14.5px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s ease;
     }
-    .home-modal-container {
-      background: var(--panel);
+    .detail-nav-back .back-link:hover {
+      color: var(--accent);
+    }
+    .detail-header-card {
+      background: linear-gradient(135deg, var(--accent-soft) 0%, var(--panel) 100%);
       border: 1px solid var(--line);
       border-radius: 16px;
-      width: 90%;
-      max-width: 650px;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-      transform: scale(0.95);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden;
+      padding: 32px;
+      box-shadow: 0 4px 20px var(--shadow);
+      margin-bottom: 24px;
     }
-    .home-modal-overlay.active .home-modal-container {
-      transform: scale(1);
-    }
-    .home-modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--line);
+    .detail-header-top {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    .home-modal-title-area {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .home-modal-close {
-      background: none;
-      border: none;
-      color: var(--ink-soft);
-      font-size: 24px;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 50%;
-      display: flex;
+      gap: 12px;
       align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      transition: all 0.2s ease;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
     }
-    .home-modal-close:hover {
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-    .home-modal-body {
-      padding: 24px;
-      overflow-y: auto;
-      flex-grow: 1;
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--ink-soft);
-    }
-    .home-modal-desc {
-      font-size: 14.5px;
-      color: var(--ink);
-      margin-bottom: 20px;
-      padding: 16px;
-      background: var(--accent-soft);
-      border-left: 4px solid var(--accent);
-      border-radius: 8px;
-    }
-    .home-modal-section-title {
+    .detail-title {
       font-family: var(--serif);
-      font-size: 16px;
+      font-size: 28px;
       font-weight: 700;
       color: var(--ink);
-      margin: 20px 0 10px 0;
+      margin: 0 0 12px 0;
+      line-height: 1.2;
+    }
+    .detail-desc {
+      font-size: 15px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+      max-width: 800px;
+    }
+    .detail-quick-actions {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-    .home-modal-tag-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 250px;
-      overflow-y: auto;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px;
-      background: var(--paper);
-    }
-    .home-modal-tag-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      border-radius: 6px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      font-size: 13px;
-    }
-    .home-modal-tag-badge {
-      font-family: var(--mono);
-      font-weight: 700;
-      color: var(--accent);
-      background: var(--accent-soft);
-      padding: 2px 6px;
-      border-radius: 4px;
-      min-width: 50px;
-      text-align: center;
-    }
-    .home-modal-tag-name {
-      flex-grow: 1;
-      margin-left: 12px;
-      color: var(--ink);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-align: left;
-    }
-    .home-modal-tag-mo {
+    .detail-tag-mo-badge {
       font-size: 11px;
       text-transform: uppercase;
       font-weight: 700;
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
-      min-width: 32px;
+      display: inline-block;
       text-align: center;
+      min-width: 32px;
     }
-    .home-modal-tag-mo.m {
+    .detail-tag-mo-badge.m {
       color: hsl(140, 70%, 30%);
       background: hsl(140, 70%, 93%);
     }
-    .home-modal-tag-mo.o {
+    .detail-tag-mo-badge.o {
       color: hsl(36, 75%, 35%);
       background: hsl(36, 75%, 93%);
-    }
-    .home-modal-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--line);
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      background: var(--paper);
     }
     
     /* Homepage Cards Grid */
@@ -1873,36 +1784,79 @@
       <div class="home-cards-grid" id="homeCardsContainer">
         <!-- Will be populated dynamically -->
       </div>
+    </div>
+    
+    <!-- Halaman Detail Pesan SWIFT -->
+    <div id="view-detail" style="display:none;">
+      <div class="detail-nav-back">
+        <a href="#" class="back-link" onclick="switchTab('home'); return false;">
+          <span id="lbl-detailBack">Kembali ke Beranda</span>
+        </a>
+      </div>
 
-      <!-- Modal Detail Pesan SWIFT -->
-      <div id="homeModalOverlay" class="home-modal-overlay" onclick="closeHomeModal()">
-        <div class="home-modal-container" onclick="event.stopPropagation()">
-          <div class="home-modal-header">
-            <div class="home-modal-title-area">
-              <span id="modalCatBadge" class="home-card-cat-badge"></span>
-              <h2 id="modalTitle" class="home-card-title" style="font-size:22px; margin-top:8px;"></h2>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span id="modalMsgBadge" class="home-card-badge"></span>
-              <button class="home-modal-close" onclick="closeHomeModal()">&times;</button>
-            </div>
+      <div class="detail-header-card">
+        <div class="detail-header-top">
+          <span id="detailCatBadge" class="home-card-cat-badge"></span>
+          <span id="detailMsgBadge" class="home-card-badge"></span>
+        </div>
+        <h1 id="detailTitle" class="detail-title"></h1>
+        <p id="detailDesc" class="detail-desc"></p>
+        
+        <div class="detail-quick-actions">
+          <button id="detailBtnKamus" class="home-card-btn home-card-btn-secondary" style="font-size: 14px; padding: 10px 18px;">
+            <span id="lbl-detailKamusBtn">Buka Kamus Referensi</span>
+          </button>
+          <button id="detailBtnParser" class="home-card-btn home-card-btn-primary" style="font-size: 14px; padding: 10px 18px; display: none;">
+            <span id="lbl-detailParserBtn">Visualisasikan di Parser</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="home-stats-bar" style="margin-top: 24px; margin-bottom: 24px;">
+        <div class="stat-card">
+          <div class="stat-icon">🏷️</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-detailTotalTags">Jumlah Field / Tag</span>
+            <span class="stat-value" id="detail-total-tags">0</span>
           </div>
-          <div class="home-modal-body">
-            <div id="modalDesc" class="home-modal-desc"></div>
-            
-            <div class="home-modal-section-title">
-              📋 <span id="lbl-modalFields">Struktur Field / Tag</span>
-            </div>
-            <div id="modalStatsText" style="margin-bottom: 12px; font-size:12px; font-weight:600; color:var(--ink-soft);"></div>
-            <div id="modalTagList" class="home-modal-tag-list">
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-detailMandatoryTags">Tag Wajib (Mandatory)</span>
+            <span class="stat-value" id="detail-mandatory-tags">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💡</div>
+          <div class="stat-info">
+            <span class="stat-label" id="lbl-detailOptionalTags">Tag Opsional</span>
+            <span class="stat-value" id="detail-optional-tags">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div style="padding: 20px 24px; border-bottom: 1px solid var(--line); display:flex; justify-content:space-between; align-items:center;">
+          <h3 class="table-card-title" style="margin: 0; font-family: var(--serif); font-size: 18px; font-weight: 700; color: var(--ink);">
+            📋 <span id="lbl-detailTableTitle">Spesifikasi Struktur Tag</span>
+          </h3>
+        </div>
+        <div class="table-wrap">
+          <table class="sf-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Tag</th>
+                <th id="lbl-thDetailName">Nama Field</th>
+                <th style="width: 70px; text-align: center;">M/O</th>
+                <th style="width: 120px;">Format</th>
+                <th id="lbl-thDetailDesc">Keterangan / Aturan Validasi</th>
+              </tr>
+            </thead>
+            <tbody id="detailTagsTableBody">
               <!-- Will be populated dynamically -->
-            </div>
-          </div>
-          <div class="home-modal-footer">
-            <button class="home-card-btn home-card-btn-secondary" onclick="closeHomeModal()"><span id="lbl-modalClose">Tutup</span></button>
-            <button id="modalBtnKamus" class="home-card-btn home-card-btn-secondary">📖 <span id="lbl-modalKamus">Kamus</span></button>
-            <button id="modalBtnParser" class="home-card-btn home-card-btn-primary">🔍 <span id="lbl-modalParser">Parser</span></button>
-          </div>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1980,6 +1934,8 @@
               <option value="mt950">MT 950 (Statement Message)</option>
               <option value="mt103">MT 103 (Single Customer Funds Transfer)</option>
               <option value="mt101">MT 101 (Request for Transfer)</option>
+              <option value="mt102">MT 102 (Multiple Customer Funds Transfer)</option>
+              <option value="mt104">MT 104 (Direct Debit / Request for Debit Transfer)</option>
               <option value="mt564">MT 564 (Corporate Action Notification)</option>
             </select>
           </div>
@@ -2016,9 +1972,8 @@
 
 
     <footer>
-      <span id="lbl-footer">Data bersumber dari</span> <a href="https://developer.gs.com/docs/services/transaction-banking/swift-reporting/"
-        target="_blank" style="color:var(--accent)">Goldman Sachs Developer Docs</a>.
-      <span id="lbl-footer2">Untuk implementasi resmi, selalu rujuk standar Swift terbaru dan dokumentasi mitra perbankan terkait.</span>
+      <span id="lbl-footer">SWIFT Messaging Portal &copy; 2026. Referensi &amp; Parser Visualisasi Pesan Keuangan Standar SWIFT.</span>
+      <span id="lbl-footer2" style="display: none;"></span>
     </footer>
   </div>
 
@@ -2047,7 +2002,7 @@
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error('API fetch failed');
         const dbData = await res.json();
-        DATA = dbData;
+        DATA = dbData.filter(d => d.is_active !== 0);
         isApiConnected = true;
         
         const systemCount = DATA.filter(d => d.source === 'system' || d.source === 'gs-docs').length;
@@ -2791,6 +2746,8 @@
       if (viewRef) viewRef.style.display = tabId === 'reference' ? 'block' : 'none';
       const viewParser = document.getElementById('view-parser');
       if (viewParser) viewParser.style.display = tabId === 'parser' ? 'block' : 'none';
+      const viewDetail = document.getElementById('view-detail');
+      if (viewDetail) viewDetail.style.display = tabId === 'detail' ? 'block' : 'none';
 
       const filtersContainer = document.getElementById('filtersContainer');
       if (filtersContainer) {
@@ -4488,7 +4445,29 @@
     }
 
     function loadSampleData(type) {
-      if (type === 'mt564') {
+      if (type === 'mt942') {
+        const sample942 = `{1:F01BANKDEFXAXXX0000000000}{2:I942BANKDEFXXXXXN}{4:
+:20:15486025400
+:25:107048825
+:28C:1/1
+:34F:USD0,00
+:61:2502180218D12,01NTRFGSLNVSHSUTKWDR//GI2504900007841
+:86:INTERIM TRANSACTION REPORT
+-}`;
+        document.getElementById('rawInput').value = sample942;
+        document.getElementById('parserTypeSelect').value = 'mt942';
+      } else if (type === 'mt950') {
+        const sample950 = `{1:F01BANKDEFXAXXX0000000000}{2:I950BANKDEFXXXXXN}{4:
+:20:950REF12345
+:25:987654321
+:28C:1/1
+:60F:C200506USD15000,00
+:61:2005060506D500,00NTRF//REF54321
+:62F:C200506USD14500,00
+-}`;
+        document.getElementById('rawInput').value = sample950;
+        document.getElementById('parserTypeSelect').value = 'mt950';
+      } else if (type === 'mt564') {
         const sample564 = `{1:F01SENDERBIC0000000000}{2:O5641234051025RECEIVERBIC0000000000N}{4:
 :16R:GENL
 :20C::SEME//REF123456789
@@ -4679,8 +4658,8 @@ SALARY PAYMENTS
         lblBaris: "baris",
         lblEmpty: "Tidak ada tag yang cocok dengan pencarian Anda.<br>Coba kata kunci lain.",
         lblShowing: "Menampilkan",
-        lblFooter: "Data bersumber dari",
-        lblFooter2: "Untuk implementasi resmi, selalu rujuk standar Swift terbaru dan dokumentasi mitra perbankan terkait.",
+        lblFooter: "SWIFT Messaging Portal © 2026. Referensi & Parser Visualisasi Pesan Keuangan Standar SWIFT.",
+        lblFooter2: "",
         lblParserGuide: "Paste raw message Swift di atas, lalu klik <b>Parse Message</b> untuk visualisasi interaktif.",
         lblAccount: "Rekening",
         lblStatement: "Laporan",
@@ -4732,10 +4711,15 @@ SALARY PAYMENTS
         homeCardMandatory: "Wajib",
         homeCardOptional: "Opsional",
         
-        lblModalFields: "Struktur Field / Tag",
-        lblModalClose: "Tutup",
-        lblModalKamus: "Kamus",
-        lblModalParser: "Parser"
+        lblDetailBack: "← Kembali ke Beranda",
+        lblDetailKamusBtn: "📖 Buka Kamus Referensi",
+        lblDetailParserBtn: "🔍 Visualisasikan di Parser",
+        lblDetailTotalTags: "Jumlah Field / Tag",
+        lblDetailMandatoryTags: "Tag Wajib (Mandatory)",
+        lblDetailOptionalTags: "Tag Opsional",
+        lblDetailTableTitle: "Spesifikasi Struktur Tag",
+        thDetailName: "Nama Field",
+        thDetailDesc: "Keterangan / Aturan Validasi"
       },
       en: {
         export: "⬇ Export CSV",
@@ -4763,8 +4747,8 @@ SALARY PAYMENTS
         lblBaris: "rows",
         lblEmpty: "No matching tags found.<br>Try another keyword.",
         lblShowing: "Showing",
-        lblFooter: "Data sourced from",
-        lblFooter2: "For official implementations, always refer to the latest Swift standards and partner bank documentation.",
+        lblFooter: "SWIFT Messaging Portal © 2026. Reference & Visualization Parser for Standard SWIFT Financial Messages.",
+        lblFooter2: "",
         lblParserGuide: "Paste raw Swift message above, then click <b>Parse Message</b> to view interactive bank statement visualization.",
         lblAccount: "Account",
         lblStatement: "Statement",
@@ -4816,10 +4800,15 @@ SALARY PAYMENTS
         homeCardMandatory: "Mandatory",
         homeCardOptional: "Optional",
         
-        lblModalFields: "Field / Tag Structure",
-        lblModalClose: "Close",
-        lblModalKamus: "Dictionary",
-        lblModalParser: "Parser"
+        lblDetailBack: "← Back to Home",
+        lblDetailKamusBtn: "📖 Open Reference Dictionary",
+        lblDetailParserBtn: "🔍 Open in Parser",
+        lblDetailTotalTags: "Total Fields / Tags",
+        lblDetailMandatoryTags: "Mandatory Tags",
+        lblDetailOptionalTags: "Optional Tags",
+        lblDetailTableTitle: "Tag Structure Specification",
+        thDetailName: "Field Name",
+        thDetailDesc: "Description / Validation Rules"
       }
     };
 
@@ -5002,9 +4991,16 @@ SALARY PAYMENTS
       const searchInput = document.getElementById('homeSearchInput');
       const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-      const msgTypesSet = new Set(DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category').map(d => d.msg.toLowerCase()));
-      const coreTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564'];
-      coreTypes.forEach(t => msgTypesSet.add(t));
+      const popularTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt564'];
+      const msgTypesSet = new Set();
+      
+      if (q) {
+        DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category')
+            .forEach(d => msgTypesSet.add(d.msg.toLowerCase()));
+        popularTypes.forEach(t => msgTypesSet.add(t));
+      } else {
+        popularTypes.forEach(t => msgTypesSet.add(t));
+      }
 
       const sortedMsgTypes = Array.from(msgTypesSet).sort();
       const dict = i18n[currentLang];
@@ -5059,7 +5055,7 @@ SALARY PAYMENTS
               </div>
               <div class="home-card-actions">
                 <a href="#" class="home-card-btn home-card-btn-secondary" onclick="event.stopPropagation(); goToReference('${msg}')">📖 Kamus</a>
-                ${(msg === 'mt940' || msg === 'mt564') ? `<a href="#" class="home-card-btn home-card-btn-primary" onclick="event.stopPropagation(); goToParser('${msg}')">🔍 Parser</a>` : ''}
+                ${isParserSupported(msg) ? `<a href="#" class="home-card-btn home-card-btn-primary" onclick="event.stopPropagation(); goToParser('${msg}')">🔍 Parser</a>` : ''}
               </div>
             </div>
           </div>
@@ -5090,12 +5086,18 @@ SALARY PAYMENTS
       switchTab('reference');
     }
 
+    function isParserSupported(msg) {
+      const supported = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564'];
+      return supported.includes(msg.toLowerCase());
+    }
+
     function goToParser(msgType) {
       switchTab('parser');
       loadSampleData(msgType.toLowerCase());
     }
 
     function showMsgDetails(msg) {
+      activeDetailMsg = msg;
       const msgNameRow = DATA.find(d => d.msg && d.msg.toLowerCase() === msg && d.tag === 'MSG_NAME');
       
       let title = '';
@@ -5122,82 +5124,93 @@ SALARY PAYMENTS
       const countMandatory = typeTags.filter(t => t.mo === 'm').length;
       const countOptional = typeTags.filter(t => t.mo === 'o').length;
 
-      const modalCatBadge = document.getElementById('modalCatBadge');
-      if (modalCatBadge) modalCatBadge.innerHTML = `${catInfo.icon} ${catInfo.name}`;
+      const detailCatBadge = document.getElementById('detailCatBadge');
+      if (detailCatBadge) detailCatBadge.innerHTML = `${catInfo.icon} ${catInfo.name}`;
       
-      const modalMsgBadge = document.getElementById('modalMsgBadge');
-      if (modalMsgBadge) modalMsgBadge.innerText = getMsgLabel(msg);
+      const detailMsgBadge = document.getElementById('detailMsgBadge');
+      if (detailMsgBadge) detailMsgBadge.innerText = getMsgLabel(msg);
       
-      const modalTitle = document.getElementById('modalTitle');
-      if (modalTitle) modalTitle.innerText = title || msg.toUpperCase();
+      const detailTitle = document.getElementById('detailTitle');
+      if (detailTitle) detailTitle.innerText = title || msg.toUpperCase();
       
-      const modalDesc = document.getElementById('modalDesc');
-      if (modalDesc) modalDesc.innerText = desc || (currentLang === 'en' ? 'SWIFT Financial Message reference details.' : 'Rincian referensi pesan keuangan SWIFT.');
+      const detailDesc = document.getElementById('detailDesc');
+      if (detailDesc) detailDesc.innerText = desc || (currentLang === 'en' ? 'SWIFT Financial Message reference details.' : 'Rincian referensi pesan keuangan SWIFT.');
 
-      const dict = i18n[currentLang];
-      
-      const modalStatsText = document.getElementById('modalStatsText');
-      if (modalStatsText) {
-        modalStatsText.innerHTML = `
-          <b>${countTotal}</b> ${dict.homeCardTagsCount || 'Tag'} (${countMandatory} ${dict.homeCardMandatory || 'Wajib'} • ${countOptional} ${dict.homeCardOptional || 'Opsional'})
-        `;
+      const totalVal = document.getElementById('detail-total-tags');
+      if (totalVal) totalVal.innerText = countTotal;
+      const mandVal = document.getElementById('detail-mandatory-tags');
+      if (mandVal) mandVal.innerText = countMandatory;
+      const optVal = document.getElementById('detail-optional-tags');
+      if (optVal) optVal.innerText = countOptional;
+
+      const detailBtnKamus = document.getElementById('detailBtnKamus');
+      if (detailBtnKamus) {
+        detailBtnKamus.onclick = () => goToReference(msg);
       }
 
-      const tagListContainer = document.getElementById('modalTagList');
-      if (tagListContainer) {
-        if (typeTags.length === 0) {
-          tagListContainer.innerHTML = `<div style="padding:12px; text-align:center; color:var(--ink-soft);">${currentLang === 'en' ? 'No fields registered.' : 'Tidak ada field yang terdaftar.'}</div>`;
+      const detailBtnParser = document.getElementById('detailBtnParser');
+      if (detailBtnParser) {
+        if (isParserSupported(msg)) {
+          detailBtnParser.style.display = 'inline-flex';
+          detailBtnParser.onclick = () => goToParser(msg);
         } else {
-          let listHtml = '';
+          detailBtnParser.style.display = 'none';
+        }
+      }
+
+      const tbody = document.getElementById('detailTagsTableBody');
+      if (tbody) {
+        if (typeTags.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 24px; color: var(--ink-soft);">
+                ${currentLang === 'en' ? 'No fields registered for this message type.' : 'Tidak ada tag terdaftar untuk tipe pesan ini.'}
+              </td>
+            </tr>
+          `;
+        } else {
+          let rowsHtml = '';
           typeTags.forEach(t => {
             const tagName = currentLang === 'en' ? (t.name_en || t.name) : (t.name || t.name_en);
+            const tagDesc = currentLang === 'en' ? (t.desc_en || t.desc) : (t.desc || t.desc_en);
             const moClass = t.mo ? t.mo.toLowerCase() : 'o';
             const moLabel = t.mo ? t.mo.toUpperCase() : 'O';
-            listHtml += `
-              <div class="home-modal-tag-item">
-                <span class="home-modal-tag-badge">:${t.tag}</span>
-                <span class="home-modal-tag-name" title="${tagName}">${tagName}</span>
-                <span class="home-modal-tag-mo ${moClass}">${moLabel}</span>
-              </div>
+            rowsHtml += `
+              <tr onclick="handleDetailTagClick('${t.msg}', '${t.tag}')">
+                <td style="font-family: var(--mono); font-weight: 700; color: var(--accent); padding: 12px 8px;">:${t.tag}</td>
+                <td style="font-weight: 600; color: var(--ink); padding: 12px 8px;">${tagName}</td>
+                <td style="text-align: center; padding: 12px 8px;">
+                  <span class="detail-tag-mo-badge ${moClass}">${moLabel}</span>
+                </td>
+                <td style="font-family: var(--mono); font-size: 13px; color: var(--ink-soft); padding: 12px 8px;">${t.len || '-'}</td>
+                <td style="color: var(--ink-soft); font-size: 13.5px; line-height: 1.5; padding: 12px 8px; text-align: left;">${tagDesc || '-'}</td>
+              </tr>
             `;
           });
-          tagListContainer.innerHTML = listHtml;
+          tbody.innerHTML = rowsHtml;
         }
       }
 
-      const modalBtnKamus = document.getElementById('modalBtnKamus');
-      if (modalBtnKamus) {
-        modalBtnKamus.onclick = () => {
-          closeHomeModal();
-          goToReference(msg);
-        };
-      }
-
-      const modalBtnParser = document.getElementById('modalBtnParser');
-      if (modalBtnParser) {
-        if (msg === 'mt940' || msg === 'mt564') {
-          modalBtnParser.style.display = 'inline-flex';
-          modalBtnParser.onclick = () => {
-            closeHomeModal();
-            goToParser(msg);
-          };
-        } else {
-          modalBtnParser.style.display = 'none';
-        }
-      }
-
-      const overlay = document.getElementById('homeModalOverlay');
-      if (overlay) overlay.classList.add('active');
+      switchTab('detail');
     }
 
-    function closeHomeModal() {
-      const overlay = document.getElementById('homeModalOverlay');
-      if (overlay) overlay.classList.remove('active');
+    function handleDetailTagClick(msg, tag) {
+      const row = DATA.find(d => d.msg && d.msg.toLowerCase() === msg.toLowerCase() && d.tag === tag && d.sub === '');
+      if (!row) return;
+      const subFields = DATA.filter(d => d.msg === row.msg && d.tag === row.tag && d.sub !== '');
+      if (subFields.length > 0) {
+        switchTab('reference');
+        openSubPage(row, subFields);
+      } else {
+        openDetail(row);
+      }
     }
 
+    let activeDetailMsg = null;
     let currentLang = localStorage.getItem('swift_lang') || 'id';
 
     function resetToHome() {
+      activeDetailMsg = null;
       // Switch to Home tab
       switchTab('home');
 
@@ -5273,17 +5286,33 @@ SALARY PAYMENTS
       const lblStatLabelCustom = document.getElementById('lbl-statLabelCustom');
       if (lblStatLabelCustom) lblStatLabelCustom.innerText = dict.homeStatsCustom;
 
-      const lblModalFields = document.getElementById('lbl-modalFields');
-      if (lblModalFields) lblModalFields.innerText = dict.lblModalFields;
-      const lblModalClose = document.getElementById('lbl-modalClose');
-      if (lblModalClose) lblModalClose.innerText = dict.lblModalClose;
-      const lblModalKamus = document.getElementById('lbl-modalKamus');
-      if (lblModalKamus) lblModalKamus.innerText = dict.lblModalKamus;
-      const lblModalParser = document.getElementById('lbl-modalParser');
-      if (lblModalParser) lblModalParser.innerText = dict.lblModalParser;
+      const lblDetailBack = document.getElementById('lbl-detailBack');
+      if (lblDetailBack) lblDetailBack.innerText = dict.lblDetailBack;
+      const lblDetailKamusBtn = document.getElementById('lbl-detailKamusBtn');
+      if (lblDetailKamusBtn) lblDetailKamusBtn.innerText = dict.lblDetailKamusBtn;
+      const lblDetailParserBtn = document.getElementById('lbl-detailParserBtn');
+      if (lblDetailParserBtn) lblDetailParserBtn.innerText = dict.lblDetailParserBtn;
+      const lblDetailTotalTags = document.getElementById('lbl-detailTotalTags');
+      if (lblDetailTotalTags) lblDetailTotalTags.innerText = dict.lblDetailTotalTags;
+      const lblDetailMandatoryTags = document.getElementById('lbl-detailMandatoryTags');
+      if (lblDetailMandatoryTags) lblDetailMandatoryTags.innerText = dict.lblDetailMandatoryTags;
+      const lblDetailOptionalTags = document.getElementById('lbl-detailOptionalTags');
+      if (lblDetailOptionalTags) lblDetailOptionalTags.innerText = dict.lblDetailOptionalTags;
+      const lblDetailTableTitle = document.getElementById('lbl-detailTableTitle');
+      if (lblDetailTableTitle) lblDetailTableTitle.innerText = dict.lblDetailTableTitle;
+
+      const lblThDetailName = document.getElementById('lbl-thDetailName');
+      if (lblThDetailName) lblThDetailName.innerText = dict.thDetailName;
+      const lblThDetailDesc = document.getElementById('lbl-thDetailDesc');
+      if (lblThDetailDesc) lblThDetailDesc.innerText = dict.thDetailDesc;
 
       // Re-render home content with updated lang
       renderHome();
+      
+      // Re-render detail content with updated lang if active
+      if (currentTab === 'detail' && activeDetailMsg) {
+        showMsgDetails(activeDetailMsg);
+      }
       
       // Update filters translations
       renderFilters();
