@@ -2112,6 +2112,7 @@
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="parseSwift()" id="pBtn">Parse Message</button>
           <button class="btn btn-ghost" onclick="clearParser()" id="btnClearParser">✕ Bersihkan</button>
+          <button class="btn btn-ghost" onclick="anonymizeInput()" id="btnAnonymize" style="border-color: var(--gold); color: var(--gold); background: transparent; font-weight: 700;">🔒 Sensor Data Sensitif</button>
         </div>
       </div>
 
@@ -6767,6 +6768,88 @@ BENEFICIARYBIC
       activeStatement = null;
     }
 
+    function anonymizeInput() {
+      const textarea = document.getElementById('rawInput');
+      if (!textarea || !textarea.value.trim()) return;
+      let text = textarea.value;
+
+      const lines = text.split('\n');
+      let currentTag = '';
+      let tagLinesCount = 0;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Check for tag start
+        const tagMatch = line.match(/^:([0-9]{2}[A-Z]*):/);
+        if (tagMatch) {
+          currentTag = tagMatch[1];
+          tagLinesCount = 0;
+        }
+
+        if (currentTag) {
+          tagLinesCount++;
+          // 1. Tag 50 (Ordering Customer / Creditor) or Tag 59 (Beneficiary / Debtor)
+          if (currentTag.startsWith('50') || currentTag.startsWith('59')) {
+            if (tagLinesCount === 1) {
+              const accMatch = line.match(/^:([0-9]{2}[A-Z]*):\/([A-Za-z0-9]+)/);
+              if (accMatch) {
+                const tagStr = accMatch[1];
+                const acc = accMatch[2];
+                const maskedAcc = acc.length > 4 ? '*'.repeat(acc.length - 4) + acc.substring(acc.length - 4) : '[MASKED]';
+                lines[i] = `:${tagStr}:/${maskedAcc}`;
+              } else {
+                const tagHeaderMatch = line.match(/^:([0-9]{2}[A-Z]*):(.*)/);
+                if (tagHeaderMatch) {
+                  const tagStr = tagHeaderMatch[1];
+                  const val = tagHeaderMatch[2].trim();
+                  if (val) {
+                    lines[i] = `:${tagStr}:[CLIENT_NAME_MASKED]`;
+                  }
+                }
+              }
+            } else {
+              if (line.trim() && !line.startsWith(':') && line !== '-}') {
+                if (tagLinesCount === 2) {
+                  lines[i] = '[CLIENT_NAME_MASKED]';
+                } else {
+                  lines[i] = '[ADDRESS_MASKED]';
+                }
+              }
+            }
+          }
+
+          // 2. Tag 25 (Account Identification)
+          if (currentTag === '25') {
+            const valMatch = line.match(/^:25:(.*)/);
+            if (valMatch) {
+              const val = valMatch[1].trim();
+              const maskedVal = val.length > 6 ? val.substring(0, 4) + '*'.repeat(val.length - 8) + val.substring(val.length - 4) : '[ACCOUNT_MASKED]';
+              lines[i] = `:25:${maskedVal}`;
+            }
+          }
+
+          // 3. Tag 32A, 32B, 33B (Currency & Amounts)
+          if (currentTag === '32A' || currentTag === '32B' || currentTag === '33B') {
+            const match32A = line.match(/^:32A:([0-9]{6})([A-Z]{3})([0-9]+,[0-9]+)/);
+            const match32B = line.match(/^:([3][23]B):([A-Z]{3})([0-9]+,[0-9]+)/);
+            if (match32A) {
+              const date = match32A[1];
+              const curr = match32A[2];
+              lines[i] = `:32A:${date}${curr}88888,88`;
+            } else if (match32B) {
+              const tagStr = match32B[1];
+              const curr = match32B[2];
+              lines[i] = `:${tagStr}:${curr}88888,88`;
+            }
+          }
+        }
+      }
+
+      textarea.value = lines.join('\n');
+      const alertMsg = currentLang === 'en' ? '🔒 Sensitive data masked! Click "Parse Message" to visualize.' : '🔒 Data sensitif telah disensor! Klik "Parse Message" untuk visualisasi.';
+      showToast(alertMsg);
+    }
+
     const i18n = {
       id: {
         lblAnalyticsTitle: "Analisis & Visualisasi Referensi",
@@ -6808,6 +6891,8 @@ BENEFICIARYBIC
         pLabelInput: "Tempel Pesan SWIFT Mentah",
         lblParserSelectLabel: "Pilih Parser:",
         pBtn: "Parse Message",
+        btnClearParser: "✕ Bersihkan",
+        btnAnonymize: "🔒 Sensor Data Sensitif",
         pLabelOutput: "Hasil Parsing",
         lblDari: "dari",
         lblBaris: "baris",
@@ -6917,6 +7002,8 @@ BENEFICIARYBIC
         pLabelInput: "Paste Raw SWIFT Message",
         lblParserSelectLabel: "Select Parser:",
         pBtn: "Parse Message",
+        btnClearParser: "✕ Clear",
+        btnAnonymize: "🔒 Mask Sensitive Data",
         pLabelOutput: "Parsing Result",
         lblDari: "of",
         lblBaris: "rows",
@@ -7736,6 +7823,10 @@ BENEFICIARYBIC
       document.getElementById('lbl-pLabelInput').innerText = dict.pLabelInput;
       document.getElementById('lbl-parserSelectLabel').innerText = dict.lblParserSelectLabel;
       document.getElementById('pBtn').innerText = dict.pBtn;
+      const btnClearParser = document.getElementById('btnClearParser');
+      if (btnClearParser) btnClearParser.innerText = dict.btnClearParser;
+      const btnAnonymize = document.getElementById('btnAnonymize');
+      if (btnAnonymize) btnAnonymize.innerText = dict.btnAnonymize;
       document.getElementById('lbl-pLabelOutput').innerText = dict.pLabelOutput;
       
       document.getElementById('lbl-dari').innerText = dict.lblDari;

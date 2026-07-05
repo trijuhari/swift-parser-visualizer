@@ -47,6 +47,7 @@ The parser supports **9 SWIFT message types** with auto-detection:
 - ⚙️ **Developer Utilities** — View and copy the structured JSON output of the parsed message (for API integration / debugging)
 - 📊 **Transaction Detail Viewer** — Click any transaction row to view fully parsed sub-fields (MT940/942/950)
 - 💰 **Net Cash Flow Analysis** — Automatic inflow/outflow summary with executive narrative (MT940/942/950)
+- 🔒 **One-Click SWIFT Data Anonymizer** — Instant client data masking (names, accounts, amounts) directly in the browser, allowing developers and operators to share or troubleshoot production messages safely without violating banking privacy regulations (GDPR/UU PDP).
 
 ### 🛠️ Admin Portal (CMS)
 - Accessed via direct URL navigation: `admin.html` (no visible button on the public interface)
