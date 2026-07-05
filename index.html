@@ -4704,9 +4704,15 @@ JOHN DOE
         `;
       });
 
+      const dict = i18n[currentLang];
       return `
         <div style="margin-top: 24px;">
-          <h3 style="margin-bottom: 12px; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Tag Breakdown' : 'Rincian Tag SWIFT - Blok 4'}</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Tag Breakdown' : 'Rincian Tag SWIFT - Blok 4'}</h3>
+            <button class="btn btn-ghost" onclick="exportTagsToCsv()" style="padding: 6px 12px; font-size: 12.5px; border-color: var(--line); font-weight: 700; color: var(--ink);">
+              ${dict.btnExportTags}
+            </button>
+          </div>
           <div class="table-wrap">
             <div class="table-card">
               <table>
@@ -6260,6 +6266,12 @@ JOHN DOE
 
           const tableHtml = `
             <div class="transactions-table-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; font-family: var(--serif); font-size: 16px; color: var(--ink);">${currentLang === 'en' ? 'Statement Transactions' : 'Transaksi Laporan'}</h4>
+                <button class="btn btn-ghost" onclick="exportTransactionsToCsv()" style="padding: 6px 12px; font-size: 12.5px; border-color: var(--line); font-weight: 700; color: var(--ink);">
+                  ${dict.btnExportTx}
+                </button>
+              </div>
               <div class="table-wrap">
                 <div class="table-card">
                   <table>
@@ -6850,6 +6862,160 @@ BENEFICIARYBIC
       showToast(alertMsg);
     }
 
+    function downloadCsv(headers, rows, filename) {
+      const escapeCsvVal = val => {
+        if (val === null || val === undefined) return '';
+        let str = String(val);
+        if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
+          str = '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      };
+
+      const csvLines = [];
+      csvLines.push(headers.map(escapeCsvVal).join(','));
+      rows.forEach(row => {
+        csvLines.push(row.map(escapeCsvVal).join(','));
+      });
+
+      const csvContent = csvLines.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    function exportTagsToCsv() {
+      if (!activeStatement || !activeStatement.tags) return;
+      const msgType = activeStatement.msgType.toLowerCase();
+      const headers = currentLang === 'en' 
+        ? ["Tag", "Field Name", "Description", "Parsed Value"]
+        : ["Tag", "Nama Field", "Deskripsi", "Nilai Hasil Parsing"];
+      const rows = [];
+      const keys = Object.keys(activeStatement.tags).sort();
+      keys.forEach(key => {
+        const val = activeStatement.tags[key];
+        const valStr = Array.isArray(val) ? val.join('\n') : val;
+        const info = findTagInfo(msgType, key);
+        const tagName = info ? (currentLang === 'en' && info.name_en ? info.name_en : info.name) : (currentLang === 'en' ? 'Custom Tag' : 'Tag Kustom');
+        const tagDesc = info ? (currentLang === 'en' && info.desc_en ? info.desc_en : info.desc) : '';
+        rows.push([key, tagName, tagDesc, valStr]);
+      });
+      const filename = `SWIFT_${activeStatement.msgType}_Tags_${new Date().toISOString().slice(0,10)}.csv`;
+      downloadCsv(headers, rows, filename);
+      showToast(currentLang === 'en' ? '✓ Tags exported to CSV!' : '✓ Tag berhasil diekspor ke CSV!');
+    }
+
+    function exportTransactionsToCsv() {
+      if (!activeStatement || !activeStatement.transactions) return;
+      const headers = currentLang === 'en'
+        ? ["Account", "Statement", "Period", "Opening Balance", "Closing Balance", "Credits", "Debits", "Value Date", "Entry Date", "Credit/Debit", "Amount", "Currency", "Transaction Type", "Customer Reference", "Bank Reference", "Narrative"]
+        : ["Rekening", "Laporan", "Periode", "Saldo Awal", "Saldo Akhir", "Kredit", "Debit", "Tanggal Valuta", "Tanggal Entri", "Kredit/Debit", "Nominal", "Mata Uang", "Tipe Transaksi", "Referensi Nasabah", "Referensi Bank", "Narasi/Keterangan"];
+      
+      const currency = (activeStatement.closingBalance ? activeStatement.closingBalance.currency : '') || (activeStatement.openingBalance ? activeStatement.openingBalance.currency : '') || 'USD';
+      
+      const account = activeStatement.account || '';
+      const statementNum = (activeStatement.statementNum || '') + (activeStatement.sequenceNum ? '/' + activeStatement.sequenceNum : '');
+      const period = (activeStatement.openingBalance ? activeStatement.openingBalance.date : '') + ' -> ' + (activeStatement.closingBalance ? activeStatement.closingBalance.date : '');
+      
+      const openingBal = activeStatement.openingBalance ? (activeStatement.openingBalance.sign === '+' ? '+' : '-') + ' ' + formatAmountRaw(activeStatement.openingBalance.amount) + ' ' + currency : '';
+      const closingBal = activeStatement.closingBalance ? (activeStatement.closingBalance.sign === '+' ? '+' : '-') + ' ' + formatAmountRaw(activeStatement.closingBalance.amount) + ' ' + currency : '';
+      
+      let totalCredits = 0;
+      let totalDebits = 0;
+      activeStatement.transactions.forEach(t => {
+        if (t.sign === '+') totalCredits += t.amount;
+        else totalDebits += t.amount;
+      });
+      const creditsStr = '+ ' + formatAmountRaw(totalCredits) + ' ' + currency;
+      const debitsStr = '- ' + formatAmountRaw(totalDebits) + ' ' + currency;
+
+      const rows = activeStatement.transactions.map(t => [
+        account,
+        statementNum,
+        period,
+        openingBal,
+        closingBal,
+        creditsStr,
+        debitsStr,
+        t.valueDate || '',
+        t.entryDate || '',
+        t.sign === '+' ? 'C' : 'D',
+        t.amount,
+        currency,
+        t.typeCode || '',
+        t.customerRef || '',
+        t.bankRef || '',
+        t.narrativeText || ''
+      ]);
+      const filename = `SWIFT_${activeStatement.msgType}_Transactions_${new Date().toISOString().slice(0,10)}.csv`;
+      downloadCsv(headers, rows, filename);
+      showToast(currentLang === 'en' ? '✓ Transactions exported to CSV!' : '✓ Transaksi berhasil diekspor ke CSV!');
+    }
+
+    function exportReconToCsv() {
+      if (!activeReconResults) return;
+      const res = activeReconResults;
+      const headers = currentLang === 'en'
+        ? ["Match Type", "Value Date", "Reference", "Party Details", "Amount", "Currency", "Match Status / Reason"]
+        : ["Tipe Pencocokan", "Tanggal Valuta", "Referensi", "Detail Pihak", "Nominal", "Mata Uang", "Status / Alasan"];
+      const rows = [];
+      res.matched.forEach(m => {
+        rows.push([
+          currentLang === 'en' ? 'Exact Match' : 'Cocok Sempurna',
+          m.statementEntry.valueDate || '',
+          m.paymentEntry.reference || '',
+          m.paymentEntry.beneficiary || m.paymentEntry.ordering || '',
+          m.statementEntry.amount,
+          m.statementEntry.currency || 'USD',
+          currentLang === 'en' ? 'Exact match found' : 'Cocok sempurna ditemukan'
+        ]);
+      });
+      res.partialMatched.forEach(m => {
+        rows.push([
+          currentLang === 'en' ? 'Needs Review' : 'Butuh Tinjauan',
+          m.statementEntry.valueDate || '',
+          m.paymentEntry.reference || '',
+          m.paymentEntry.beneficiary || m.paymentEntry.ordering || '',
+          m.statementEntry.amount,
+          m.statementEntry.currency || 'USD',
+          m.reason || ''
+        ]);
+      });
+      res.unmatchedStatement.forEach(s => {
+        rows.push([
+          currentLang === 'en' ? 'Unmatched Statement' : 'Laporan Tidak Cocok',
+          s.valueDate || '',
+          s.reference || '',
+          s.narrativeText || '',
+          s.amount,
+          s.currency || 'USD',
+          currentLang === 'en' ? 'No matching payment instruction found' : 'Tidak ada instruksi pembayaran yang cocok'
+        ]);
+      });
+      res.unmatchedPayment.forEach(p => {
+        rows.push([
+          currentLang === 'en' ? 'Unmatched Payment' : 'Pembayaran Tidak Cocok',
+          p.valueDate || '',
+          p.reference || '',
+          p.beneficiary || p.ordering || '',
+          p.amount,
+          p.currency || 'USD',
+          currentLang === 'en' ? 'No matching statement transaction entry found' : 'Tidak ada mutasi laporan yang cocok'
+        ]);
+      });
+      const filename = `Reconciliation_Report_${new Date().toISOString().slice(0,10)}.csv`;
+      downloadCsv(headers, rows, filename);
+      showToast(currentLang === 'en' ? '✓ Reconciliation report exported!' : '✓ Laporan rekonsiliasi berhasil diekspor!');
+    }
+
     const i18n = {
       id: {
         lblAnalyticsTitle: "Analisis & Visualisasi Referensi",
@@ -6893,6 +7059,9 @@ BENEFICIARYBIC
         pBtn: "Parse Message",
         btnClearParser: "✕ Bersihkan",
         btnAnonymize: "🔒 Sensor Data Sensitif",
+        btnExportTags: "⬇ Ekspor CSV Tag",
+        btnExportTx: "⬇ Ekspor CSV Transaksi",
+        btnExportRecon: "⬇ Ekspor Laporan Rekonsiliasi",
         pLabelOutput: "Hasil Parsing",
         lblDari: "dari",
         lblBaris: "baris",
@@ -7004,6 +7173,9 @@ BENEFICIARYBIC
         pBtn: "Parse Message",
         btnClearParser: "✕ Clear",
         btnAnonymize: "🔒 Mask Sensitive Data",
+        btnExportTags: "⬇ Export Tags CSV",
+        btnExportTx: "⬇ Export Transactions CSV",
+        btnExportRecon: "⬇ Export Reconciliation Report",
         pLabelOutput: "Parsing Result",
         lblDari: "of",
         lblBaris: "rows",
@@ -8379,10 +8551,15 @@ BENEFICIARYBIC
       }
       
       document.getElementById('reconBusinessInsight').innerHTML = `
-        <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-          <span>💡</span> ${currentLang === 'id' ? 'Ringkasan Eksekutif Rekonsiliasi' : 'Reconciliation Executive Summary'}
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Ringkasan Eksekutif Rekonsiliasi' : 'Reconciliation Executive Summary'}
+          </div>
+          <button class="btn btn-primary" onclick="exportReconToCsv()" style="padding: 6px 12px; font-size: 12.5px; font-weight: 700; background: var(--primary-color); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: opacity .15s;">
+            ${dict.btnExportRecon}
+          </button>
         </div>
-        <div>${insightText}</div>
+        <div style="color: var(--ink);">${insightText}</div>
       `;
 
       // 3. Matched Tab Content
