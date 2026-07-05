@@ -332,40 +332,144 @@
       gap: 12px;
     }
 
+    /* Welcome Banner */
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, #1e1b4b) 100%);
+      color: #ffffff;
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .welcome-banner::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+      pointer-events: none;
+    }
+
+    .welcome-text h2 {
+      margin: 0 0 8px;
+      font-family: var(--serif);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .welcome-text p {
+      margin: 0;
+      opacity: 0.9;
+      font-size: 14.5px;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    .welcome-badge {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    html.dark .welcome-banner {
+      background: linear-gradient(135deg, #115e59 0%, #020617 100%);
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    @media (max-width: 768px) {
+      .welcome-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+    }
+
     /* Stats Grid */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .stats-card {
       background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
+      border: 1.5px solid var(--line);
+      border-radius: 20px;
       padding: 24px;
       box-shadow: var(--card-shadow);
       display: flex;
       align-items: center;
       gap: 20px;
-      transition: all 0.25s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stats-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: transparent;
+      transition: background 0.3s ease;
     }
 
     .stats-card:hover {
-      transform: translateY(-2px);
+      transform: translateY(-4px);
       box-shadow: var(--shadow-lg);
+      border-color: var(--card-accent-color, var(--accent));
+    }
+
+    .stats-card:hover::before {
+      background: var(--card-accent-color, var(--accent));
+    }
+
+    .stats-card:hover .stats-icon {
+      transform: scale(1.1) rotate(5deg);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--card-accent-color, var(--accent)) 25%, transparent);
     }
 
     .stats-icon {
       font-size: 26px;
       width: 56px;
       height: 56px;
-      background: var(--accent-soft);
-      border-radius: 12px;
+      border-radius: 14px;
       display: flex;
       justify-content: center;
       align-items: center;
-      color: var(--accent);
+      transition: all 0.3s ease;
     }
 
     .stats-info {
@@ -374,7 +478,7 @@
     }
 
     .stats-value {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--ink);
       font-family: var(--mono);
@@ -387,6 +491,51 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin-top: 4px;
+    }
+
+    /* Analytics Grid */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 30px;
+    }
+
+    @media (max-width: 1024px) {
+      .analytics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .analytics-card {
+      transition: all 0.3s ease;
+      border-radius: 20px;
+    }
+
+    .analytics-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .panel-subtitle {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
+
+    .chart-container-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 280px;
+      padding: 16px;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 260px;
     }
 
     /* Card Panels */
@@ -491,44 +640,58 @@
 
     /* Badges */
     .badge-msg {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 20px;
       font-family: var(--mono);
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      background: var(--ink-soft);
-      color: #ffffff;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
-    .badge-msg.mt940 { background: #0369a1; color: #ffffff; }
-    .badge-msg.mt942 { background: #0e7490; color: #ffffff; }
-    .badge-msg.mt950 { background: #b45309; color: #ffffff; }
-    .badge-msg.mt103 { background: #0d9488; color: #ffffff; }
-    .badge-msg.mt101 { background: #4f46e5; color: #ffffff; }
-    .badge-msg.mt564 { background: #7c3aed; color: #ffffff; }
-    .badge-msg.badge-custom { background: #2563eb; color: #ffffff; }
+    .badge-msg.mt940 { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-msg.mt942 { background: #ecfeff; color: #0e7490; border: 1px solid #cffafe; }
+    .badge-msg.mt950 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-msg.mt103 { background: #ccfbf1; color: #0f766e; border: 1px solid #99f6e4; }
+    .badge-msg.mt101 { background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+    .badge-msg.mt564 { background: #f3e8ff; color: #7c3aed; border: 1px solid #e9d5ff; }
+    .badge-msg.badge-custom { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+
+    html.dark .badge-msg.mt940 { background: #0c4a6e; color: #38bdf8; border-color: #0284c7; }
+    html.dark .badge-msg.mt942 { background: #164e63; color: #22d3ee; border-color: #0891b2; }
+    html.dark .badge-msg.mt950 { background: #78350f; color: #fbbf24; border-color: #d97706; }
+    html.dark .badge-msg.mt103 { background: #134e4a; color: #2dd4bf; border-color: #0d9488; }
+    html.dark .badge-msg.mt101 { background: #1e1b4b; color: #818cf8; border-color: #4f46e5; }
+    html.dark .badge-msg.mt564 { background: #581c87; color: #c084fc; border-color: #7c3aed; }
+    html.dark .badge-msg.badge-custom { background: #1e3a8a; color: #60a5fa; border-color: #2563eb; }
 
     .mo {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
     }
 
     .mo.m {
       background: var(--debit-bg);
       color: var(--debit-color);
+      border-color: color-mix(in srgb, var(--debit-color) 20%, transparent);
     }
 
     .mo.o {
       background: var(--row-hover);
       color: var(--ink-soft);
-      border: 1px solid var(--line);
+      border-color: var(--line);
     }
 
     .source-dot {
@@ -870,15 +1033,16 @@
     .has-sub-indicator {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       margin-top: 3px;
-      background: var(--accent-soft);
-      border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
       color: var(--accent);
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 10.5px;
-      font-weight: 700;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      width: fit-content;
     }
 
     /* Highlight matching terms */
@@ -964,6 +1128,7 @@
       }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -1042,30 +1207,42 @@
 
       <!-- ── SECTION: DASHBOARD OVERVIEW ── -->
       <div id="section-dashboard" class="dashboard-section">
+        
+        <!-- Welcome Banner -->
+        <div class="welcome-banner">
+          <div class="welcome-text">
+            <h2 id="lbl-welcomeTitle">Halo, Administrator! 👋</h2>
+            <p id="lbl-welcomeSubtitle">Panel ini memungkinkan Anda mengelola seluruh data referensi tag SWIFT, jenis pesan, dan kategori secara dinamis.</p>
+          </div>
+          <div class="welcome-badge">
+            <span id="welcome-time-string"></span>
+          </div>
+        </div>
+
         <!-- Stats cards row -->
         <div class="stats-grid">
-          <div class="stats-card">
+          <div class="stats-card" style="--card-accent-color: var(--accent);">
             <div class="stats-icon" style="color: var(--accent); background: var(--accent-soft);">📝</div>
             <div class="stats-info">
               <span class="stats-value" id="stat-total-tags">0</span>
               <span class="stats-label" id="lbl-statTotal">Total Tags</span>
             </div>
           </div>
-          <div class="stats-card">
-            <div class="stats-icon" style="color: #6b3fa0; background: #f3e8ff;">💾</div>
+          <div class="stats-card" style="--card-accent-color: #7c3aed;">
+            <div class="stats-icon" style="color: #7c3aed; background: #f3e8ff;">💾</div>
             <div class="stats-info">
               <span class="stats-value" id="stat-custom-tags">0</span>
               <span class="stats-label" id="lbl-statCustom">Tags Kustom</span>
             </div>
           </div>
-          <div class="stats-card">
+          <div class="stats-card" style="--card-accent-color: var(--gold);">
             <div class="stats-icon" style="color: var(--gold); background: color-mix(in srgb, var(--gold) 15%, transparent);">🛡️</div>
             <div class="stats-info">
               <span class="stats-value" id="stat-system-tags">0</span>
               <span class="stats-label" id="lbl-statSystem">Tags Sistem</span>
             </div>
           </div>
-          <div class="stats-card">
+          <div class="stats-card" style="--card-accent-color: #0284c7;">
             <div class="stats-icon" style="color: #0284c7; background: #e0f2fe;">✉️</div>
             <div class="stats-info">
               <span class="stats-value" id="stat-message-types">0</span>
@@ -1074,10 +1251,51 @@
           </div>
         </div>
 
-        <div class="card-panel" style="margin-top: 30px;">
+        <!-- Reference Analytics & Visualizations Section -->
+        <div style="margin-top: 35px; margin-bottom: 20px;">
+          <h3 style="font-family: var(--serif); font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 4px 0;" id="lbl-analyticsTitle">Analisis & Visualisasi Referensi</h3>
+          <p style="color: var(--ink-soft); font-size: 13px; margin: 0;" id="lbl-analyticsSubtitle">Statistik distribusi kategori pesan dan tipe data referensi secara real-time.</p>
+        </div>
+        <div class="analytics-grid">
+          <!-- Card 1: Categories -->
+          <div class="card-panel analytics-card">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title" id="lbl-chart1Title">Porsi Kategori Pesan</h3>
+                <p class="panel-subtitle" id="lbl-chart1Subtitle">Distribusi tag berdasarkan kategori pesan utama</p>
+              </div>
+            </div>
+            <div class="panel-body chart-container-wrapper">
+              <div class="chart-container">
+                <canvas id="categoriesDoughnutChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Tag Types -->
+          <div class="card-panel analytics-card">
+            <div class="panel-header">
+              <div>
+                <h3 class="panel-title" id="lbl-chart2Title">Perbandingan Tipe Tag</h3>
+                <p class="panel-subtitle" id="lbl-chart2Subtitle">Proporsi data tag bawaan sistem vs kustom manual</p>
+              </div>
+            </div>
+            <div class="panel-body chart-container-wrapper">
+              <div class="chart-container">
+                <canvas id="tagTypesBarChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Table of Recently Added Tags -->
+        <div class="card-panel" style="margin-top: 30px; border-radius: 20px; overflow: hidden;">
           <div class="panel-header">
-            <h3 class="panel-title" id="lbl-quickTitle">Tag Baru Ditambahkan</h3>
-            <button class="btn btn-primary" onclick="switchSection('tags')"><span id="lbl-manageAll">Kelola Semua Tag →</span></button>
+            <div>
+              <h3 class="panel-title" id="lbl-quickTitle">Tag Baru Ditambahkan</h3>
+              <p class="panel-subtitle" id="lbl-quickSubtitle">Daftar tag referensi teranyar yang masuk ke dalam sistem</p>
+            </div>
+            <button class="btn btn-ghost" onclick="switchSection('tags')"><span id="lbl-manageAll">Kelola Semua Tag →</span></button>
           </div>
           <div class="panel-body" style="padding: 0;">
             <div class="table-wrap" style="border: none; border-radius: 0;">
@@ -1633,6 +1851,9 @@
     // Smart auto-fill variables
     let currentModalMode = 'parent';
 
+    let homeCategoriesChart = null;
+    let homeTagTypesChart = null;
+
     // Fallback static data
     const FALLBACK_DATA = [
       {"msg": "mt940", "tag": "20", "sub": "", "name": "Nomor Referensi Transaksi", "name_en": "Transaction Reference Number", "len": "16x", "mo": "m", "sample": "TRN0000123456789", "desc": "Digunakan untuk mengidentifikasi pesan MT940 secara unik.", "desc_en": "Used to uniquely identify the MT940 message.", "rules": "Hanya karakter alphanumeric dan beberapa karakter khusus (SWIFT character set). Panjang maksimal 16 karakter.", "rules_en": "Alphanumeric and limited special characters (SWIFT character set). Max 16 characters.", "source": "gs-docs"},
@@ -1763,12 +1984,28 @@
           title: "Corporate Action Notification",
           desc: "Informs account holders about details regarding corporate events such as dividend distributions, stock splits, or mergers."
         }
+      },
+      mt202: {
+        id: {
+          category: "Kategori 2: Transfer Lembaga Keuangan",
+          title: "Transfer Dana Lembaga Keuangan (General Financial Institution Transfer)",
+          desc: "Digunakan untuk transfer dana antar bank/lembaga keuangan (bank koresponden) tanpa melibatkan nasabah non-finansial."
+        },
+        en: {
+          category: "Category 2: Financial Institution Transfers",
+          title: "General Financial Institution Transfer",
+          desc: "Used to execute funds transfers between financial institutions or correspondent banks without involving retail customers."
+        }
       }
     };
 
     // Localizations
     const i18n = {
       id: {
+        lblAnalyticsTitle: "Analisis & Visualisasi Referensi",
+        lblAnalyticsSubtitle: "Statistik distribusi kategori pesan dan tipe data referensi secara real-time.",
+        lblChart1Title: "Porsi Kategori Pesan",
+        lblChart2Title: "Perbandingan Tipe Tag",
         loginTitle: "Masuk sebagai Owner",
         loginSubtitle: "Masuk untuk mengelola data referensi SWIFT.",
         loginPassLabel: "Password",
@@ -1842,6 +2079,10 @@
         btnLogout: "Keluar"
       },
       en: {
+        lblAnalyticsTitle: "Reference Analytics & Visualization",
+        lblAnalyticsSubtitle: "Real-time statistics of message category distribution and tag data types.",
+        lblChart1Title: "Message Category Proportion",
+        lblChart2Title: "Tag Type Comparison",
         loginTitle: "Log in as Owner",
         loginSubtitle: "Sign in to manage SWIFT reference data.",
         loginPassLabel: "Password",
@@ -1967,6 +2208,9 @@
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('swift_dark', isDark ? '1' : '0');
       document.getElementById('darkBtn').textContent = isDark ? '☀' : '🌙';
+      if (typeof renderHomeCharts === 'function') {
+        renderHomeCharts();
+      }
     }
 
     // ── Language Toggle ──
@@ -2022,6 +2266,34 @@
       document.getElementById('lbl-statCustom').textContent = dict.statCustom;
       document.getElementById('lbl-statSystem').textContent = dict.statSystem;
       document.getElementById('lbl-statMsgTypes').textContent = dict.statMsgTypes;
+      
+      document.getElementById('lbl-analyticsTitle').textContent = dict.lblAnalyticsTitle;
+      document.getElementById('lbl-analyticsSubtitle').textContent = dict.lblAnalyticsSubtitle;
+      document.getElementById('lbl-chart1Title').textContent = dict.lblChart1Title;
+      document.getElementById('lbl-chart2Title').textContent = dict.lblChart2Title;
+
+      // Welcome Banner & Subtitles
+      const lblWelcomeTitle = document.getElementById('lbl-welcomeTitle');
+      if (lblWelcomeTitle) lblWelcomeTitle.textContent = currentLang === 'id' ? 'Halo, Administrator! 👋' : 'Hello, Administrator! 👋';
+      
+      const lblWelcomeSubtitle = document.getElementById('lbl-welcomeSubtitle');
+      if (lblWelcomeSubtitle) lblWelcomeSubtitle.textContent = currentLang === 'id' ? 'Panel ini memungkinkan Anda mengelola seluruh data referensi tag SWIFT, jenis pesan, dan kategori secara dinamis.' : 'This panel allows you to dynamically manage SWIFT tag reference data, message types, and categories.';
+
+      const lblQuickSubtitle = document.getElementById('lbl-quickSubtitle');
+      if (lblQuickSubtitle) lblQuickSubtitle.textContent = currentLang === 'id' ? 'Daftar tag referensi teranyar yang masuk ke dalam sistem' : 'Latest reference tags added to the system';
+      
+      const lblChart1Subtitle = document.getElementById('lbl-chart1Subtitle');
+      if (lblChart1Subtitle) lblChart1Subtitle.textContent = currentLang === 'id' ? 'Distribusi tag berdasarkan kategori pesan utama' : 'Tag distribution by major message categories';
+      
+      const lblChart2Subtitle = document.getElementById('lbl-chart2Subtitle');
+      if (lblChart2Subtitle) lblChart2Subtitle.textContent = currentLang === 'id' ? 'Proporsi data tag bawaan sistem vs kustom manual' : 'Proportion of system default vs custom manual tags';
+
+      const welcomeTimeStr = document.getElementById('welcome-time-string');
+      if (welcomeTimeStr) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const locale = currentLang === 'id' ? 'id-ID' : 'en-US';
+        welcomeTimeStr.textContent = new Date().toLocaleDateString(locale, options);
+      }
       
       // Modal labels
       document.getElementById('lbl-formMsg').textContent = dict.formMsg;
@@ -2175,7 +2447,7 @@
     }
 
     function ensurePredefinedMsgTypes() {
-      const predefinedMsgTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt111', 'mt564'];
+      const predefinedMsgTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt111', 'mt564', 'mt202'];
       predefinedMsgTypes.forEach(m => {
         // Skip if deactivated in DB
         const deactivated = DATA.some(d => d.msg && d.msg.toLowerCase() === m.toLowerCase() && d.tag === 'MSG_NAME' && d.is_active === 0);
@@ -2186,6 +2458,7 @@
           const info = HOME_MSG_INFO[m];
           let catKey = 'other';
           if (m.startsWith('mt1')) catKey = '1';
+          else if (m.startsWith('mt2')) catKey = '2';
           else if (m.startsWith('mt9')) catKey = '9';
           else if (m.startsWith('mt5')) catKey = '5';
           
@@ -2211,6 +2484,7 @@
     function ensurePredefinedCategories() {
       const predefinedCats = [
         { key: '1', icon: '💸', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques', desc: 'Digunakan untuk transaksi pembayaran nasabah.', desc_en: 'Used for customer payment transactions.' },
+        { key: '2', icon: '🏛️', name: 'Kategori 2: Transfer Lembaga Keuangan', name_en: 'Category 2: Financial Institution Transfers', desc: 'Transfer dana antar lembaga keuangan.', desc_en: 'Funds transfers between financial institutions.' },
         { key: '9', icon: '🏦', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management', desc: 'Laporan rekening dan informasi kas saldo.', desc_en: 'Statement messages and cash management logs.' },
         { key: '5', icon: '📈', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate Activity', desc: 'Informasi aksi korporasi dan sekuritas.', desc_en: 'Securities and corporate action notifications.' }
       ];
@@ -2339,6 +2613,193 @@
           </tr>
         `;
       }).join('');
+
+      if (typeof renderHomeCharts === 'function') {
+        renderHomeCharts();
+      }
+    }
+
+    function renderHomeCharts() {
+      if (homeCategoriesChart) homeCategoriesChart.destroy();
+      if (homeTagTypesChart) homeTagTypesChart.destroy();
+
+      const uniqueMsgs = [...new Set(DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category').map(d => d.msg.toLowerCase()))];
+      if (uniqueMsgs.length === 0) return;
+
+      const totalTags = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME' && d.msg !== 'category').length;
+
+      // 1. Process Categories data
+      const categoryCounts = {};
+      DATA.filter(d => d.msg && d.msg.toLowerCase() !== 'category' && d.tag !== 'MSG_NAME' && d.sub === '').forEach(d => {
+        const msgType = d.msg.toUpperCase();
+        const match = msgType.match(/\d/);
+        const catNum = match ? match[0] : 'other';
+        let catLabel = '';
+        if (catNum === '1') {
+          catLabel = currentLang === 'en' ? 'Cat 1: Payments' : 'Kat 1: Pembayaran';
+        } else if (catNum === '2') {
+          catLabel = currentLang === 'en' ? 'Cat 2: Transfers' : 'Kat 2: Transfer';
+        } else if (catNum === '5') {
+          catLabel = currentLang === 'en' ? 'Cat 5: Securities' : 'Kat 5: Sekuritas';
+        } else if (catNum === '9') {
+          catLabel = currentLang === 'en' ? 'Cat 9: Cash Mgmt' : 'Kat 9: Manaj Kas';
+        } else {
+          catLabel = currentLang === 'en' ? 'Other Categories' : 'Kategori Lain';
+        }
+        categoryCounts[catLabel] = (categoryCounts[catLabel] || 0) + 1;
+      });
+
+      const catLabels = Object.keys(categoryCounts);
+      const catData = Object.values(categoryCounts);
+
+      // 2. Process Tag Types data
+      const systemTags = DATA.filter(d => d.source !== 'manual' && d.sub === '' && d.tag !== 'MSG_NAME' && d.msg && d.msg.toLowerCase() !== 'category').length;
+      const customTags = DATA.filter(d => d.source === 'manual' && d.sub === '' && d.tag !== 'MSG_NAME' && d.msg && d.msg.toLowerCase() !== 'category').length;
+
+      // Render Category Doughnut Chart
+      const ctx1 = document.getElementById('categoriesDoughnutChart');
+      if (ctx1) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const labelColor = isDark ? '#94a3b8' : '#475569';
+        
+        homeCategoriesChart = new Chart(ctx1, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              data: catData,
+              backgroundColor: [
+                '#0f766e', // Teal
+                '#b45309', // Amber
+                '#2563eb', // Blue
+                '#7c3aed', // Purple
+                '#db2777', // Pink
+                '#059669', // Emerald
+              ],
+              borderColor: isDark ? '#111827' : '#ffffff',
+              borderWidth: 2
+            }]
+          },
+          plugins: [{
+            id: 'centerText',
+            beforeDraw(chart) {
+              if (!chart.chartArea) return;
+              const { ctx, chartArea: { left, right, top, bottom } } = chart;
+              ctx.save();
+              const isDark = document.documentElement.classList.contains('dark');
+              const activeElements = chart.getActiveElements();
+              let label = currentLang === 'en' ? 'TAGS' : 'TAG';
+              let val = totalTags;
+              
+              if (activeElements && activeElements.length > 0) {
+                const index = activeElements[0].index;
+                const rawLabel = chart.data.labels[index];
+                label = rawLabel.includes(':') ? rawLabel.split(':')[0] : rawLabel;
+                val = chart.data.datasets[0].data[index];
+              }
+              
+              const x = (left + right) / 2;
+              const y = (top + bottom) / 2;
+              
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              
+              // Draw value (larger, bold)
+              ctx.font = '800 28px "Outfit", sans-serif';
+              ctx.fillStyle = isDark ? '#f1f5f9' : '#0f172a';
+              ctx.fillText(val, x, y - 8);
+              
+              // Draw label (smaller)
+              ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+              ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
+              ctx.fillText(label.toUpperCase(), x, y + 14);
+              
+              ctx.restore();
+            }
+          }],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: (event, activeElements, chart) => {
+              chart.draw();
+            },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: labelColor,
+                  font: {
+                    family: 'Plus Jakarta Sans',
+                    size: 11,
+                    weight: '600'
+                  },
+                  padding: 12
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Render Tag Types Bar Chart
+      const ctx2 = document.getElementById('tagTypesBarChart');
+      if (ctx2) {
+        const isDark = document.documentElement.classList.contains('dark');
+        const labelColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? '#1e293b' : '#e2e8f0';
+
+        const ctx = ctx2.getContext('2d');
+        const gradientSystem = ctx.createLinearGradient(0, 0, 0, 200);
+        gradientSystem.addColorStop(0, '#f59e0b');
+        gradientSystem.addColorStop(1, '#b45309');
+        
+        const gradientCustom = ctx.createLinearGradient(0, 0, 0, 200);
+        gradientCustom.addColorStop(0, '#2dd4bf');
+        gradientCustom.addColorStop(1, '#0f766e');
+
+        homeTagTypesChart = new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels: [
+              currentLang === 'en' ? 'System Tags' : 'Tag Sistem',
+              currentLang === 'en' ? 'Custom Tags' : 'Tag Kustom'
+            ],
+            datasets: [{
+              label: currentLang === 'en' ? 'Number of Tags' : 'Jumlah Tag',
+              data: [systemTags, customTags],
+              backgroundColor: [gradientSystem, gradientCustom],
+              borderRadius: 8,
+              borderWidth: 0,
+              barThickness: 40
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: labelColor,
+                  font: { family: 'Plus Jakarta Sans', weight: '600' }
+                }
+              },
+              y: {
+                grid: { color: gridColor },
+                ticks: {
+                  color: labelColor,
+                  font: { family: 'JetBrains Mono' }
+                }
+              }
+            }
+          }
+        });
+      }
     }
 
     // ── Table Rendering & Sorting & Searching ──
@@ -2429,7 +2890,7 @@
           // Calculate subfields count
           const subCount = DATA.filter(d => d.msg === r.msg && d.tag === r.tag && d.sub !== '').length;
           const subIndicator = subCount > 0 
-            ? `<br><span class="has-sub-indicator" onclick="openSubFieldsViewer('${r.msg}', '${r.tag}')" style="cursor: pointer;">◈ ${subCount} sub-field${subCount > 1 ? 's' : ''}</span>`
+            ? `<br><span class="has-sub-indicator" onclick="openSubFieldsViewer('${r.msg}', '${r.tag}')" style="cursor: pointer;">✦ ${subCount} sub-field${subCount > 1 ? 's' : ''}</span>`
             : '';
 
           const isChecked = selectedRows.has(`${r.msg}|${r.tag}|${r.sub}`);
@@ -2546,6 +3007,7 @@
       const customCats = DATA.filter(d => d.msg === 'category');
       const predefined = [
         { key: '1', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques' },
+        { key: '2', name: 'Kategori 2: Transfer Lembaga Keuangan', name_en: 'Category 2: Financial Institution Transfers' },
         { key: '9', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management' },
         { key: '5', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate' }
       ];
@@ -2577,6 +3039,7 @@
       const predefined = [
         { key: 'all', name: 'Semua Kategori', name_en: 'All Categories' },
         { key: '1', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques' },
+        { key: '2', name: 'Kategori 2: Transfer Lembaga Keuangan', name_en: 'Category 2: Financial Institution Transfers' },
         { key: '9', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management' },
         { key: '5', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate' }
       ];
@@ -2605,6 +3068,7 @@
       if (!catKey) {
         const mt = msgType.toLowerCase();
         if (mt.startsWith('mt1')) catKey = '1';
+        else if (mt.startsWith('mt2')) catKey = '2';
         else if (mt.startsWith('mt9')) catKey = '9';
         else if (mt.startsWith('mt5')) catKey = '5';
         else catKey = 'other';
@@ -2624,6 +3088,12 @@
           key: '1',
           icon: '💸',
           name: currentLang === 'en' ? 'Category 1: Customer Payments' : 'Kategori 1: Pembayaran & Cek'
+        };
+      } else if (catKey === '2') {
+        return {
+          key: '2',
+          icon: '🏛️',
+          name: currentLang === 'en' ? 'Category 2: Financial Institution Transfers' : 'Kategori 2: Transfer Lembaga Keuangan'
         };
       } else if (catKey === '9') {
         return {
