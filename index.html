@@ -1730,7 +1730,6 @@
       <button class="nav-btn active" id="tab-home" onclick="switchTab('home')" title="Beranda">🏠 <span id="lbl-tabHome">Beranda</span></button>
       <button class="nav-btn" id="tab-reference" onclick="switchTab('reference')" title="Kamus Referensi">📖 <span id="lbl-tabKamus">Kamus</span></button>
       <button class="nav-btn" id="tab-parser" onclick="switchTab('parser')" title="Visualizer / Parser Raw SWIFT">🔍 <span id="lbl-tabParser">Parser</span></button>
-      <a href="admin.html" class="icon-btn" id="btnOwnerToggle" title="Login sebagai Owner" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">🔒 <span id="lbl-ownerBtn">Owner</span></a>
       <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 ID</button>
       <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙 Dark Mode</button>
     </div>
@@ -3438,6 +3437,170 @@
       `;
     }
 
+    function getMT103BusinessExplanation(statement) {
+      const isId = currentLang === 'id';
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      const senderName = statement.sender ? statement.sender.name : '—';
+      const benefName = statement.beneficiary ? statement.beneficiary.name : '—';
+      const senderAcc = statement.sender ? statement.sender.account : '';
+      const benefAcc = statement.beneficiary ? statement.beneficiary.account : '';
+      const charges = statement.charges || '—';
+      const remittance = statement.remittanceInfo || '';
+
+      let chargesExplain = '';
+      if (charges === 'SHA') {
+        chargesExplain = isId
+          ? 'Biaya transaksi ditanggung <b>bersama (Shared)</b> antara pengirim dan penerima.'
+          : 'Transaction charges are <b>shared (SHA)</b> between the sender and the beneficiary.';
+      } else if (charges === 'OUR') {
+        chargesExplain = isId
+          ? 'Seluruh biaya transaksi ditanggung oleh <b>pengirim (OUR)</b>. Penerima menerima jumlah penuh tanpa potongan.'
+          : 'All transaction charges are borne by the <b>sender (OUR)</b>. The beneficiary receives the full amount without deductions.';
+      } else if (charges === 'BEN') {
+        chargesExplain = isId
+          ? 'Seluruh biaya transaksi ditanggung oleh <b>penerima (BEN)</b>. Jumlah yang diterima penerima akan dikurangi biaya-biaya terkait.'
+          : 'All transaction charges are borne by the <b>beneficiary (BEN)</b>. The amount received will be reduced by applicable fees.';
+      } else {
+        chargesExplain = isId
+          ? `Kode biaya: <b>${charges}</b>.`
+          : `Charge code: <b>${charges}</b>.`;
+      }
+
+      if (isId) {
+        return `Pesan ini adalah instruksi <b>transfer dana tunggal (Single Customer Credit Transfer)</b> dengan referensi <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `Nasabah pengirim <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Rek. ' + escapeHtml(senderAcc) + ')' : ''} menginstruksikan pengiriman dana sebesar <b>${amountStr} ${currency}</b> `
+          + `kepada penerima <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Rek. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Dana akan efektif pada tanggal valuta <b>${escapeHtml(valueDate)}</b>. `
+          + chargesExplain
+          + (remittance ? ` Keterangan transfer yang disertakan: "<i>${escapeHtml(remittance)}</i>".` : '')
+          + ` Dalam konteks bisnis, MT103 adalah pesan SWIFT yang paling umum digunakan untuk pembayaran lintas negara (cross-border) dan merupakan bukti instruksi transfer antar bank koresponden.`;
+      } else {
+        return `This message is a <b>Single Customer Credit Transfer</b> instruction with reference <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `The ordering customer <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Acc. ' + escapeHtml(senderAcc) + ')' : ''} has instructed a funds transfer of <b>${amountStr} ${currency}</b> `
+          + `to beneficiary <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Acc. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Funds will be effective on value date <b>${escapeHtml(valueDate)}</b>. `
+          + chargesExplain
+          + (remittance ? ` Remittance information: "<i>${escapeHtml(remittance)}</i>".` : '')
+          + ` In business context, MT103 is the most commonly used SWIFT message for cross-border payments and serves as proof of an inter-bank transfer instruction between correspondent banks.`;
+      }
+    }
+
+    function getMT101BusinessExplanation(statement) {
+      const isId = currentLang === 'id';
+      const currency = statement.amount ? statement.amount.currency : 'USD';
+      const amountStr = statement.amount ? formatAmountRaw(statement.amount.amount) : '0.00';
+      const senderName = statement.sender ? statement.sender.name : '—';
+      const benefName = statement.beneficiary ? statement.beneficiary.name : '—';
+      const senderAcc = statement.sender ? statement.sender.account : '';
+      const benefAcc = statement.beneficiary ? statement.beneficiary.account : '';
+      const execDate = statement.executionDate || '—';
+      const remittance = statement.remittanceInfo || '';
+
+      if (isId) {
+        return `Pesan ini adalah <b>Permintaan Transfer (Request for Transfer)</b> dengan referensi <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `Nasabah pemberi instruksi <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Rek. ' + escapeHtml(senderAcc) + ')' : ''} meminta banknya untuk mengirimkan dana sebesar <b>${amountStr} ${currency}</b> `
+          + `kepada penerima <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Rek. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Tanggal pelaksanaan transfer: <b>${escapeHtml(execDate)}</b>. `
+          + (remittance ? `Keterangan transfer: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `Dalam konteks bisnis, MT101 memungkinkan nasabah korporat memberikan instruksi pembayaran langsung kepada bank mereka tanpa melalui prosedur manual. `
+          + `Pesan ini sering digunakan oleh perusahaan multinasional untuk mengelola pembayaran terpusat (payment factory) dari satu kantor pusat ke berbagai rekening di seluruh dunia.`;
+      } else {
+        return `This message is a <b>Request for Transfer</b> with reference <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `The ordering customer <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Acc. ' + escapeHtml(senderAcc) + ')' : ''} is requesting their bank to transfer <b>${amountStr} ${currency}</b> `
+          + `to beneficiary <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Acc. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Execution date: <b>${escapeHtml(execDate)}</b>. `
+          + (remittance ? `Remittance information: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `In business context, MT101 allows corporate customers to directly instruct their banks for payments without manual procedures. `
+          + `This message is commonly used by multinational corporations to manage centralized payments (payment factory) from a single headquarters to various accounts worldwide.`;
+      }
+    }
+
+    function getMT104BusinessExplanation(statement) {
+      const isId = currentLang === 'id';
+      const currency = statement.amount ? statement.amount.currency : 'EUR';
+      const amountStr = statement.amount ? formatAmountRaw(statement.amount.amount) : '0.00';
+      const creditorName = statement.creditor ? statement.creditor.name : '—';
+      const debtorName = statement.debtor ? statement.debtor.name : '—';
+      const creditorAcc = statement.creditor ? statement.creditor.account : '';
+      const debtorAcc = statement.debtor ? statement.debtor.account : '';
+      const execDate = statement.executionDate || '—';
+      const charges = statement.charges || '—';
+      const remittance = statement.remittanceInfo || '';
+
+      let chargesExplain = '';
+      if (charges === 'SHA') {
+        chargesExplain = isId ? 'Biaya ditanggung <b>bersama (Shared)</b>.' : 'Charges are <b>shared (SHA)</b>.';
+      } else if (charges === 'OUR') {
+        chargesExplain = isId ? 'Biaya ditanggung oleh <b>kreditor (OUR)</b>.' : 'Charges borne by <b>creditor (OUR)</b>.';
+      } else if (charges === 'BEN') {
+        chargesExplain = isId ? 'Biaya ditanggung oleh <b>debitur (BEN)</b>.' : 'Charges borne by <b>debtor (BEN)</b>.';
+      } else {
+        chargesExplain = isId ? `Kode biaya: <b>${charges}</b>.` : `Charge code: <b>${charges}</b>.`;
+      }
+
+      if (isId) {
+        return `Pesan ini adalah instruksi <b>Debit Langsung (Direct Debit)</b> dengan referensi <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `Kreditor / penerima dana <b>${escapeHtml(creditorName)}</b>${creditorAcc ? ' (Rek. ' + escapeHtml(creditorAcc) + ')' : ''} menginstruksikan penarikan dana sebesar <b>${amountStr} ${currency}</b> `
+          + `dari rekening debitur <b>${escapeHtml(debtorName)}</b>${debtorAcc ? ' (Rek. ' + escapeHtml(debtorAcc) + ')' : ''}. `
+          + `Tanggal pelaksanaan: <b>${escapeHtml(execDate)}</b>. ${chargesExplain} `
+          + (remittance ? `Informasi penarikan: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `Dalam konteks bisnis, MT104 digunakan untuk mekanisme debit langsung di mana penerima dana (misalnya perusahaan utilitas, asuransi, atau pemberi pinjaman) memiliki otorisasi untuk menarik dana langsung dari rekening pembayar/nasabah. `
+          + `Ini umum dipakai untuk pembayaran tagihan berulang seperti cicilan kredit, premi asuransi, dan pembayaran iuran.`;
+      } else {
+        return `This message is a <b>Direct Debit</b> instruction with reference <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `The creditor <b>${escapeHtml(creditorName)}</b>${creditorAcc ? ' (Acc. ' + escapeHtml(creditorAcc) + ')' : ''} is instructing a direct debit of <b>${amountStr} ${currency}</b> `
+          + `from the debtor's account <b>${escapeHtml(debtorName)}</b>${debtorAcc ? ' (Acc. ' + escapeHtml(debtorAcc) + ')' : ''}. `
+          + `Execution date: <b>${escapeHtml(execDate)}</b>. ${chargesExplain} `
+          + (remittance ? `Remittance information: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `In business context, MT104 is used for direct debit mechanisms where the creditor (e.g., utility companies, insurers, or lenders) has authorization to directly collect funds from the payer's account. `
+          + `This is commonly used for recurring billing such as loan installments, insurance premiums, and subscription fees.`;
+      }
+    }
+
+    function getMT102BusinessExplanation(statement) {
+      const isId = currentLang === 'id';
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      const senderName = statement.sender ? statement.sender.name : '—';
+      const benefName = statement.beneficiary ? statement.beneficiary.name : '—';
+      const senderAcc = statement.sender ? statement.sender.account : '';
+      const benefAcc = statement.beneficiary ? statement.beneficiary.account : '';
+      const charges = statement.charges || '—';
+      const remittance = statement.remittanceInfo || '';
+
+      let chargesExplain = '';
+      if (charges === 'SHA') {
+        chargesExplain = isId ? 'Biaya ditanggung <b>bersama (Shared)</b>.' : 'Charges are <b>shared (SHA)</b>.';
+      } else if (charges === 'OUR') {
+        chargesExplain = isId ? 'Biaya ditanggung oleh <b>pengirim (OUR)</b>.' : 'Charges borne by <b>sender (OUR)</b>.';
+      } else if (charges === 'BEN') {
+        chargesExplain = isId ? 'Biaya ditanggung oleh <b>penerima (BEN)</b>.' : 'Charges borne by <b>beneficiary (BEN)</b>.';
+      } else {
+        chargesExplain = isId ? `Kode biaya: <b>${charges}</b>.` : `Charge code: <b>${charges}</b>.`;
+      }
+
+      if (isId) {
+        return `Pesan ini adalah instruksi <b>Transfer Dana Gabungan / Multi-Nasabah (Multiple Customer Credit Transfer)</b> dengan referensi <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `Pengirim <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Rek. ' + escapeHtml(senderAcc) + ')' : ''} menginstruksikan pengiriman total sebesar <b>${amountStr} ${currency}</b> `
+          + `yang mencakup beberapa pembayaran individual kepada penerima termasuk <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Rek. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Dana efektif pada tanggal valuta <b>${escapeHtml(valueDate)}</b>. ${chargesExplain} `
+          + (remittance ? `Keterangan: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `Dalam konteks bisnis, MT102 digunakan untuk menggabungkan beberapa instruksi pembayaran bernilai rendah (low-value/bulk payments) ke dalam satu pesan SWIFT tunggal. `
+          + `Ini sangat efisien untuk penggajian massal, pembayaran ke beberapa pemasok, atau distribusi dana ke banyak penerima sekaligus, menghemat biaya transaksi dan waktu pemrosesan.`;
+      } else {
+        return `This message is a <b>Multiple Customer Credit Transfer</b> instruction with reference <b>${escapeHtml(statement.senderRef || '—')}</b>. `
+          + `The sender <b>${escapeHtml(senderName)}</b>${senderAcc ? ' (Acc. ' + escapeHtml(senderAcc) + ')' : ''} has instructed a total transfer of <b>${amountStr} ${currency}</b> `
+          + `covering multiple individual payments to beneficiaries including <b>${escapeHtml(benefName)}</b>${benefAcc ? ' (Acc. ' + escapeHtml(benefAcc) + ')' : ''}. `
+          + `Funds effective on value date <b>${escapeHtml(valueDate)}</b>. ${chargesExplain} `
+          + (remittance ? `Remittance information: "<i>${escapeHtml(remittance)}</i>". ` : '')
+          + `In business context, MT102 is used to consolidate multiple low-value/bulk payment instructions into a single SWIFT message. `
+          + `This is highly efficient for mass payroll, payments to multiple suppliers, or fund distributions to many recipients simultaneously, saving transaction costs and processing time.`;
+      }
+    }
+
     function getBusinessInterpretation(tx, currency) {
       const isCredit = tx.sign === '+';
       const amtStr = `${formatAmountRaw(tx.amount)} ${currency}`;
@@ -3717,6 +3880,15 @@
 
       const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt103');
 
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT103BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
       output.innerHTML = `
         <div class="visualizer-dashboard">
           <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
@@ -3726,6 +3898,7 @@
           ${headerHtml}
           ${cardsHtml}
           ${remittanceHtml}
+          ${businessInsightHtml}
           ${tagBreakdownHtml}
         </div>
       `;
@@ -3784,6 +3957,15 @@
 
       const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt101');
 
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT101BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
       output.innerHTML = `
         <div class="visualizer-dashboard">
           <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
@@ -3793,6 +3975,7 @@
           ${headerHtml}
           ${cardsHtml}
           ${remittanceHtml}
+          ${businessInsightHtml}
           ${tagBreakdownHtml}
         </div>
       `;
@@ -3851,6 +4034,15 @@
 
       const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt104');
 
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT104BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
       output.innerHTML = `
         <div class="visualizer-dashboard">
           <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
@@ -3860,6 +4052,7 @@
           ${headerHtml}
           ${cardsHtml}
           ${remittanceHtml}
+          ${businessInsightHtml}
           ${tagBreakdownHtml}
         </div>
       `;
@@ -3919,6 +4112,15 @@
 
       const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt102');
 
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT102BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
       output.innerHTML = `
         <div class="visualizer-dashboard">
           <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
@@ -3928,6 +4130,7 @@
           ${headerHtml}
           ${cardsHtml}
           ${remittanceHtml}
+          ${businessInsightHtml}
           ${tagBreakdownHtml}
         </div>
       `;
@@ -4110,198 +4313,186 @@
 
       if (activeStatement.msgType === 'MT564') {
         renderMT564Output(activeStatement);
-        return;
-      }
-      if (activeStatement.msgType === 'MT103') {
+      } else if (activeStatement.msgType === 'MT103') {
         renderMT103Output(activeStatement);
-        return;
-      }
-      if (activeStatement.msgType === 'MT101') {
+      } else if (activeStatement.msgType === 'MT101') {
         renderMT101Output(activeStatement);
-        return;
-      }
-      if (activeStatement.msgType === 'MT104') {
+      } else if (activeStatement.msgType === 'MT104') {
         renderMT104Output(activeStatement);
-        return;
-      }
-      if (activeStatement.msgType === 'MT102') {
+      } else if (activeStatement.msgType === 'MT102') {
         renderMT102Output(activeStatement);
-        return;
-      }
-
-      const statementTypes = ['MT940', 'MT942', 'MT950'];
-      if (!statementTypes.includes(activeStatement.msgType)) {
-        const tagBreakdownHtml = renderParsedTagsTable(activeStatement.tags, activeStatement.msgType.toLowerCase());
-        
-        output.innerHTML = `
-          <div class="visualizer-dashboard">
-            <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-              <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">${escapeHtml(activeStatement.msgType)}</span>
-              <span style="font-family: var(--sans); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Message Details' : 'Rincian Pesan SWIFT'}</span>
+      } else {
+        const statementTypes = ['MT940', 'MT942', 'MT950'];
+        if (!statementTypes.includes(activeStatement.msgType)) {
+          const tagBreakdownHtml = renderParsedTagsTable(activeStatement.tags, activeStatement.msgType.toLowerCase());
+          
+          output.innerHTML = `
+            <div class="visualizer-dashboard">
+              <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">${escapeHtml(activeStatement.msgType)}</span>
+                <span style="font-family: var(--sans); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Message Details' : 'Rincian Pesan SWIFT'}</span>
+              </div>
+              
+              <div class="dashboard-header-card" style="padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? "Sender's Reference (Tag 20)" : 'Referensi Pengirim (Tag 20)'}</div>
+                  <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(activeStatement.tags['20'] || '—')}</div>
+                </div>
+              </div>
+              
+              ${tagBreakdownHtml}
             </div>
-            
-            <div class="dashboard-header-card" style="padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: 20px;">
+          `;
+        } else {
+          const statement = activeStatement;
+          const currency = (statement.closingBalance ? statement.closingBalance.currency : '') || (statement.openingBalance ? statement.openingBalance.currency : '') || 'USD';
+          
+          let totalCredits = 0;
+          let totalDebits = 0;
+          statement.transactions.forEach(t => {
+            if (t.sign === '+') totalCredits += t.amount;
+            else totalDebits += t.amount;
+          });
+
+          const openingVal = (statement.openingBalance ? statement.openingBalance.amount : 0) * (statement.openingBalance && statement.openingBalance.sign === '-' ? -1 : 1);
+          const closingVal = (statement.closingBalance ? statement.closingBalance.amount : 0) * (statement.closingBalance && statement.closingBalance.sign === '-' ? -1 : 1);
+          const netVal = closingVal - openingVal;
+          const netSign = netVal >= 0 ? '+' : '-';
+          const netFormatted = formatAmountRaw(Math.abs(netVal));
+
+          const dict = i18n[currentLang];
+
+          const headerHtml = `
+            <div class="dashboard-header-card">
               <div style="display: flex; flex-direction: column; gap: 4px;">
-                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? "Sender's Reference (Tag 20)" : 'Referensi Pengirim (Tag 20)'}</div>
-                <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(activeStatement.tags['20'] || '—')}</div>
+                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblAccount}</div>
+                <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.account || '—')}</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblStatement}</div>
+                <div style="font-size: 20px; font-weight: 800; color: var(--ink);">#${escapeHtml(statement.statementNum || '—')}${statement.sequenceNum ? '/' + escapeHtml(statement.sequenceNum) : ''}</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblPeriod}</div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--ink);">${escapeHtml(statement.openingBalance ? statement.openingBalance.date : '—')} &rarr; ${escapeHtml(statement.closingBalance ? statement.closingBalance.date : '—')}</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+                <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${dict.lblClosingBal}</div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+                  ${statement.closingBalance ? (statement.closingBalance.sign === '+' ? '+' : '-') : ''} ${formatAmountRaw(statement.closingBalance ? statement.closingBalance.amount : 0)} ${escapeHtml(currency)}
+                </div>
               </div>
             </div>
+          `;
+
+          const cardsHtml = `
+            <div class="dashboard-cards-row">
+              <div class="dashboard-card">
+                <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblOpening}</div>
+                <div style="font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.3;">
+                  ${statement.openingBalance ? (statement.openingBalance.sign === '+' ? '+' : '-') : ''}<br>${formatAmountRaw(statement.openingBalance ? statement.openingBalance.amount : 0)} ${escapeHtml(currency)}
+                </div>
+              </div>
+              <div class="dashboard-card">
+                <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblClosing}</div>
+                <div style="font-size: 16px; font-weight: 800; color: var(--credit-color); line-height: 1.3;">
+                  ${statement.closingBalance ? (statement.closingBalance.sign === '+' ? '+' : '-') : ''}<br>${formatAmountRaw(statement.closingBalance ? statement.closingBalance.amount : 0)} ${escapeHtml(currency)}
+                </div>
+              </div>
+              <div class="dashboard-card">
+                <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblCredits}</div>
+                <div style="font-size: 16px; font-weight: 800; color: var(--credit-color);">
+                  + ${formatAmountRaw(totalCredits)} ${escapeHtml(currency)}
+                </div>
+              </div>
+              <div class="dashboard-card">
+                <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblDebits}</div>
+                <div style="font-size: 16px; font-weight: 800; color: var(--debit-color);">
+                  - ${formatAmountRaw(totalDebits)} ${escapeHtml(currency)}
+                </div>
+              </div>
+              <div class="dashboard-card">
+                <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblTransactions}</div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--ink);">
+                  ${statement.transactions.length}
+                </div>
+              </div>
+            </div>
+          `;
+
+          const businessExplanation = getMT940BusinessExplanation(statement, currency, netVal, totalCredits, totalDebits);
+          const bannerHtml = `
+            <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+              <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+              </div>
+              <div>${businessExplanation}</div>
+            </div>
+          `;
+
+          let rowsHtml = '';
+          statement.transactions.forEach((tx, idx) => {
+            const badgeCls = tx.sign === '+' ? 'tx-badge-credit' : 'tx-badge-debit';
+            const typeText = getFriendlyType(tx.typeCode, tx.sign);
+            const amountSign = tx.sign === '+' ? '+' : '-';
+            const amountColor = tx.sign === '+' ? 'var(--credit-color)' : 'var(--debit-color)';
             
-            ${tagBreakdownHtml}
-          </div>
-        `;
-        return;
+            const EREF = tx.details86 ? (tx.details86.EREF || '') : '';
+            const detailsText = EREF ? `/EREF/${EREF}` : (tx.details86 ? (tx.details86.REMI || tx.details86.RAW || '—') : '—');
+            
+            const counterparty = tx.details86 ? (tx.details86.CRNM || tx.details86.DBNM || '—') : '—';
+
+            rowsHtml += `
+              <tr onclick="showTransactionDetail(${idx})" id="tx-row-${idx}" class="tx-row">
+                <td style="white-space: nowrap; font-size:13px; color: var(--ink-soft);">${escapeHtml(tx.valueDate)}</td>
+                <td><span class="tx-type-badge ${badgeCls}">${escapeHtml(typeText)}</span></td>
+                <td style="font-family: var(--mono); font-size:12.5px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tx.customerRef)}">${escapeHtml(tx.customerRef)}</td>
+                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(counterparty)}">${escapeHtml(counterparty)}</td>
+                <td style="font-size: 13px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detailsText)}">${escapeHtml(detailsText)}</td>
+                <td style="text-align: right; font-weight: 700; color: ${amountColor}; white-space: nowrap;">
+                  ${amountSign} ${formatAmountRaw(tx.amount)} ${escapeHtml(currency)}
+                </td>
+              </tr>
+            `;
+          });
+
+          const tableHtml = `
+            <div class="transactions-table-card">
+              <div class="table-wrap">
+                <div class="table-card">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>${dict.lblDateCol}</th>
+                        <th>${dict.lblTypeCol}</th>
+                        <th>${dict.lblRefCol}</th>
+                        <th>${dict.lblCounterpartyCol}</th>
+                        <th>${dict.lblDetailsCol}</th>
+                        <th style="text-align: right;">${dict.lblAmountCol}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rowsHtml || `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--ink-soft);">No transactions found.</td></tr>`}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          `;
+
+          output.innerHTML = `
+            <div class="visualizer-dashboard">
+              ${headerHtml}
+              ${cardsHtml}
+              ${bannerHtml}
+              ${tableHtml}
+              <div id="transactionDetailCard" class="transaction-detail-card" style="display: none;"></div>
+            </div>
+          `;
+        }
       }
 
-      const statement = activeStatement;
-      const currency = (statement.closingBalance ? statement.closingBalance.currency : '') || (statement.openingBalance ? statement.openingBalance.currency : '') || 'USD';
-      
-      let totalCredits = 0;
-      let totalDebits = 0;
-      statement.transactions.forEach(t => {
-        if (t.sign === '+') totalCredits += t.amount;
-        else totalDebits += t.amount;
-      });
-
-      const openingVal = (statement.openingBalance ? statement.openingBalance.amount : 0) * (statement.openingBalance && statement.openingBalance.sign === '-' ? -1 : 1);
-      const closingVal = (statement.closingBalance ? statement.closingBalance.amount : 0) * (statement.closingBalance && statement.closingBalance.sign === '-' ? -1 : 1);
-      const netVal = closingVal - openingVal;
-      const netSign = netVal >= 0 ? '+' : '-';
-      const netFormatted = formatAmountRaw(Math.abs(netVal));
-
-      const dict = i18n[currentLang];
-
-      // Build header summary html
-      const headerHtml = `
-        <div class="dashboard-header-card">
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblAccount}</div>
-            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.account || '—')}</div>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblStatement}</div>
-            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">#${escapeHtml(statement.statementNum || '—')}${statement.sequenceNum ? '/' + escapeHtml(statement.sequenceNum) : ''}</div>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${dict.lblPeriod}</div>
-            <div style="font-size: 18px; font-weight: 700; color: var(--ink);">${escapeHtml(statement.openingBalance ? statement.openingBalance.date : '—')} &rarr; ${escapeHtml(statement.closingBalance ? statement.closingBalance.date : '—')}</div>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${dict.lblClosingBal}</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
-              ${statement.closingBalance ? (statement.closingBalance.sign === '+' ? '+' : '-') : ''} ${formatAmountRaw(statement.closingBalance ? statement.closingBalance.amount : 0)} ${escapeHtml(currency)}
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Build cards row html
-      const cardsHtml = `
-        <div class="dashboard-cards-row">
-          <div class="dashboard-card">
-            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblOpening}</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.3;">
-              ${statement.openingBalance ? (statement.openingBalance.sign === '+' ? '+' : '-') : ''}<br>${formatAmountRaw(statement.openingBalance ? statement.openingBalance.amount : 0)} ${escapeHtml(currency)}
-            </div>
-          </div>
-          <div class="dashboard-card">
-            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblClosing}</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--credit-color); line-height: 1.3;">
-              ${statement.closingBalance ? (statement.closingBalance.sign === '+' ? '+' : '-') : ''}<br>${formatAmountRaw(statement.closingBalance ? statement.closingBalance.amount : 0)} ${escapeHtml(currency)}
-            </div>
-          </div>
-          <div class="dashboard-card">
-            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblCredits}</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--credit-color);">
-              + ${formatAmountRaw(totalCredits)} ${escapeHtml(currency)}
-            </div>
-          </div>
-          <div class="dashboard-card">
-            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblDebits}</div>
-            <div style="font-size: 16px; font-weight: 800; color: var(--debit-color);">
-              - ${formatAmountRaw(totalDebits)} ${escapeHtml(currency)}
-            </div>
-          </div>
-          <div class="dashboard-card">
-            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">${dict.lblTransactions}</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--ink);">
-              ${statement.transactions.length}
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Build Executive Business Insights html
-      const businessExplanation = getMT940BusinessExplanation(statement, currency, netVal, totalCredits, totalDebits);
-      const bannerHtml = `
-        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
-          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
-          </div>
-          <div>${businessExplanation}</div>
-        </div>
-      `;
-
-      // Build Transactions Table html
-      let rowsHtml = '';
-      statement.transactions.forEach((tx, idx) => {
-        const badgeCls = tx.sign === '+' ? 'tx-badge-credit' : 'tx-badge-debit';
-        const typeText = getFriendlyType(tx.typeCode, tx.sign);
-        const amountSign = tx.sign === '+' ? '+' : '-';
-        const amountColor = tx.sign === '+' ? 'var(--credit-color)' : 'var(--debit-color)';
-        
-        const EREF = tx.details86 ? (tx.details86.EREF || '') : '';
-        const detailsText = EREF ? `/EREF/${EREF}` : (tx.details86 ? (tx.details86.REMI || tx.details86.RAW || '—') : '—');
-        
-        const counterparty = tx.details86 ? (tx.details86.CRNM || tx.details86.DBNM || '—') : '—';
-
-        rowsHtml += `
-          <tr onclick="showTransactionDetail(${idx})" id="tx-row-${idx}" class="tx-row">
-            <td style="white-space: nowrap; font-size:13px; color: var(--ink-soft);">${escapeHtml(tx.valueDate)}</td>
-            <td><span class="tx-type-badge ${badgeCls}">${escapeHtml(typeText)}</span></td>
-            <td style="font-family: var(--mono); font-size:12.5px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tx.customerRef)}">${escapeHtml(tx.customerRef)}</td>
-            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(counterparty)}">${escapeHtml(counterparty)}</td>
-            <td style="font-size: 13px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detailsText)}">${escapeHtml(detailsText)}</td>
-            <td style="text-align: right; font-weight: 700; color: ${amountColor}; white-space: nowrap;">
-              ${amountSign} ${formatAmountRaw(tx.amount)} ${escapeHtml(currency)}
-            </td>
-          </tr>
-        `;
-      });
-
-      const tableHtml = `
-        <div class="transactions-table-card">
-          <div class="table-wrap">
-            <div class="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>${dict.lblDateCol}</th>
-                    <th>${dict.lblTypeCol}</th>
-                    <th>${dict.lblRefCol}</th>
-                    <th>${dict.lblCounterpartyCol}</th>
-                    <th>${dict.lblDetailsCol}</th>
-                    <th style="text-align: right;">${dict.lblAmountCol}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rowsHtml || `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--ink-soft);">No transactions found.</td></tr>`}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-
-      output.innerHTML = `
-        <div class="visualizer-dashboard">
-          ${headerHtml}
-          ${cardsHtml}
-          ${bannerHtml}
-          ${tableHtml}
-          <div id="transactionDetailCard" class="transaction-detail-card" style="display: none;"></div>
-        </div>
-      `;
+      injectGlobalParserAddons();
     }
 
     function showTransactionDetail(idx) {
@@ -4435,6 +4626,100 @@
     function closeTransactionDetail() {
       document.getElementById('transactionDetailCard').style.display = 'none';
       document.querySelectorAll('.tx-row').forEach(row => row.classList.remove('selected-row'));
+    }
+
+    // ── Global Parser Addons (Developer Utilities & Validation Alerts) ─────
+    function validateMessageTags(msgType) {
+      if (!msgType) return [];
+      const text = document.getElementById('rawInput').value;
+      
+      const mandatoryTags = DATA.filter(d => d.msg && d.msg.toLowerCase() === msgType.toLowerCase() && d.mo === 'm' && d.tag !== 'MSG_NAME' && d.sub === '');
+      
+      const missing = [];
+      mandatoryTags.forEach(t => {
+        const regex = new RegExp('(^|\\n):' + t.tag + ':', 'm');
+        if (!regex.test(text)) {
+          missing.push(t.tag);
+        }
+      });
+      
+      return [...new Set(missing)];
+    }
+
+    function injectGlobalParserAddons() {
+      const dashboard = document.querySelector('#parserOutput .visualizer-dashboard');
+      if (!dashboard) return;
+      
+      const errors = validateMessageTags(activeStatement.msgType);
+      
+      let warningHtml = '';
+      if (errors.length > 0) {
+        const title = currentLang === 'id' ? 'Peringatan Validasi Format' : 'Format Validation Warning';
+        const desc = currentLang === 'id' 
+          ? `Tag wajib berikut tidak ditemukan dalam pesan: ` 
+          : `The following mandatory tags were not found in the message: `;
+        const tagBadges = errors.map(t => `<code style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin: 0 2px;">:${t}:</code>`).join(' ');
+        warningHtml = `
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1.5px solid rgba(239, 68, 68, 0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; font-family: var(--sans);">
+            <div style="font-size: 20px; line-height: 1;">⚠️</div>
+            <div style="flex: 1; font-size: 13px; color: var(--ink);">
+              <div style="font-weight: 700; color: #ef4444; margin-bottom: 4px;">${title}</div>
+              <div>${desc} ${tagBadges}</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      const utilsHtml = `
+        <div style="display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; background: var(--panel); margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em;">Developer Utilities</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-ghost" onclick="toggleJsonView()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; font-weight: bold; border: 1px solid var(--line);">
+                <span>⚙️</span> <span id="lbl-toggleJson">${currentLang === 'id' ? 'Tampilkan JSON' : 'Show JSON'}</span>
+              </button>
+              <button class="btn btn-ghost" onclick="copyParsedJson()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; font-weight: bold; border: 1px solid var(--line);">
+                <span>📋</span> <span>${currentLang === 'id' ? 'Salin JSON' : 'Copy JSON'}</span>
+              </button>
+            </div>
+          </div>
+          <div id="parsedJsonContainer" style="display: none; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px;">
+            <pre style="background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 12px; overflow-x: auto; max-height: 300px; margin: 0; line-height: 1.5;">${escapeHtml(JSON.stringify(activeStatement, null, 2))}</pre>
+          </div>
+        </div>
+      `;
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = warningHtml + utilsHtml;
+      
+      while (tempDiv.childNodes.length > 0) {
+        dashboard.insertBefore(tempDiv.childNodes[0], dashboard.firstChild);
+      }
+    }
+
+    function toggleJsonView() {
+      const container = document.getElementById('parsedJsonContainer');
+      const btnText = document.getElementById('lbl-toggleJson');
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        btnText.innerText = currentLang === 'id' ? 'Sembunyikan JSON' : 'Hide JSON';
+      } else {
+        container.style.display = 'none';
+        btnText.innerText = currentLang === 'id' ? 'Tampilkan JSON' : 'Show JSON';
+      }
+    }
+
+    function copyParsedJson() {
+      if (!activeStatement) return;
+      navigator.clipboard.writeText(JSON.stringify(activeStatement, null, 2))
+        .then(() => {
+          showToast(currentLang === 'id' ? 'JSON berhasil disalin!' : 'JSON copied to clipboard!');
+        })
+        .catch(() => {
+          showToast(currentLang === 'id' ? 'Gagal menyalin JSON' : 'Failed to copy JSON');
+        });
     }
 
     function handleParserTypeChange() {
