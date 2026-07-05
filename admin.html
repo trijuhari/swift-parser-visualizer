@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwiftDocs — Dashboard Owner CMS</title>
+  <style>
+    :root {
+      --ink: #1b2430;
+      --ink-soft: #5b6573;
+      --paper: #f8f9fa;
+      --panel: #ffffff;
+      --line: #e3e0d8;
+      --accent: #0f5c4f;
+      --accent-soft: #e6efe9;
+      --gold: #a6772c;
+      --sidebar-width: 260px;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --sans: "Inter", "Segoe UI", sans-serif;
+      --row-hover: #f7f5ee;
+      --shadow: rgba(0, 0, 0, .05);
+      --shadow-lg: rgba(0, 0, 0, .1);
+      --credit-color: #10b981;
+      --debit-color: #ef4444;
+      --credit-bg: #ecfdf5;
+      --debit-bg: #fef2f2;
+    }
+
+    html.dark {
+      --ink: #e8e6e0;
+      --ink-soft: #8a9099;
+      --paper: #0b0f14;
+      --panel: #141c26;
+      --line: #242f3d;
+      --accent: #2dd4a0;
+      --accent-soft: #1a2e28;
+      --gold: #d4a84b;
+      --row-hover: #1e2836;
+      --shadow: rgba(0, 0, 0, .2);
+      --shadow-lg: rgba(0, 0, 0, .4);
+      --credit-color: #34d399;
+      --debit-color: #f87171;
+      --credit-bg: #064e3b;
+      --debit-bg: #7f1d1d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      transition: background .25s, color .25s;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Login Backdrop & Card ── */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 10% 20%, rgba(15, 92, 79, 0.05) 0%, rgba(20, 28, 38, 0) 90.2%), var(--paper);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      padding: 20px;
+    }
+
+    #login-overlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.95);
+    }
+
+    .login-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px;
+      width: min(440px, 100%);
+      box-shadow: 0 10px 30px var(--shadow-lg);
+      text-align: center;
+      animation: loginSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes loginSlideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-logo {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .login-card h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .login-card p {
+      margin: 0 0 28px;
+      color: var(--ink-soft);
+      font-size: 13.5px;
+    }
+
+    .login-field {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+
+    .login-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      color: var(--ink-soft);
+    }
+
+    .login-input-wrapper {
+      position: relative;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .login-input:focus {
+      border-color: var(--accent);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .login-btn:hover {
+      opacity: 0.9;
+    }
+
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
+    .login-error {
+      color: var(--debit-color);
+      font-size: 13px;
+      margin-top: 10px;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* ── Main Layout ── */
+    .app-container {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-logo-icon {
+      font-size: 24px;
+    }
+
+    .sidebar-logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+
+    .sidebar-menu {
+      padding: 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .menu-item:hover {
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    .menu-item.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      padding: 30px 40px;
+      min-width: 0; /* Prevents flex items from overflowing */
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-title h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .header-title p {
+      margin: 4px 0 0;
+      color: var(--ink-soft);
+      font-size: 13.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .stats-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s;
+    }
+
+    .stats-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .stats-icon {
+      font-size: 32px;
+      width: 54px;
+      height: 54px;
+      background: var(--paper);
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .stats-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stats-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .stats-label {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    /* Card Panels */
+    .card-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-body {
+      padding: 24px;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13.5px;
+    }
+
+    th {
+      background: var(--paper);
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      user-select: none;
+    }
+
+    th[data-key] {
+      cursor: pointer;
+    }
+
+    th[data-key]:hover {
+      color: var(--ink);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr {
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover {
+      background: var(--row-hover);
+    }
+
+    /* Checkbox & Inputs */
+    input[type="checkbox"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    /* Badges */
+    .badge-msg {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+
+    .badge-msg.mt940 { background: #e0f2fe; color: #0369a1; }
+    .badge-msg.mt942 { background: #fef3c7; color: #b45309; }
+    .badge-msg.mt950 { background: #dcfce7; color: #15803d; }
+    .badge-msg.mt103 { background: #fae8ff; color: #a21caf; }
+    .badge-msg.mt101 { background: #ffe4e6; color: #be123c; }
+    .badge-msg.mt564 { background: #f3e8ff; color: #6b21a8; }
+    .badge-msg.badge-custom { background: #e0e7ff; color: #4338ca; }
+
+    .mo {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .mo.m {
+      background: var(--debit-bg);
+      color: var(--debit-color);
+    }
+
+    .mo.o {
+      background: var(--paper);
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+    }
+
+    .source-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .source-dot.db { background: #10b981; }
+    .source-dot.local { background: #6b3fa0; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1.5px solid transparent;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-danger {
+      background: var(--debit-color);
+      color: #ffffff;
+      border-color: var(--debit-color);
+    }
+
+    .btn-danger:hover {
+      opacity: 0.9;
+    }
+
+    .icon-btn {
+      background: var(--panel);
+      border: 1.5px solid var(--line);
+      color: var(--ink);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .act-btn {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: var(--paper);
+      color: var(--ink-soft);
+      transition: all 0.12s;
+    }
+
+    .act-btn.edit:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .act-btn.delete:hover {
+      background: var(--debit-bg);
+      color: var(--debit-color);
+    }
+
+    /* Filters Bar */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1 1 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px 8px 34px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 13.5px;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .search-box::before {
+      content: "⌕";
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-soft);
+      font-size: 16px;
+    }
+
+    .select-dropdown {
+      padding: 8px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 13.5px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .select-dropdown:focus {
+      border-color: var(--accent);
+    }
+
+    .chips-container {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--ink-soft);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1f2937;
+      color: #ffffff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+      font-weight: 600;
+      font-size: 13.5px;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .4);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity .2s ease-out;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px var(--shadow-lg);
+      width: min(600px, 95vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: scale(0.95);
+      transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-backdrop.open .modal {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      margin: 0 0 20px;
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--sans);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / span 2;
+    }
+
+    .field label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+    }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--ink);
+      outline: none;
+      font-size: 13.5px;
+      font-family: var(--sans);
+    }
+
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .field textarea {
+      resize: vertical;
+      height: 90px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    /* Sub-field Indicators */
+    .has-sub-indicator {
+      display: inline-block;
+      margin-top: 3px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      color: var(--gold);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Highlight matching terms */
+    mark {
+      background: rgba(254, 240, 138, 0.6);
+      color: inherit;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+    html.dark mark {
+      background: rgba(161, 98, 7, 0.4);
+    }
+
+    /* Pagination */
+    .pagination-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .pagination-info {
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--paper);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--line);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--ink-soft);
+    }
+
+    /* Responsive */
+    @media(max-width: 900px) {
+      body {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+      .sidebar-menu {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px 16px;
+      }
+      .sidebar-footer {
+        display: none;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 20px;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .field.full {
+        grid-column: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Login Screen Overlay ── -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <span class="login-logo">🏦</span>
+      <h2 id="lbl-loginTitle">SwiftDocs Owner Portal</h2>
+      <p id="lbl-loginSubtitle">Masuk untuk mengelola data referensi SWIFT.</p>
+
+      <div class="login-field">
+        <label id="lbl-loginPassLabel" for="ownerPasswordInput">Password</label>
+        <div class="login-input-wrapper">
+          <input type="password" id="ownerPasswordInput" class="login-input" placeholder="Masukkan password owner..." onkeydown="if(event.key==='Enter') submitLogin()">
+        </div>
+        <div id="loginErrorMsg" class="login-error">Password salah!</div>
+      </div>
+
+      <button class="login-btn" onclick="submitLogin()" id="btnSubmitLogin">Masuk</button>
+      <div style="margin-top: 15px;">
+        <a href="index.html" style="color: var(--ink-soft); font-size: 13px; text-decoration: none;">← Kembali ke Beranda</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Application Layout ── -->
+  <div class="app-container" id="appContainer" style="display: none;">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo-icon">🏦</span>
+        <span class="sidebar-logo-text">SwiftDocs CMS</span>
+      </div>
+      <div class="sidebar-menu">
+        <a class="menu-item active" id="menu-dashboard" onclick="switchSection('dashboard')">
+          <span>📊</span> <span id="lbl-menuDash">Dashboard Overview</span>
+        </a>
+        <a class="menu-item" id="menu-tags" onclick="switchSection('tags')">
+          <span>📝</span> <span id="lbl-menuTags">Data Referensi</span>
+        </a>
+        <a class="menu-item" id="menu-import" onclick="switchSection('import')">
+          <span>📥</span> <span id="lbl-menuImport">Impor JSON</span>
+        </a>
+        <a class="menu-item" id="menu-settings" onclick="switchSection('settings')">
+          <span>⚙️</span> <span id="lbl-menuSettings">Pengaturan DB</span>
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        <div><strong>Status DB:</strong> <span id="db-status-chip"><span class="source-dot db"></span>Terhubung</span></div>
+        <div>SwiftDocs CMS v1.2</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Top header bar inside main area -->
+      <div class="content-header">
+        <div class="header-title">
+          <h1 id="lbl-secTitle">Dashboard Overview</h1>
+          <p id="lbl-secSub">Selamat datang kembali di panel CMS owner.</p>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Toggle Language">🌐 ID</button>
+          <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
+          <a href="index.html" class="btn btn-ghost" title="Ke Beranda Publik">🏠 <span id="lbl-btnHome">Beranda</span></a>
+          <button class="btn btn-danger" onclick="logoutOwner()">🚪 <span id="lbl-btnLogout">Keluar</span></button>
+        </div>
+      </div>
+
+      <!-- ── SECTION: DASHBOARD OVERVIEW ── -->
+      <div id="section-dashboard" class="dashboard-section">
+        <!-- Stats cards row -->
+        <div class="stats-grid">
+          <div class="stats-card">
+            <div class="stats-icon" style="color: var(--accent); background: var(--accent-soft);">📝</div>
+            <div class="stats-info">
+              <span class="stats-value" id="stat-total-tags">0</span>
+              <span class="stats-label" id="lbl-statTotal">Total Tags</span>
+            </div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-icon" style="color: #6b3fa0; background: #f3e8ff;">💾</div>
+            <div class="stats-info">
+              <span class="stats-value" id="stat-custom-tags">0</span>
+              <span class="stats-label" id="lbl-statCustom">Tags Kustom</span>
+            </div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-icon" style="color: var(--gold); background: color-mix(in srgb, var(--gold) 15%, transparent);">🛡️</div>
+            <div class="stats-info">
+              <span class="stats-value" id="stat-system-tags">0</span>
+              <span class="stats-label" id="lbl-statSystem">Tags Sistem</span>
+            </div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-icon" style="color: #0284c7; background: #e0f2fe;">✉️</div>
+            <div class="stats-info">
+              <span class="stats-value" id="stat-message-types">0</span>
+              <span class="stats-label" id="lbl-statMsgTypes">Jenis Pesan</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-panel" style="margin-top: 30px;">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-quickTitle">Tag Baru Ditambahkan</h3>
+            <button class="btn btn-primary" onclick="switchSection('tags')"><span id="lbl-manageAll">Kelola Semua Tag →</span></button>
+          </div>
+          <div class="panel-body" style="padding: 0;">
+            <div class="table-wrap" style="border: none; border-radius: 0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pesan</th>
+                    <th>Tag</th>
+                    <th>Sub</th>
+                    <th>Nama Field</th>
+                    <th>M/O</th>
+                    <th>Format</th>
+                    <th>Sumber</th>
+                  </tr>
+                </thead>
+                <tbody id="quickTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: DATA REFERENSI (TAGS CRUD) ── -->
+      <div id="section-tags" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-crudTitle">Kelola Tag & Sub-Field</h3>
+            <div class="panel-actions">
+              <button id="btnDeleteSelected" class="btn btn-danger" onclick="deleteSelectedRows()" style="display: none;">🗑️ <span id="lbl-btnDeleteSelected">Hapus Terpilih</span></button>
+              <button class="btn btn-primary" onclick="openModal()">➕ <span id="lbl-btnAddRow">Tambah Baris</span></button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Search & filter bar -->
+            <div class="filter-bar">
+              <select id="searchColumn" class="select-dropdown">
+                <option value="all" id="opt-colAll">Semua Kolom</option>
+                <option value="msg" id="opt-colMsg">Pesan</option>
+                <option value="tag" id="opt-colTag">Tag</option>
+                <option value="name" id="opt-colName">Nama Field</option>
+                <option value="mo" id="opt-colMo">M/O</option>
+                <option value="len" id="opt-colLen">Format</option>
+                <option value="sample" id="opt-colSample">Contoh</option>
+                <option value="desc" id="opt-colDesc">Keterangan</option>
+              </select>
+              
+              <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Cari tag, nama field, atau kata kunci…">
+              </div>
+
+              <!-- Message Type Filter Chips -->
+              <div class="chips-container" id="msgFilterChips"></div>
+            </div>
+
+            <!-- Tags Table -->
+            <div class="table-wrap">
+              <table id="dataTable">
+                <thead>
+                  <tr>
+                    <th style="width: 45px; text-align: center;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
+                    <th data-key="msg">Pesan</th>
+                    <th data-key="tag">Tag</th>
+                    <th>Nama Field</th>
+                    <th data-key="mo">M/O</th>
+                    <th data-key="len">Format</th>
+                    <th>Contoh</th>
+                    <th>Keterangan</th>
+                    <th style="width: 120px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+              <div class="empty-state" id="emptyState" style="display:none; padding: 60px 20px; text-align: center;">
+                <span style="font-size: 40px;">∅</span>
+                <p id="lbl-empty" style="color: var(--ink-soft); margin-top: 10px;">Tidak ada tag yang cocok dengan kriteria pencarian.</p>
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-wrap" id="paginationWrap">
+              <div class="pagination-info">
+                <span id="lbl-showing">Menampilkan</span> <strong id="pageStart">0</strong> - <strong id="pageEnd">0</strong>
+                <span id="lbl-dari">dari</span> <strong id="countNum">0</strong> <span id="lbl-baris">baris</span> (Total: <span id="countTotal">0</span>)
+              </div>
+              <div class="pagination-controls">
+                <span id="pageIndicator">Halaman 1 dari 1</span>
+                <button class="icon-btn" id="btnPrevPage" onclick="changePage(-1)">◀</button>
+                <button class="icon-btn" id="btnNextPage" onclick="changePage(1)">▶</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: IMPORT JSON ── -->
+      <div id="section-import" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-importTitle">Impor Data JSON</h3>
+          </div>
+          <div class="panel-body">
+            <p id="lbl-importDesc" style="color: var(--ink-soft); margin-bottom: 20px; font-size: 13.5px;">
+              Tempel format JSON hasil ekstraksi LLM di bawah ini. Data akan divalidasi dan ditampilkan dalam tabel pratinjau sebelum disimpan ke database.
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <div>
+                <textarea id="importJsonTextarea" placeholder="Tempel data JSON di sini..." style="width: 100%; height: 180px; padding: 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-family: monospace; font-size: 12px; resize: vertical; outline: none;" oninput="validateAndPreview()"></textarea>
+                <div id="importValidationError" style="color: var(--debit-color); font-size: 13px; margin-top: 6px; font-weight: 600; display: none;"></div>
+              </div>
+
+              <!-- Preview Table Section -->
+              <div style="border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden;">
+                <div style="padding: 12px 16px; background: var(--paper); border-bottom: 1.5px solid var(--line); font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
+                  <span id="lbl-importPreviewTitle">Pratinjau Data Impor</span>
+                  <span id="importPreviewCount" style="background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">0 baris</span>
+                </div>
+                <div style="max-height: 300px; overflow-y: auto;">
+                  <table id="importPreviewTable">
+                    <thead style="position: sticky; top: 0; background: var(--paper); z-index: 5;">
+                      <tr>
+                        <th>Pesan</th>
+                        <th>Tag</th>
+                        <th>Sub</th>
+                        <th>Nama Field</th>
+                        <th>M/O</th>
+                        <th>Format</th>
+                      </tr>
+                    </thead>
+                    <tbody id="importPreviewTbody">
+                      <tr>
+                        <td colspan="6" style="padding: 40px; text-align: center; color: var(--ink-soft); font-style: italic;">
+                          Masukkan JSON untuk melihat pratinjau data
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-ghost" onclick="clearImportTextarea()" id="lbl-btnClearImport">Bersihkan</button>
+                <button class="btn btn-primary" id="btnConfirmImport" onclick="executeImport()" disabled>Konfirmasi & Impor</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: SETTINGS ── -->
+      <div id="section-settings" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-settingsTitle">Pengaturan Database & Status</h3>
+          </div>
+          <div class="panel-body">
+            <div style="display: flex; flex-direction: column; gap: 24px; max-width: 600px;">
+              <div>
+                <h4 style="margin: 0 0 8px; font-size: 15px;" id="lbl-dbConStatus">Konektivitas Database</h4>
+                <div style="padding: 16px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <strong id="db-status-text">SQLite Database Online</strong>
+                    <div style="font-size: 12px; color: var(--ink-soft); margin-top: 4px;" id="lbl-dbInfo">Menyinkronkan data langsung ke file swift.db backend.</div>
+                  </div>
+                  <button class="btn btn-ghost" onclick="testConnection()" id="lbl-btnTestCon">Tes Koneksi</button>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="margin: 0 0 8px; font-size: 15px;" id="lbl-dbActionTitle">Tindakan Admin</h4>
+                <p style="color: var(--ink-soft); font-size: 13px; margin: 0 0 12px;" id="lbl-dbActionDesc">Manajemen memori lokal dan pencadangan data CMS.</p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <button class="btn btn-ghost" onclick="exportDatabaseBackup()">💾 <span id="lbl-btnExportBackup">Ekspor Backup JSON</span></button>
+                  <button class="btn btn-ghost" onclick="clearLocalStorageCache()" style="color: var(--debit-color); border-color: var(--debit-color);">🗑️ <span id="lbl-btnClearCache">Bersihkan Cache Lokal</span></button>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="margin: 0 0 8px; font-size: 15px;" id="lbl-credTitle">Ubah Password Owner</h4>
+                <p style="color: var(--ink-soft); font-size: 13px; margin: 0 0 12px;" id="lbl-credDesc">Password disimpan secara lokal di client-side script.</p>
+                <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                  <div class="field" style="flex: 1; min-width: 200px;">
+                    <label id="lbl-labelNewPass">Password Baru</label>
+                    <input type="password" id="newOwnerPassword" placeholder="Masukkan password baru..." disabled value="swift2024">
+                  </div>
+                  <button class="btn btn-ghost" disabled style="opacity: 0.5;">Ubah Password</button>
+                </div>
+                <div style="font-size: 11.5px; color: var(--ink-soft); margin-top: 6px;">Ubah password dinonaktifkan untuk demo ini (default: swift2024).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Add/Edit Modal ── -->
+  <div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOutside(event)">
+    <div class="modal">
+      <h2 id="modalTitle" class="modal-title">Tambah Baris Data</h2>
+
+      <!-- Mode selector -->
+      <div style="display: flex; gap: 8px; margin-bottom: 24px;">
+        <button class="btn btn-primary" id="modeParentBtn" onclick="setModalMode('parent')" style="flex: 1;">📋 Tag Baru</button>
+        <button class="btn btn-ghost" id="modeSubBtn" onclick="setModalMode('sub')" style="flex: 1;">🔗 Sub-Field dari Tag Existing</button>
+      </div>
+
+      <div class="form-grid">
+        <!-- Msg Type -->
+        <div class="field">
+          <label id="lbl-formMsg">Jenis Pesan</label>
+          <input type="text" id="f_msg" list="msgTypeList" placeholder="mis. mt103" autocomplete="off" style="text-transform: lowercase;">
+          <datalist id="msgTypeList"></datalist>
+        </div>
+
+        <!-- M / O -->
+        <div class="field">
+          <label id="lbl-formMo">Status M/O</label>
+          <select id="f_mo">
+            <option value="m">Wajib (M)</option>
+            <option value="o">Opsional (O)</option>
+          </select>
+        </div>
+
+        <!-- Parent Tag (text input) -->
+        <div class="field" id="row_tag_input">
+          <label>Tag</label>
+          <input type="text" id="f_tag" placeholder="mis. 61">
+        </div>
+
+        <!-- Parent Tag (dropdown select) -->
+        <div class="field" id="row_tag_select" style="display:none;">
+          <label id="lbl-formParent">Tag Induk (Parent)</label>
+          <select id="f_tag_select"></select>
+        </div>
+
+        <!-- Sub-field ID -->
+        <div class="field" id="row_sub_id">
+          <label id="lbl_sub">Sub-field ID</label>
+          <input type="text" id="f_sub" placeholder="mis. 1, EREF, CRNM">
+        </div>
+
+        <!-- Field Name ID/EN -->
+        <div class="field full">
+          <label id="lbl-formName">Nama Field (Bahasa Indonesia)</label>
+          <input type="text" id="f_name" placeholder="mis. Tanggal Valuta">
+        </div>
+
+        <div class="field full">
+          <label id="lbl-formNameEn">Field Name (English)</label>
+          <input type="text" id="f_name_en" placeholder="e.g. Value Date">
+        </div>
+
+        <!-- Length -->
+        <div class="field">
+          <label id="lbl-formLen">Format / Panjang</label>
+          <input type="text" id="f_len" placeholder="mis. YYMMDD">
+        </div>
+
+        <!-- Sample -->
+        <div class="field">
+          <label id="lbl-formSample">Contoh Nilai</label>
+          <input type="text" id="f_sample" placeholder="mis. 200506">
+        </div>
+
+        <!-- Description ID -->
+        <div class="field full">
+          <label id="lbl-formDesc">Keterangan (Bahasa Indonesia)</label>
+          <textarea id="f_desc" placeholder="Deskripsi field..."></textarea>
+        </div>
+
+        <!-- Description EN -->
+        <div class="field full">
+          <label id="lbl-formDescEn">Description (English)</label>
+          <textarea id="f_desc_en" placeholder="Field description..."></textarea>
+        </div>
+
+        <!-- Rules ID -->
+        <div class="field full">
+          <label id="lbl-formRules">Aturan Validasi (Bahasa Indonesia)</label>
+          <textarea id="f_rules" placeholder="Aturan format tambahan..."></textarea>
+        </div>
+
+        <!-- Rules EN -->
+        <div class="field full">
+          <label id="lbl-formRulesEn">Validation Rules (English)</label>
+          <textarea id="f_rules_en" placeholder="Additional validation constraints..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal()" id="lbl-btnCancel">Batal</button>
+        <button class="btn btn-primary" onclick="saveRow()" id="lbl-btnSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sub-fields Viewer Modal ── -->
+  <div class="modal-backdrop" id="subFieldsModalBackdrop" onclick="closeSubFieldsModalOutside(event)">
+    <div class="modal" style="width: min(800px, 95vw);">
+      <h2 id="subFieldsModalTitle" class="modal-title" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 0 0 10px;">
+        <span id="lbl-subFieldsTitle">Detail Sub-Fields</span>
+        <button class="btn btn-primary" id="btnAddNewSubField" onclick="addNewSubFieldFromModal()">➕ Tambah Sub-Field</button>
+      </h2>
+      <div style="font-size: 13.5px; color: var(--ink-soft); margin-bottom: 20px;">
+        <span id="subFieldsModalMeta">Pesan: MT940 | Tag: 61</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px;">Sub</th>
+              <th>Nama Field</th>
+              <th style="width: 90px;">M/O</th>
+              <th style="width: 100px;">Format</th>
+              <th style="width: 130px;">Contoh</th>
+              <th style="width: 130px; text-align: center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="subFieldsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn btn-ghost" onclick="closeSubFieldsModal()" id="lbl-btnCloseSubFields">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification element -->
+  <div id="toast"></div>
+
+  <!-- ── JavaScript Code ── -->
+  <script>
+    const OWNER_PASS = 'swift2024';
+    const API_URL = 'http://localhost:8766/api/tags';
+    
+    let DATA = [];
+    let CUSTOM = JSON.parse(localStorage.getItem('swift_custom') || '[]');
+    let isApiConnected = false;
+    let currentLang = localStorage.getItem('swift_lang') || 'id';
+    let currentSection = 'dashboard';
+    
+    let selectedRows = new Set();
+    let activeFilterMsg = 'all';
+    
+    // Sorting & Pagination
+    let sortKey = null;
+    let sortDir = 1;
+    let currentPage = 1;
+    const rowsPerPage = 15;
+
+    // Smart auto-fill variables
+    let currentModalMode = 'parent';
+
+    // Fallback static data
+    const FALLBACK_DATA = [
+      {"msg": "mt940", "tag": "20", "sub": "", "name": "Nomor Referensi Transaksi", "name_en": "Transaction Reference Number", "len": "16x", "mo": "m", "sample": "TRN0000123456789", "desc": "Digunakan untuk mengidentifikasi pesan MT940 secara unik.", "desc_en": "Used to uniquely identify the MT940 message.", "rules": "Hanya karakter alphanumeric dan beberapa karakter khusus (SWIFT character set). Panjang maksimal 16 karakter.", "rules_en": "Alphanumeric and limited special characters (SWIFT character set). Max 16 characters.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "25", "sub": "", "name": "Identifikasi Rekening", "name_en": "Account Identification", "len": "35x", "mo": "m", "sample": "DE03203205004989012345", "desc": "Nomor rekening IBAN atau BBAN.", "desc_en": "IBAN or BBAN account number.", "rules": "Panjang maksimal 35 karakter. Dapat diawali dengan Kode BIC dan tanda garis miring (/) jika diterima melalui Business Online.", "rules_en": "Max 35 characters. Can be preceded by BIC and a slash (/) if received via Business Online.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "28C", "sub": "", "name": "Nomor Laporan / Nomor Urut", "name_en": "Statement Number / Sequence Number", "len": "5n[/5n]", "mo": "m", "sample": "00532/001", "desc": "Nomor laporan rekening diikuti nomor urut pesan.", "desc_en": "Statement number followed by sequence number; resets to 1 every January 1st.", "rules": "Format: N/N (nomor laporan / nomor urut pesan). Nomor laporan bertambah secara berurutan dan direset ke 1 setiap tanggal 1 Januari.", "rules_en": "Format: N/N (statement number / sequence number). Statement number resets to 1 every January 1st.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "60F", "sub": "", "name": "Saldo Awal", "name_en": "Opening Balance", "len": "1!a6!n3!a15d", "mo": "m", "sample": "C230306DKK985623,04", "desc": "Saldo awal pertama dalam laporan.", "desc_en": "First opening balance in the statement.", "rules": "Format: [Indikator C/D][Tanggal YYMMDD][Mata Uang 3 karakter][Jumlah]. Tanpa spasi.", "rules_en": "Format: [C/D][YYMMDD][ISO Currency][Amount]. No spaces between components.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "60F", "sub": "1", "name": "Indikator Kredit/Debit", "name_en": "Credit/Debit Indicator", "len": "1a", "mo": "m", "sample": "C", "desc": "C untuk Kredit, D untuk Debit.", "desc_en": "C for credit, D for debit.", "rules": "Nilai valid: C (Kredit), D (Debit).", "rules_en": "Valid values: C (Credit), D (Debit).", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "60F", "sub": "2", "name": "Tanggal Saldo Awal", "name_en": "Opening Balance Date", "len": "6n", "mo": "m", "sample": "230306", "desc": "Tanggal saldo awal (YYMMDD).", "desc_en": "Opening balance date (YYMMDD).", "rules": "Format tanggal: YYMMDD. Tanggal dari entri pembukuan terakhir.", "rules_en": "Date format: YYMMDD. Date of the last booking entry.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "60F", "sub": "3", "name": "Mata Uang", "name_en": "Currency", "len": "3a", "mo": "m", "sample": "DKK", "desc": "Kode mata uang ISO 4217.", "desc_en": "ISO 4217 currency code.", "rules": "Kode mata uang ISO 3 karakter uppercase. Contoh: USD, DKK, EUR.", "rules_en": "ISO 3-character uppercase currency code. Examples: USD, DKK, EUR.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "60F", "sub": "4", "name": "Jumlah", "name_en": "Amount", "len": "15d", "mo": "m", "sample": "985623,04", "desc": "Nilai nominal saldo awal.", "desc_en": "Nominal value of the opening balance.", "rules": "Pemisah desimal berupa koma (,). Tanpa pemisah ribuan. Maksimal 15 karakter.", "rules_en": "Decimal separator is comma (,). No thousands separator. Max 15 characters.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "", "name": "Baris Transaksi", "name_en": "Statement Line", "len": "6!n[4!n]2a[1!a]15d1!a3!c16x[//16x][34x]", "mo": "o", "sample": "2303010228CK366336,2NTRFArbi/deposit//1323333800", "desc": "Berisi rincian mutasi transaksi rekening.", "desc_en": "Contains transaction details for the account.", "rules": "Terdiri dari beberapa sub-field tanpa spasi: Tanggal Valuta, Tanggal Entri (opsional), Tanda Kredit/Debit, Kode Dana (opsional), Nominal, Tipe Transaksi, Referensi Nasabah, Referensi Bank (opsional), dan Detail Tambahan (opsional).", "rules_en": "Consists of multiple contiguous subfields: Value Date, Entry Date (optional), C/D Mark, Funds Code (optional), Amount, Transaction Type, Customer Ref, Bank Ref (optional), and Supplementary Details (optional).", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "1", "name": "Tanggal Valuta", "name_en": "Value Date", "len": "6n", "mo": "m", "sample": "230301", "desc": "Tanggal efektif dana masuk/keluar (YYMMDD).", "desc_en": "Effective date when funds are credited/debited (YYMMDD).", "rules": "Format tanggal: YYMMDD.", "rules_en": "Date format: YYMMDD.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "2", "name": "Tanggal Entri", "name_en": "Entry Date", "len": "4n", "mo": "o", "sample": "0228", "desc": "Tanggal pembukuan oleh bank (MMDD).", "desc_en": "Bank booking entry date (MMDD).", "rules": "Format: MMDD. Opsional. Jika kosong, tanggal entri sama dengan tanggal valuta.", "rules_en": "Format: MMDD. Optional. If absent, entry date equals value date.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "3", "name": "Indikator Kredit/Debit", "name_en": "Credit/Debit Indicator", "len": "2a", "mo": "m", "sample": "C", "desc": "Arah mutasi transaksi.", "desc_en": "Direction of the transaction.", "rules": "C untuk Kredit, D untuk Debit, RC untuk Reversal of Credit (Debit), RD untuk Reversal of Debit (Kredit).", "rules_en": "C for Credit, D for Debit, RC for Reversal of Credit (Debit entry), RD for Reversal of Debit (Credit entry).", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "4", "name": "Kode Dana", "name_en": "Funds Code", "len": "1a", "mo": "o", "sample": "—", "desc": "Karakter ketiga kode mata uang (opsional).", "desc_en": "Third character of the currency code (optional).", "rules": "Hanya diisi jika bank menggunakan kode dana khusus.", "rules_en": "Only populated if bank uses special fund codes.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "5", "name": "Jumlah", "name_en": "Amount", "len": "15d", "mo": "m", "sample": "366336,2", "desc": "Nilai nominal transaksi mutasi.", "desc_en": "Nominal value of the transaction entry.", "rules": "Pemisah desimal berupa koma (,). Maksimal 15 karakter.", "rules_en": "Decimal separator is comma (,). Max 15 characters.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "6", "name": "Jenis Transaksi", "name_en": "Transaction Type", "len": "4x", "mo": "m", "sample": "NTRF", "desc": "Kode identifikasi jenis transaksi perbankan.", "desc_en": "Identification code of the transaction type.", "rules": "Format: S3!n untuk SWIFT (mis. S103, S202), N3!c untuk transfer Non-SWIFT (mis. NTRF, NMSC), F3!c untuk transaksi bank internal (mis. FINT, FCHG).", "rules_en": "Format: S3!n for SWIFT instructions (e.g. S103, S202), N3!c for Non-SWIFT (e.g. NTRF, NMSC), F3!c for bank-originated (e.g. FINT, FCHG).", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "7", "name": "Referensi Pemilik Rekening", "name_en": "Account Owner Reference", "len": "16x", "mo": "m", "sample": "Arbi/deposit", "desc": "Referensi transaksi yang ditentukan oleh nasabah (Customer Reference).", "desc_en": "Transaction reference assigned by the account owner (Customer Reference).", "rules": "Maksimal 16 karakter. Jika melebihi, sisa karakter dialihkan ke subfield berikutnya.", "rules_en": "Maximum 16 characters. Extra characters are carried over to the next subfield.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "8", "name": "Referensi Bank", "name_en": "Bank Reference", "len": "//16x", "mo": "o", "sample": "I20081200003033", "desc": "Referensi transaksi yang ditentukan oleh bank pembayar.", "desc_en": "Transaction reference assigned by the servicing bank.", "rules": "Diawali dengan tanda '//' diikuti maksimal 16 karakter.", "rules_en": "Prefixed with '//' followed by maximum 16 characters.", "source": "gs-docs"},
+      {"msg": "mt940", "tag": "61", "sub": "9", "name": "Detail Tambahan", "name_en": "Supplementary Details", "len": "34x", "mo": "o", "sample": "/OCMT/FIM128945,05/", "desc": "Informasi tambahan transaksi.", "desc_en": "Supplementary information concerning the transaction.", "rules": "Maksimal 34 karakter. Sering digunakan untuk kode mata uang dan nominal asal (original amount) sebelum konversi.", "rules_en": "Max 34 characters. Often used for original amount / currency before conversion.", "source": "gs-docs"}
+    ];
+
+    // Localizations
+    const i18n = {
+      id: {
+        loginTitle: "Masuk sebagai Owner",
+        loginSubtitle: "Masuk untuk mengelola data referensi SWIFT.",
+        loginPassLabel: "Password",
+        menuDash: "Dashboard Overview",
+        menuTags: "Data Referensi",
+        menuImport: "Impor JSON",
+        menuSettings: "Pengaturan DB",
+        secTitleDash: "Dashboard Overview",
+        secSubDash: "Selamat datang kembali di panel CMS owner.",
+        secTitleTags: "Manajemen Data Referensi",
+        secSubTags: "Tambah, edit, dan hapus baris tag referensi kamus SWIFT.",
+        secTitleImport: "Impor Data JSON",
+        secSubImport: "Impor data dalam jumlah besar dengan format array JSON.",
+        secTitleSettings: "Pengaturan Database",
+        secSubSettings: "Uji koneksi database SQLite dan ekspor cadangan data.",
+        statTotal: "Total Tags",
+        statCustom: "Tags Kustom",
+        statSystem: "Tags Sistem",
+        statMsgTypes: "Jenis Pesan",
+        quickTitle: "Tag Baru Ditambahkan",
+        manageAll: "Kelola Semua Tag →",
+        crudTitle: "Kelola Tag & Sub-Field",
+        btnAddRow: "Tambah Baris",
+        btnDeleteSelected: "Hapus Terpilih",
+        optColAll: "Semua Kolom",
+        optColMsg: "Pesan",
+        optColTag: "Tag",
+        optColName: "Nama Field",
+        optColMo: "M/O",
+        optColLen: "Format",
+        optColSample: "Contoh",
+        optColDesc: "Keterangan",
+        searchPlaceholder: "Cari tag, nama field, format, keterangan...",
+        emptyText: "Tidak ada data yang cocok dengan kriteria pencarian Anda.",
+        showing: "Menampilkan",
+        dari: "dari",
+        baris: "baris",
+        pageIndicator: "Halaman {curr} dari {total}",
+        importTitle: "Impor Data JSON",
+        importDesc: "Tempel format JSON hasil ekstraksi LLM di bawah ini. Data akan divalidasi dan ditampilkan dalam tabel pratinjau sebelum disimpan.",
+        importPreviewTitle: "Pratinjau Data Impor",
+        btnClearImport: "Bersihkan",
+        btnConfirmImport: "Konfirmasi & Impor",
+        dbConStatus: "Konektivitas Database",
+        dbInfo: "Menyinkronkan data langsung ke database SQLite backend (app.py).",
+        btnTestCon: "Tes Koneksi",
+        dbActionTitle: "Tindakan Admin",
+        dbActionDesc: "Manajemen cache penyimpanan lokal dan pencadangan data.",
+        btnExportBackup: "Ekspor Backup JSON",
+        btnClearCache: "Bersihkan Cache Lokal",
+        credTitle: "Ubah Password Owner",
+        credDesc: "Mengubah sandi autentikasi login owner.",
+        labelNewPass: "Password Baru",
+        formMsg: "Jenis Pesan",
+        formMo: "Status M/O",
+        formParent: "Tag Induk (Parent)",
+        formName: "Nama Field (Bahasa Indonesia)",
+        formNameEn: "Field Name (English)",
+        formLen: "Format / Panjang",
+        formSample: "Contoh Nilai",
+        formDesc: "Keterangan (Bahasa Indonesia)",
+        formDescEn: "Description (English)",
+        formRules: "Aturan Validasi (Bahasa Indonesia)",
+        formRulesEn: "Validation Rules (English)",
+        btnCancel: "Batal",
+        btnSave: "Simpan",
+        btnHome: "Beranda",
+        btnLogout: "Keluar"
+      },
+      en: {
+        loginTitle: "Log in as Owner",
+        loginSubtitle: "Sign in to manage SWIFT reference data.",
+        loginPassLabel: "Password",
+        menuDash: "Dashboard Overview",
+        menuTags: "Reference Data",
+        menuImport: "Import JSON",
+        menuSettings: "DB Settings",
+        secTitleDash: "Dashboard Overview",
+        secSubDash: "Welcome back to the owner CMS portal.",
+        secTitleTags: "Reference Data Management",
+        secSubTags: "Create, read, update, and delete tag reference dictionary records.",
+        secTitleImport: "Import JSON Data",
+        secSubImport: "Perform bulk imports using standard JSON array layouts.",
+        secTitleSettings: "Database Settings",
+        secSubSettings: "Test backend connectivity and download database backups.",
+        statTotal: "Total Tags",
+        statCustom: "Custom Tags",
+        statSystem: "System Tags",
+        statMsgTypes: "Message Types",
+        quickTitle: "Recently Added Tags",
+        manageAll: "Manage All Tags →",
+        crudTitle: "Manage Tags & Sub-Fields",
+        btnAddRow: "Add Row",
+        btnDeleteSelected: "Delete Selected",
+        optColAll: "All Columns",
+        optColMsg: "Message",
+        optColTag: "Tag",
+        optColName: "Field Name",
+        optColMo: "M/O",
+        optColLen: "Format",
+        optColSample: "Sample",
+        optColDesc: "Description",
+        searchPlaceholder: "Search tags, field names, length, description...",
+        emptyText: "No data matched your search query.",
+        showing: "Showing",
+        dari: "of",
+        baris: "rows",
+        pageIndicator: "Page {curr} of {total}",
+        importTitle: "Import JSON Data",
+        importDesc: "Paste the JSON format extracted from an LLM. Data will be parsed, checked, and previewed below before saving.",
+        importPreviewTitle: "Import Preview Table",
+        btnClearImport: "Clear",
+        btnConfirmImport: "Confirm & Import",
+        dbConStatus: "Database Connectivity",
+        dbInfo: "Direct synchronization with active backend SQLite file (app.py).",
+        btnTestCon: "Test Connection",
+        dbActionTitle: "Admin Actions",
+        dbActionDesc: "Management of local cache database and backups.",
+        btnExportBackup: "Export JSON Backup",
+        btnClearCache: "Clear Local Cache",
+        credTitle: "Change Owner Password",
+        credDesc: "Modify the login credentials for access control.",
+        labelNewPass: "New Password",
+        formMsg: "Message Type",
+        formMo: "M/O Status",
+        formParent: "Parent Tag",
+        formName: "Field Name (Indonesian)",
+        formNameEn: "Field Name (English)",
+        formLen: "Format / Length",
+        formSample: "Sample Value",
+        formDesc: "Description (Indonesian)",
+        formDescEn: "Description (English)",
+        formRules: "Validation Rules (Indonesian)",
+        formRulesEn: "Validation Rules (English)",
+        btnCancel: "Cancel",
+        btnSave: "Save",
+        btnHome: "Home",
+        btnLogout: "Logout"
+      }
+    };
+
+    // ── Authentication Checks ──
+    document.addEventListener("DOMContentLoaded", () => {
+      const isOwner = sessionStorage.getItem('swift_owner') === '1';
+      if (isOwner) {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        initCMS();
+      } else {
+        document.getElementById('ownerPasswordInput').focus();
+      }
+      applyTheme();
+    });
+
+    function submitLogin() {
+      const pass = document.getElementById('ownerPasswordInput').value;
+      const errorMsg = document.getElementById('loginErrorMsg');
+      
+      if (pass === OWNER_PASS) {
+        sessionStorage.setItem('swift_owner', '1');
+        errorMsg.style.display = 'none';
+        
+        // Dynamic transition effect
+        const overlay = document.getElementById('login-overlay');
+        overlay.classList.add('fade-out');
+        
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          document.getElementById('appContainer').style.display = 'flex';
+          initCMS();
+        }, 300);
+      } else {
+        errorMsg.style.display = 'block';
+      }
+    }
+
+    function logoutOwner() {
+      sessionStorage.removeItem('swift_owner');
+      window.location.reload();
+    }
+
+    // ── Theme / Dark Mode ──
+    function applyTheme() {
+      const isDark = localStorage.getItem('swift_dark') === '1';
+      document.documentElement.classList.toggle('dark', isDark);
+      document.getElementById('darkBtn').textContent = isDark ? '☀' : '🌙';
+    }
+
+    function toggleDark() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('swift_dark', isDark ? '1' : '0');
+      document.getElementById('darkBtn').textContent = isDark ? '☀' : '🌙';
+    }
+
+    // ── Language Toggle ──
+    function toggleLang() {
+      currentLang = currentLang === 'id' ? 'en' : 'id';
+      localStorage.setItem('swift_lang', currentLang);
+      applyTranslations();
+      render();
+      updateDashboardStats();
+    }
+
+    function applyTranslations() {
+      const dict = i18n[currentLang];
+      
+      // Update sidebar
+      document.getElementById('lbl-menuDash').textContent = dict.menuDash;
+      document.getElementById('lbl-menuTags').textContent = dict.menuTags;
+      document.getElementById('lbl-menuImport').textContent = dict.menuImport;
+      document.getElementById('lbl-menuSettings').textContent = dict.menuSettings;
+      
+      // Update buttons
+      document.getElementById('langBtn').textContent = currentLang === 'id' ? '🌐 ID' : '🌐 EN';
+      document.getElementById('lbl-btnHome').textContent = dict.btnHome;
+      document.getElementById('lbl-btnLogout').textContent = dict.btnLogout;
+      
+      // Update search columns
+      document.getElementById('opt-colAll').textContent = dict.optColAll;
+      document.getElementById('opt-colMsg').textContent = dict.optColMsg;
+      document.getElementById('opt-colTag').textContent = dict.optColTag;
+      document.getElementById('opt-colName').textContent = dict.optColName;
+      document.getElementById('opt-colMo').textContent = dict.optColMo;
+      document.getElementById('opt-colLen').textContent = dict.optColLen;
+      document.getElementById('opt-colSample').textContent = dict.optColSample;
+      document.getElementById('opt-colDesc').textContent = dict.optColDesc;
+      document.getElementById('searchInput').placeholder = dict.searchPlaceholder;
+      
+      // Update page labels
+      updateSectionLabels();
+      
+      // Update stats cards labels
+      document.getElementById('lbl-statTotal').textContent = dict.statTotal;
+      document.getElementById('lbl-statCustom').textContent = dict.statCustom;
+      document.getElementById('lbl-statSystem').textContent = dict.statSystem;
+      document.getElementById('lbl-statMsgTypes').textContent = dict.statMsgTypes;
+      
+      // Modal labels
+      document.getElementById('lbl-formMsg').textContent = dict.formMsg;
+      document.getElementById('lbl-formMo').textContent = dict.formMo;
+      document.getElementById('lbl-formParent').textContent = dict.formParent;
+      document.getElementById('lbl-formName').textContent = dict.formName;
+      document.getElementById('lbl-formNameEn').textContent = dict.formNameEn;
+      document.getElementById('lbl-formLen').textContent = dict.formLen;
+      document.getElementById('lbl-formSample').textContent = dict.formSample;
+      document.getElementById('lbl-formDesc').textContent = dict.formDesc;
+      document.getElementById('lbl-formDescEn').textContent = dict.formDescEn;
+      document.getElementById('lbl-formRules').textContent = dict.formRules;
+      document.getElementById('lbl-formRulesEn').textContent = dict.formRulesEn;
+      document.getElementById('lbl-btnCancel').textContent = dict.btnCancel;
+      document.getElementById('lbl-btnSave').textContent = dict.btnSave;
+      
+      // Import Section labels
+      document.getElementById('lbl-importTitle').textContent = dict.importTitle;
+      document.getElementById('lbl-importDesc').textContent = dict.importDesc;
+      document.getElementById('lbl-importPreviewTitle').textContent = dict.importPreviewTitle;
+      document.getElementById('lbl-btnClearImport').textContent = dict.btnClearImport;
+      document.getElementById('btnConfirmImport').textContent = dict.btnConfirmImport;
+      const jsonTa = document.getElementById('importJsonTextarea');
+      if (jsonTa) jsonTa.placeholder = currentLang === 'id' ? 'Tempel data JSON di sini...' : 'Paste JSON data here...';
+      
+      // Settings Section labels
+      document.getElementById('lbl-settingsTitle').textContent = currentLang === 'id' ? 'Pengaturan Database & Status' : 'Database Settings & Status';
+      document.getElementById('lbl-dbConStatus').textContent = dict.dbConStatus;
+      document.getElementById('lbl-dbInfo').textContent = dict.dbInfo;
+      document.getElementById('lbl-btnTestCon').textContent = dict.btnTestCon;
+      document.getElementById('lbl-dbActionTitle').textContent = dict.dbActionTitle;
+      document.getElementById('lbl-dbActionDesc').textContent = dict.dbActionDesc;
+      document.getElementById('lbl-btnExportBackup').textContent = dict.btnExportBackup;
+      document.getElementById('lbl-btnClearCache').textContent = dict.btnClearCache;
+      document.getElementById('lbl-credTitle').textContent = dict.credTitle;
+      document.getElementById('lbl-credDesc').textContent = dict.credDesc;
+      document.getElementById('lbl-labelNewPass').textContent = dict.labelNewPass;
+      
+      // Update Delete Selected button label
+      updateDeleteSelectedButton();
+    }
+
+    function updateSectionLabels() {
+      const dict = i18n[currentLang];
+      const titleEl = document.getElementById('lbl-secTitle');
+      const subEl = document.getElementById('lbl-secSub');
+      
+      if (currentSection === 'dashboard') {
+        titleEl.textContent = dict.secTitleDash;
+        subEl.textContent = dict.secSubDash;
+      } else if (currentSection === 'tags') {
+        titleEl.textContent = dict.secTitleTags;
+        subEl.textContent = dict.secSubTags;
+      } else if (currentSection === 'import') {
+        titleEl.textContent = dict.secTitleImport;
+        subEl.textContent = dict.secSubImport;
+      } else if (currentSection === 'settings') {
+        titleEl.textContent = dict.secTitleSettings;
+        subEl.textContent = dict.secSubSettings;
+      }
+    }
+
+    // ── Section Management ──
+    function switchSection(sectionId) {
+      currentSection = sectionId;
+      
+      // Update active menu link
+      document.querySelectorAll('.menu-item').forEach(el => {
+        el.classList.toggle('active', el.id === `menu-${sectionId}`);
+      });
+      
+      // Update section contents visibility
+      document.querySelectorAll('.dashboard-section').forEach(el => {
+        el.style.display = el.id === `section-${sectionId}` ? 'block' : 'none';
+      });
+      
+      updateSectionLabels();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      if (sectionId === 'tags') {
+        render();
+      } else if (sectionId === 'dashboard') {
+        updateDashboardStats();
+      }
+    }
+
+    // ── Load & Initialize Data ──
+    async function initCMS() {
+      applyTranslations();
+      await loadData();
+      updateDashboardStats();
+      
+      // Add event listeners for live searching
+      document.getElementById('searchInput').addEventListener('input', () => {
+        currentPage = 1;
+        render();
+      });
+      
+      document.getElementById('searchColumn').addEventListener('change', () => {
+        currentPage = 1;
+        render();
+      });
+
+      // Smart auto-fill hooks
+      document.getElementById('f_tag').addEventListener('input', handleSmartAutoFill);
+      document.getElementById('f_tag_select').addEventListener('change', handleSmartAutoFill);
+      document.getElementById('f_sub').addEventListener('input', handleSmartAutoFill);
+      
+      const fMsg = document.getElementById('f_msg');
+      const onMsgChange = () => {
+        populateParentTags();
+        handleSmartAutoFill();
+      };
+      fMsg.addEventListener('input', onMsgChange);
+      fMsg.addEventListener('change', onMsgChange);
+
+      // Sorting
+      initSort();
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('API fetch failed');
+        const dbData = await res.json();
+        DATA = dbData;
+        isApiConnected = true;
+        
+        document.getElementById('db-status-chip').innerHTML = `<span class="source-dot db"></span>Online (SQLite)`;
+        document.getElementById('db-status-text').textContent = `SQLite Database Online`;
+      } catch (e) {
+        console.warn('Backend API offline. Falling back to local files & localStorage.', e);
+        isApiConnected = false;
+        
+        document.getElementById('db-status-chip').innerHTML = `<span class="source-dot local"></span>Offline (Cache Lokal)`;
+        document.getElementById('db-status-text').textContent = `Database Offline (Mode Cache Lokal)`;
+        
+        try {
+          const bust = '?v=' + Date.now();
+          const res = await fetch('swift-data.json' + bust);
+          if (!res.ok) throw new Error('fetch failed');
+          const gs = await res.json();
+          window._systemData = gs;
+          
+          const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+          const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+          const filteredGs = gs.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+          DATA = [...filteredGs, ...activeCustom];
+        } catch (e2) {
+          window._systemData = FALLBACK_DATA;
+          const activeCustom = CUSTOM.filter(c => c.is_active !== 0);
+          const customKeys = new Set(CUSTOM.map(c => `${c.msg.toLowerCase()}|${c.tag.toUpperCase()}|${c.sub}`));
+          const filteredFallback = FALLBACK_DATA.filter(g => !customKeys.has(`${g.msg.toLowerCase()}|${g.tag.toUpperCase()}|${g.sub}`));
+          DATA = [...filteredFallback, ...activeCustom];
+        }
+      }
+      populateFilters();
+    }
+
+    function populateFilters() {
+      const container = document.getElementById('msgFilterChips');
+      if (!container) return;
+      
+      const types = [...new Set(DATA.map(r => r.msg))].sort();
+      
+      const allActive = activeFilterMsg === 'all' ? 'active' : '';
+      let html = `<div class="chip ${allActive}" onclick="selectMsgFilter('all')">ALL</div>`;
+      
+      types.forEach(t => {
+        const active = activeFilterMsg === t ? 'active' : '';
+        html += `<div class="chip ${active}" onclick="selectMsgFilter('${t}')">${t.toUpperCase()}</div>`;
+      });
+      
+      container.innerHTML = html;
+    }
+
+    function selectMsgFilter(msg) {
+      activeFilterMsg = msg;
+      populateFilters();
+      currentPage = 1;
+      render();
+    }
+
+    function updateDashboardStats() {
+      // Calculate totals
+      const totalTags = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME').length;
+      const customTags = DATA.filter(d => d.source === 'manual' && d.sub === '').length;
+      const systemTags = DATA.filter(d => (d.source === 'system' || d.source === 'gs-docs') && d.sub === '').length;
+      const messageTypes = [...new Set(DATA.map(d => d.msg))].length;
+      
+      document.getElementById('stat-total-tags').textContent = totalTags;
+      document.getElementById('stat-custom-tags').textContent = customTags;
+      document.getElementById('stat-system-tags').textContent = systemTags;
+      document.getElementById('stat-message-types').textContent = messageTypes;
+
+      // Populate Quick Table (last 5 added tags)
+      const quickTableBody = document.getElementById('quickTableBody');
+      const lastFive = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME').slice(-5).reverse();
+      
+      quickTableBody.innerHTML = lastFive.map(r => {
+        const badgeCls = r.source === 'manual' ? 'badge-msg badge-custom' : 'badge-msg ' + r.msg;
+        const dName = currentLang === 'en' && r.name_en ? r.name_en : r.name;
+        const moText = r.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
+        const sourceLabel = r.source === 'manual' ? 'Manual' : 'System';
+        return `
+          <tr>
+            <td><span class="${badgeCls}">${r.msg.toUpperCase()}</span></td>
+            <td style="font-family: var(--mono); font-weight: 700;">:${r.tag}:</td>
+            <td style="font-family: var(--mono); color: var(--ink-soft);">${r.sub || '—'}</td>
+            <td><strong>${escapeHtml(dName)}</strong></td>
+            <td><span class="mo ${r.mo}">${moText}</span></td>
+            <td style="font-family: var(--mono); color: var(--ink-soft); font-size: 12px;">${r.len || '—'}</td>
+            <td><span class="source-dot ${r.source === 'manual' ? 'local' : 'db'}"></span>${sourceLabel}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ── Table Rendering & Sorting & Searching ──
+    function matchesFilters(r) {
+      if (activeFilterMsg !== 'all' && r.msg !== activeFilterMsg) return false;
+      return true;
+    }
+
+    function matchesColumnSearch(r, q, col) {
+      if (!q) return true;
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      
+      const checkVal = val => {
+        const str = String(val || '').toLowerCase();
+        return terms.every(t => str.includes(t));
+      };
+
+      const dName = currentLang === 'en' && r.name_en ? r.name_en : r.name;
+      const dDesc = currentLang === 'en' && r.desc_en ? r.desc_en : r.desc;
+      
+      if (col === 'all') {
+        return checkVal(r.msg) || checkVal(r.tag) || checkVal(r.sub) || 
+               checkVal(dName) || checkVal(r.mo) || checkVal(r.len) || 
+               checkVal(r.sample) || checkVal(dDesc);
+      }
+      
+      if (col === 'msg') return checkVal(r.msg);
+      if (col === 'tag') return checkVal(r.tag) || checkVal(r.sub);
+      if (col === 'name') return checkVal(dName);
+      if (col === 'mo') return checkVal(r.mo);
+      if (col === 'len') return checkVal(r.len);
+      if (col === 'sample') return checkVal(r.sample);
+      if (col === 'desc') return checkVal(dDesc);
+      
+      return false;
+    }
+
+    function render() {
+      const q = document.getElementById('searchInput').value.trim();
+      const col = document.getElementById('searchColumn').value;
+      
+      // Filter out subfields and MSG_NAME placeholder rows from the main reference view
+      let filteredRows = DATA.filter(r => r.sub === '' && r.tag !== 'MSG_NAME' && matchesFilters(r) && matchesColumnSearch(r, q, col));
+
+      // Sorting
+      if (sortKey) {
+        filteredRows = filteredRows.slice().sort((a, b) => {
+          let av = (a[sortKey] || '').toString().toLowerCase();
+          let bv = (b[sortKey] || '').toString().toLowerCase();
+          if (av < bv) return -1 * sortDir;
+          if (av > bv) return 1 * sortDir;
+          return 0;
+        });
+      }
+
+      const totalRows = filteredRows.length;
+      const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+      const rows = filteredRows.slice(startIndex, endIndex);
+
+      const tableBody = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
+      const tableEl = document.getElementById('dataTable');
+      const paginationWrap = document.getElementById('paginationWrap');
+
+      tableBody.innerHTML = '';
+      if (rows.length === 0) {
+        emptyState.style.display = 'block';
+        tableEl.style.display = 'none';
+        if (paginationWrap) paginationWrap.style.display = 'none';
+      } else {
+        emptyState.style.display = 'none';
+        tableEl.style.display = 'table';
+        if (paginationWrap) paginationWrap.style.display = 'flex';
+
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          const badgeCls = r.source === 'manual' ? 'badge-msg badge-custom' : 'badge-msg ' + r.msg;
+          const tagFmt = `:${r.tag}:`;
+          const dName = currentLang === 'en' && r.name_en ? r.name_en : r.name;
+          const dDesc = currentLang === 'en' && r.desc_en ? r.desc_en : r.desc;
+          const moText = r.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
+          
+          // Calculate subfields count
+          const subCount = DATA.filter(d => d.msg === r.msg && d.tag === r.tag && d.sub !== '').length;
+          const subIndicator = subCount > 0 
+            ? `<br><span class="has-sub-indicator" onclick="openSubFieldsViewer('${r.msg}', '${r.tag}')" style="cursor: pointer;">◈ ${subCount} sub-field${subCount > 1 ? 's' : ''}</span>`
+            : '';
+
+          const isChecked = selectedRows.has(`${r.msg}|${r.tag}|${r.sub}`);
+
+          tr.innerHTML = `
+            <td onclick="event.stopPropagation()" style="text-align: center;">
+              <input type="checkbox" class="row-select-checkbox" data-msg="${r.msg}" data-tag="${r.tag}" data-sub="${r.sub}" ${isChecked ? 'checked' : ''} onchange="toggleRowSelection(this)">
+            </td>
+            <td><span class="${badgeCls}">${r.msg.toUpperCase()}</span></td>
+            <td>
+              <span style="font-family: var(--mono); font-weight: 700;">${highlight(r.tag, q)}</span>
+              ${subIndicator}
+            </td>
+            <td><strong>${highlight(dName, q)}</strong></td>
+            <td><span class="mo ${r.mo}">${moText}</span></td>
+            <td style="font-family: var(--mono); color: var(--ink-soft); font-size: 12.5px;">${r.len || '—'}</td>
+            <td style="font-family: var(--mono); font-size: 12.5px;">${highlight(r.sample, q)}</td>
+            <td style="color: var(--ink-soft); font-size: 13px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(dDesc)}">${highlight(dDesc, q)}</td>
+            <td onclick="event.stopPropagation()" style="text-align: center;">
+              <button class="act-btn edit" onclick="editRow('${r.msg}', '${r.tag}', '${r.sub}')">Edit</button>
+              <button class="act-btn delete" onclick="deleteRow('${r.msg}', '${r.tag}', '${r.sub}')">Hapus</button>
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+
+      // Update pagination UI details
+      document.getElementById('pageStart').textContent = totalRows === 0 ? 0 : startIndex + 1;
+      document.getElementById('pageEnd').textContent = endIndex;
+      document.getElementById('countNum').textContent = totalRows;
+      document.getElementById('countTotal').textContent = DATA.length;
+
+      const pageIndicator = document.getElementById('pageIndicator');
+      if (pageIndicator) {
+        const totalP = totalPages;
+        pageIndicator.textContent = i18n[currentLang].pageIndicator.replace('{curr}', currentPage).replace('{total}', totalP);
+      }
+
+      const btnPrev = document.getElementById('btnPrevPage');
+      const btnNext = document.getElementById('btnNextPage');
+      if (btnPrev) btnPrev.disabled = currentPage === 1;
+      if (btnNext) btnNext.disabled = currentPage === totalPages;
+
+      updateSelectAllCheckboxState();
+    }
+
+    function changePage(direction) {
+      currentPage += direction;
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function initSort() {
+      const headers = document.querySelectorAll('thead th[data-key]');
+      headers.forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.key;
+          if (sortKey === key) {
+            sortDir *= -1;
+          } else {
+            sortKey = key;
+            sortDir = 1;
+          }
+          
+          document.querySelectorAll('thead th .arrow').forEach(a => a.remove());
+          
+          const arrow = document.createElement('span');
+          arrow.className = 'arrow';
+          arrow.textContent = sortDir === 1 ? ' ▲' : ' ▼';
+          th.appendChild(arrow);
+          
+          render();
+        });
+      });
+    }
+
+    // Helper HTML highlights
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function highlight(text, q) {
+      if (!q) return escapeHtml(text);
+      const escaped = escapeHtml(text);
+      const terms = q.split(/\s+/).filter(Boolean);
+      if (terms.length === 0) return escaped;
+      const sortedTerms = [...new Set(terms.map(t => t.toLowerCase()))].sort((a, b) => b.length - a.length);
+      
+      let result = escaped;
+      sortedTerms.forEach(term => {
+        if (!term) return;
+        const safeQ = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${safeQ})`, 'gi');
+        // Simple text replacement inside HTML can be tricky if we hit tags, but since we escaped first, it's safe.
+        result = result.replace(regex, '<mark>$1</mark>');
+      });
+      return result;
+    }
+
+    // ── CRUD Modals & Operations ──
+    function populateMsgTypes() {
+      const dl = document.getElementById('msgTypeList');
+      if (!dl) return;
+      const types = [...new Set(DATA.map(r => r.msg))].sort();
+      dl.innerHTML = types.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+    }
+
+    function openModal() {
+      populateMsgTypes();
+      setModalMode('parent');
+      document.getElementById('modalBackdrop').classList.add('open');
+      
+      // Clear forms
+      document.getElementById('f_msg').value = '';
+      document.getElementById('f_tag').value = '';
+      document.getElementById('f_sub').value = '';
+      document.getElementById('f_name').value = '';
+      document.getElementById('f_name_en').value = '';
+      document.getElementById('f_len').value = '';
+      document.getElementById('f_sample').value = '';
+      document.getElementById('f_desc').value = '';
+      document.getElementById('f_desc_en').value = '';
+      document.getElementById('f_rules').value = '';
+      document.getElementById('f_rules_en').value = '';
+      
+      const backdrop = document.getElementById('modalBackdrop');
+      delete backdrop.dataset.editKey;
+      document.getElementById('modalTitle').textContent = currentLang === 'id' ? 'Tambah Tag Baru' : 'Add New Tag';
+      
+      document.getElementById('f_msg').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('open');
+    }
+
+    function closeModalOutside(e) {
+      if (e.target === document.getElementById('modalBackdrop')) closeModal();
+    }
+
+    function setModalMode(mode) {
+      currentModalMode = mode;
+      const isParent = mode === 'parent';
+      document.getElementById('modeParentBtn').className = isParent ? 'btn btn-primary' : 'btn btn-ghost';
+      document.getElementById('modeSubBtn').className = isParent ? 'btn btn-ghost' : 'btn btn-primary';
+      document.getElementById('row_tag_input').style.display = isParent ? '' : 'none';
+      document.getElementById('row_tag_select').style.display = isParent ? 'none' : '';
+      
+      document.getElementById('lbl_sub').textContent = isParent 
+        ? (currentLang === 'id' ? 'Sub-field ID (kosongkan untuk tag induk)' : 'Sub-field ID (leave empty for parent tag)')
+        : 'Sub-field ID (mis. 1, EREF, CRNM)';
+        
+      if (!isParent) populateParentTags();
+    }
+
+    function populateParentTags() {
+      const sel = document.getElementById('f_tag_select');
+      const msg = document.getElementById('f_msg').value.trim().toLowerCase();
+      
+      const parentTags = [...new Set(
+        DATA.filter(r => r.msg === msg && r.sub === '').map(r => r.tag)
+      )].sort();
+      
+      sel.innerHTML = parentTags.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    function handleSmartAutoFill() {
+      const backdrop = document.getElementById('modalBackdrop');
+      if (backdrop && backdrop.dataset.editKey) return; // Skip autofill during editing
+
+      const isParent = currentModalMode === 'parent';
+      const tagEl = document.getElementById(isParent ? 'f_tag' : 'f_tag_select');
+      if (!tagEl) return;
+      
+      const tag = tagEl.value.trim().toUpperCase();
+      const sub = document.getElementById('f_sub').value.trim();
+      if (!tag) return;
+
+      const existing = DATA.find(d => d.tag.toUpperCase() === tag && d.sub === sub);
+      if (existing) {
+        const nameEl = document.getElementById('f_name');
+        const nameEnEl = document.getElementById('f_name_en');
+        const lenEl = document.getElementById('f_len');
+        const sampleEl = document.getElementById('f_sample');
+        const moEl = document.getElementById('f_mo');
+        const descEl = document.getElementById('f_desc');
+        const descEnEl = document.getElementById('f_desc_en');
+        const rulesEl = document.getElementById('f_rules');
+        const rulesEnEl = document.getElementById('f_rules_en');
+
+        if (nameEl && !nameEl.value.trim()) nameEl.value = existing.name || '';
+        if (nameEnEl && !nameEnEl.value.trim()) nameEnEl.value = existing.name_en || '';
+        if (lenEl && !lenEl.value.trim()) lenEl.value = existing.len || '';
+        if (sampleEl && !sampleEl.value.trim()) sampleEl.value = existing.sample || '';
+        if (moEl && moEl.value === 'o') moEl.value = existing.mo || 'o';
+        if (descEl && !descEl.value.trim()) descEl.value = existing.desc || '';
+        if (descEnEl && !descEnEl.value.trim()) descEnEl.value = existing.desc_en || '';
+        if (rulesEl && !rulesEl.value.trim()) rulesEl.value = existing.rules || '';
+        if (rulesEnEl && !rulesEnEl.value.trim()) rulesEnEl.value = existing.rules_en || '';
+      }
+    }
+
+    function editRow(msg, tag, sub) {
+      const r = DATA.find(d => d.msg === msg && d.tag === tag && d.sub === sub);
+      if (!r) return;
+
+      const mode = sub ? 'sub' : 'parent';
+      populateMsgTypes();
+      
+      document.getElementById('f_msg').value = msg;
+      setModalMode(mode);
+      
+      if (mode === 'parent') {
+        document.getElementById('f_tag').value = tag;
+      } else {
+        populateParentTags();
+        document.getElementById('f_tag_select').value = tag;
+      }
+      
+      document.getElementById('f_sub').value = sub;
+      document.getElementById('f_name').value = r.name || '';
+      document.getElementById('f_name_en').value = r.name_en || '';
+      document.getElementById('f_len').value = r.len || '';
+      document.getElementById('f_mo').value = r.mo || 'o';
+      document.getElementById('f_sample').value = r.sample || '';
+      document.getElementById('f_desc').value = r.desc || '';
+      document.getElementById('f_desc_en').value = r.desc_en || '';
+      document.getElementById('f_rules').value = r.rules || '';
+      document.getElementById('f_rules_en').value = r.rules_en || '';
+
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.dataset.editKey = `${msg}|${tag}|${sub}`;
+      document.getElementById('modalTitle').textContent = sub 
+        ? `${currentLang === 'id' ? 'Edit Sub-Field' : 'Edit Sub-Field'} :${tag}: / ${sub}` 
+        : `${currentLang === 'id' ? 'Edit Tag' : 'Edit Tag'} :${tag}:`;
+        
+      backdrop.classList.add('open');
+    }
+
+    async function saveRow() {
+      const msg = document.getElementById('f_msg').value.trim().toLowerCase();
+      const mo = document.getElementById('f_mo').value;
+      const isParent = currentModalMode === 'parent';
+      const tag = isParent 
+        ? document.getElementById('f_tag').value.trim().toUpperCase()
+        : document.getElementById('f_tag_select').value;
+      const sub = document.getElementById('f_sub').value.trim();
+      const name = document.getElementById('f_name').value.trim();
+      const name_en = document.getElementById('f_name_en').value.trim() || name;
+      const len = document.getElementById('f_len').value.trim();
+      const sample = document.getElementById('f_sample').value.trim();
+      const desc = document.getElementById('f_desc').value.trim();
+      const desc_en = document.getElementById('f_desc_en').value.trim() || desc;
+      const rules = document.getElementById('f_rules').value.trim();
+      const rules_en = document.getElementById('f_rules_en').value.trim() || rules;
+
+      if (!msg) { alert('Jenis Pesan wajib diisi (mis. mt103).'); return; }
+      if (!tag || !name) { alert('Tag dan Nama Field wajib diisi.'); return; }
+      if (!isParent && !sub) { alert('Sub-field ID wajib diisi saat mode Sub-Field.'); return; }
+
+      const backdrop = document.getElementById('modalBackdrop');
+      const editKey = backdrop.dataset.editKey || '';
+
+      let row = { msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source: 'manual' };
+
+      if (editKey) {
+        const [eMsg, eTag, eSub] = editKey.split('|');
+        const oldRow = DATA.find(d => d.msg === eMsg && d.tag === eTag && d.sub === eSub);
+        if (oldRow) {
+          row = { ...oldRow, msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en };
+        }
+      }
+
+      if (isApiConnected) {
+        const performSave = async () => {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(row)
+            });
+            if (!res.ok) throw new Error('API save failed');
+            showToast(currentLang === 'id' ? '✓ Data berhasil disimpan ke Database.' : '✓ Data saved to Database.');
+            closeModal();
+            await loadData();
+            render();
+          } catch (err) {
+            alert('Gagal menyimpan data: ' + err.message);
+          }
+        };
+
+        if (editKey) {
+          const [eMsg, eTag, eSub] = editKey.split('|');
+          if (eMsg !== msg || eTag !== tag || eSub !== sub) {
+            // Delete old key first to prevent duplicates when renaming msg/tag/sub keys
+            try {
+              await fetch(`${API_URL}/${eMsg}/${eTag}/${eSub}`, { method: 'DELETE' });
+              await performSave();
+            } catch (err) {
+              console.error('Delete old row failed', err);
+            }
+          } else {
+            await performSave();
+          }
+          delete backdrop.dataset.editKey;
+        } else {
+          await performSave();
+        }
+      } else {
+        // LocalStorage offline fallback
+        const keyMsg = editKey ? editKey.split('|')[0] : msg;
+        const keyTag = editKey ? editKey.split('|')[1] : tag;
+        const keySub = editKey ? editKey.split('|')[2] : sub;
+        
+        const ci = CUSTOM.findIndex(d => d.msg === keyMsg && d.tag === keyTag && d.sub === keySub);
+        
+        if (ci !== -1) {
+          if (editKey && (keyMsg !== msg || keyTag !== tag || keySub !== sub)) {
+            CUSTOM.splice(ci, 1);
+            const newCi = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            if (newCi !== -1) CUSTOM[newCi] = row;
+            else CUSTOM.push(row);
+          } else {
+            CUSTOM[ci] = row;
+          }
+        } else {
+          CUSTOM.push(row);
+        }
+        
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        if (editKey) delete backdrop.dataset.editKey;
+        
+        showToast(currentLang === 'id' ? '✓ Data disimpan di cache lokal.' : '✓ Data saved in local cache.');
+        closeModal();
+        await loadData();
+        render();
+      }
+    }
+
+    let activeSubFieldsParent = { msg: '', tag: '' };
+
+    function openSubFieldsViewer(msg, tag) {
+      activeSubFieldsParent = { msg, tag };
+      const parentTag = DATA.find(d => d.msg === msg && d.tag === tag && d.sub === '');
+      const parentName = parentTag ? (currentLang === 'en' && parentTag.name_en ? parentTag.name_en : parentTag.name) : '';
+      
+      document.getElementById('subFieldsModalMeta').innerHTML = `
+        <strong>${msg.toUpperCase()} :${tag}:</strong> &mdash; ${escapeHtml(parentName)}
+      `;
+
+      // Update button text language
+      document.getElementById('btnAddNewSubField').textContent = currentLang === 'en' ? '➕ Add Sub-Field' : '➕ Tambah Sub-Field';
+      document.getElementById('lbl-subFieldsTitle').textContent = currentLang === 'en' ? 'Sub-Fields Details' : 'Detail Sub-Fields';
+      document.getElementById('lbl-btnCloseSubFields').textContent = currentLang === 'en' ? 'Close' : 'Tutup';
+
+      renderSubFieldsTable();
+      document.getElementById('subFieldsModalBackdrop').classList.add('open');
+    }
+
+    function renderSubFieldsTable() {
+      const { msg, tag } = activeSubFieldsParent;
+      const subFields = DATA.filter(d => d.msg === msg && d.tag === tag && d.sub !== '');
+      const tbody = document.getElementById('subFieldsTableBody');
+
+      tbody.innerHTML = '';
+      if (subFields.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="padding: 30px; text-align: center; color: var(--ink-soft); font-style: italic;">
+              ${currentLang === 'en' ? 'No sub-fields defined for this tag.' : 'Tidak ada sub-field yang didefinisikan untuk tag ini.'}
+            </td>
+          </tr>
+        `;
+      } else {
+        // Sort subfields by sub ID
+        subFields.sort((a, b) => {
+          const an = parseInt(a.sub, 10);
+          const bn = parseInt(b.sub, 10);
+          if (!isNaN(an) && !isNaN(bn)) return an - bn;
+          return a.sub.localeCompare(b.sub);
+        });
+
+        subFields.forEach(sf => {
+          const tr = document.createElement('tr');
+          const dName = currentLang === 'en' && sf.name_en ? sf.name_en : sf.name;
+          const moText = sf.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
+          
+          tr.innerHTML = `
+            <td style="font-family: var(--mono); font-weight: 700; color: var(--accent);">${sf.sub}</td>
+            <td><strong>${escapeHtml(dName)}</strong></td>
+            <td><span class="mo ${sf.mo}">${moText}</span></td>
+            <td style="font-family: var(--mono); color: var(--ink-soft);">${sf.len || '—'}</td>
+            <td style="font-family: var(--mono);">${escapeHtml(sf.sample || '—')}</td>
+            <td style="text-align: center;">
+              <button class="act-btn edit" onclick="editSubFieldRow('${sf.msg}', '${sf.tag}', '${sf.sub}')">Edit</button>
+              <button class="act-btn delete" onclick="deleteSubFieldRow('${sf.msg}', '${sf.tag}', '${sf.sub}')">Hapus</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    function closeSubFieldsModal() {
+      document.getElementById('subFieldsModalBackdrop').classList.remove('open');
+    }
+
+    function closeSubFieldsModalOutside(e) {
+      if (e.target === document.getElementById('subFieldsModalBackdrop')) {
+        closeSubFieldsModal();
+      }
+    }
+
+    function addNewSubFieldFromModal() {
+      const { msg, tag } = activeSubFieldsParent;
+      closeSubFieldsModal();
+      openModal();
+      
+      // Pre-fill values
+      document.getElementById('f_msg').value = msg;
+      setModalMode('sub');
+      populateParentTags();
+      document.getElementById('f_tag_select').value = tag;
+      
+      // Focus on sub ID input
+      setTimeout(() => {
+        document.getElementById('f_sub').focus();
+      }, 300);
+    }
+
+    function editSubFieldRow(msg, tag, sub) {
+      closeSubFieldsModal();
+      editRow(msg, tag, sub);
+    }
+
+    async function deleteSubFieldRow(msg, tag, sub) {
+      if (confirm(currentLang === 'en' ? `Delete subfield ${sub} of tag :${tag}:?` : `Hapus subfield ${sub} dari tag :${tag}:?`)) {
+        if (isApiConnected) {
+          try {
+            const res = await fetch(`${API_URL}/${msg}/${tag}/${sub}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('API delete failed');
+            showToast(currentLang === 'id' ? '🗑️ Sub-field berhasil dihapus.' : '🗑️ Sub-field successfully deleted.');
+            await loadData();
+            renderSubFieldsTable();
+            render();
+          } catch (err) {
+            alert('Gagal menghapus subfield: ' + err.message);
+          }
+        } else {
+          // Offline delete
+          const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          if (ci !== -1) {
+            CUSTOM.splice(ci, 1);
+            localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+            showToast(currentLang === 'id' ? '🗑️ Sub-field berhasil dihapus.' : '🗑️ Sub-field successfully deleted.');
+            await loadData();
+            renderSubFieldsTable();
+            render();
+          }
+        }
+      }
+    }
+
+    async function deleteRow(msg, tag, sub) {
+      const r = DATA.find(d => d.msg === msg && d.tag === tag && d.sub === sub);
+      if (!r) return;
+      const label = sub ? `:${tag}: / ${sub}` : `:${tag}:`;
+      
+      const confMsg = currentLang === 'id'
+        ? `Hapus baris "${label}" — ${r.name}?\nTindakan ini tidak dapat dibatalkan.`
+        : `Delete row "${label}" — ${r.name_en || r.name}?\nThis action cannot be undone.`;
+      
+      if (!confirm(confMsg)) return;
+
+      if (isApiConnected) {
+        try {
+          const res = await fetch(`${API_URL}/${msg}/${tag}/${sub || ''}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('API delete failed');
+          showToast(currentLang === 'id' ? '🗑️ Baris berhasil dihapus dari Database.' : '🗑️ Row successfully deleted from Database.');
+          selectedRows.delete(`${msg}|${tag}|${sub}`);
+          updateDeleteSelectedButton();
+          await loadData();
+          render();
+        } catch (err) {
+          alert('Gagal menghapus data: ' + err.message);
+        }
+      } else {
+        // Offline delete
+        const base = window._systemData || FALLBACK_DATA || [];
+        const isSystem = base.some(g => g.msg === msg && g.tag === tag && g.sub === sub);
+        
+        if (isSystem) {
+          const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          const inactiveRow = { msg, tag, sub, name: '', is_active: 0, source: 'manual' };
+          if (ci !== -1) CUSTOM[ci] = inactiveRow;
+          else CUSTOM.push(inactiveRow);
+        } else {
+          const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+          if (ci !== -1) CUSTOM.splice(ci, 1);
+        }
+        
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'id' ? '🗑️ Baris berhasil dihapus.' : '🗑️ Row successfully deleted.');
+        selectedRows.delete(`${msg}|${tag}|${sub}`);
+        updateDeleteSelectedButton();
+        await loadData();
+        render();
+      }
+    }
+
+    // ── Multiple Row Selection ──
+    function toggleRowSelection(checkbox) {
+      const msg = checkbox.getAttribute('data-msg');
+      const tag = checkbox.getAttribute('data-tag');
+      const sub = checkbox.getAttribute('data-sub');
+      const key = `${msg}|${tag}|${sub}`;
+      
+      if (checkbox.checked) {
+        selectedRows.add(key);
+      } else {
+        selectedRows.delete(key);
+      }
+      
+      updateSelectAllCheckboxState();
+      updateDeleteSelectedButton();
+    }
+
+    function toggleSelectAll(headerCheckbox) {
+      const pageCheckboxes = document.querySelectorAll('.row-select-checkbox');
+      pageCheckboxes.forEach(cb => {
+        cb.checked = headerCheckbox.checked;
+        const msg = cb.getAttribute('data-msg');
+        const tag = cb.getAttribute('data-tag');
+        const sub = cb.getAttribute('data-sub');
+        const key = `${msg}|${tag}|${sub}`;
+        if (headerCheckbox.checked) {
+          selectedRows.add(key);
+        } else {
+          selectedRows.delete(key);
+        }
+      });
+      updateDeleteSelectedButton();
+    }
+
+    function updateSelectAllCheckboxState() {
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      if (!selectAllCheckbox) return;
+      const pageCheckboxes = document.querySelectorAll('.row-select-checkbox');
+      if (pageCheckboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.disabled = true;
+        return;
+      }
+      selectAllCheckbox.disabled = false;
+      let allChecked = true;
+      pageCheckboxes.forEach(cb => {
+        if (!cb.checked) allChecked = false;
+      });
+      selectAllCheckbox.checked = allChecked;
+    }
+
+    function updateDeleteSelectedButton() {
+      const btn = document.getElementById('btnDeleteSelected');
+      if (!btn) return;
+      
+      const count = selectedRows.size;
+      if (count > 0) {
+        btn.style.display = 'inline-flex';
+        btn.querySelector('span').textContent = currentLang === 'en' 
+          ? `Delete Selected (${count})` 
+          : `Hapus Terpilih (${count})`;
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    async function deleteSelectedRows() {
+      const count = selectedRows.size;
+      if (count === 0) return;
+      
+      const confirmMsg = currentLang === 'en'
+        ? `Are you sure you want to delete the ${count} selected tag(s) and all their sub-fields?`
+        : `Apakah Anda yakin ingin menghapus ${count} tag yang terpilih beserta seluruh sub-fieldnya?`;
+      if (!confirm(confirmMsg)) return;
+
+      const items = Array.from(selectedRows).map(key => {
+        const [msg, tag, sub] = key.split('|');
+        return { msg, tag, sub };
+      });
+
+      // Include all child subfields in DB query so everything is deleted clean
+      const itemsWithSubfields = [];
+      items.forEach(item => {
+        itemsWithSubfields.push(item);
+        if (item.sub === '') {
+          const subfields = DATA.filter(d => d.msg === item.msg && d.tag === item.tag && d.sub !== '');
+          subfields.forEach(sf => {
+            if (!itemsWithSubfields.some(x => x.msg === sf.msg && x.tag === sf.tag && x.sub === sf.sub)) {
+              itemsWithSubfields.push({ msg: sf.msg, tag: sf.tag, sub: sf.sub });
+            }
+          });
+        }
+      });
+
+      if (isApiConnected) {
+        try {
+          const res = await fetch(`${API_URL}/delete-multiple`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemsWithSubfields)
+          });
+          if (!res.ok) throw new Error('API delete failed');
+          showToast(currentLang === 'en' 
+            ? `🗑️ Successfully deleted ${itemsWithSubfields.length} records.`
+            : `🗑️ Berhasil menghapus ${itemsWithSubfields.length} data.`);
+          selectedRows.clear();
+          updateDeleteSelectedButton();
+          await loadData();
+          render();
+        } catch (err) {
+          alert('Gagal menghapus data dari Database: ' + err.message);
+        }
+      } else {
+        // Offline delete fallback
+        const base = window._systemData || FALLBACK_DATA || [];
+        
+        itemsWithSubfields.forEach(item => {
+          const { msg, tag, sub } = item;
+          const isSystem = base.some(g => g.msg === msg && g.tag === tag && g.sub === sub);
+          
+          if (isSystem) {
+            const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            const inactiveRow = { msg, tag, sub, name: '', is_active: 0, source: 'manual' };
+            if (ci !== -1) CUSTOM[ci] = inactiveRow;
+            else CUSTOM.push(inactiveRow);
+          } else {
+            const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === tag && d.sub === sub);
+            if (ci !== -1) CUSTOM.splice(ci, 1);
+          }
+        });
+        
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'en' 
+          ? `🗑️ Successfully deleted ${itemsWithSubfields.length} records.`
+          : `🗑️ Berhasil menghapus ${itemsWithSubfields.length} data.`);
+        selectedRows.clear();
+        updateDeleteSelectedButton();
+        await loadData();
+        render();
+      }
+    }
+
+    // ── JSON Importer Section ──
+    window._tempImportedItems = [];
+
+    function clearImportTextarea() {
+      document.getElementById('importJsonTextarea').value = '';
+      validateAndPreview();
+    }
+
+    function validateAndPreview() {
+      const val = document.getElementById('importJsonTextarea').value.trim();
+      const errDiv = document.getElementById('importValidationError');
+      const tbody = document.getElementById('importPreviewTbody');
+      const countChip = document.getElementById('importPreviewCount');
+      const confirmBtn = document.getElementById('btnConfirmImport');
+      
+      if (!val) {
+        if (errDiv) errDiv.style.display = 'none';
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="padding: 40px; text-align: center; color: var(--ink-soft); font-style: italic;">
+              ${currentLang === 'en' ? 'Paste JSON to preview data' : 'Masukkan JSON untuk melihat pratinjau data'}
+            </td>
+          </tr>
+        `;
+        countChip.textContent = currentLang === 'en' ? '0 rows' : '0 baris';
+        confirmBtn.disabled = true;
+        window._tempImportedItems = [];
+        return;
+      }
+      
+      try {
+        const parsed = JSON.parse(val);
+        if (!Array.isArray(parsed)) {
+          throw new Error(currentLang === 'en' ? 'JSON must be an array of objects.' : 'JSON harus berupa array list objek.');
+        }
+        
+        if (parsed.length === 0) {
+          throw new Error(currentLang === 'en' ? 'JSON array is empty.' : 'Array JSON kosong.');
+        }
+        
+        parsed.forEach((item, index) => {
+          if (!item.msg || !item.tag) {
+            throw new Error(
+              currentLang === 'en'
+                ? `Item at index ${index} is missing required field 'msg' or 'tag'.`
+                : `Item ke-${index} tidak memiliki field wajib 'msg' atau 'tag'.`
+            );
+          }
+        });
+        
+        if (errDiv) errDiv.style.display = 'none';
+        
+        window._tempImportedItems = parsed;
+        countChip.textContent = currentLang === 'en' ? `${parsed.length} rows` : `${parsed.length} baris`;
+        
+        tbody.innerHTML = parsed.map(item => {
+          const labelMsg = (item.msg || '').toUpperCase();
+          const labelMo = (item.mo || 'o').toLowerCase() === 'm' 
+            ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') 
+            : (currentLang === 'en' ? 'Optional' : 'Opsional');
+          const moClass = (item.mo || 'o').toLowerCase() === 'm' ? 'm' : 'o';
+          
+          return `
+            <tr>
+              <td style="font-weight: 700; color: var(--accent);">${labelMsg}</td>
+              <td style="font-family: var(--mono); font-weight: 700;">:${item.tag}:</td>
+              <td style="font-family: var(--mono); color: var(--ink-soft);">${item.sub || '—'}</td>
+              <td><strong>${item.name || item.name_en || '—'}</strong></td>
+              <td><span class="mo ${moClass}">${labelMo}</span></td>
+              <td style="font-family: var(--mono); font-size: 12px; color: var(--ink-soft);">${item.len || '—'}</td>
+            </tr>
+          `;
+        }).join('');
+        
+        confirmBtn.disabled = false;
+      } catch (err) {
+        if (errDiv) {
+          errDiv.textContent = `⚠ ${err.message}`;
+          errDiv.style.display = 'block';
+        }
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="padding: 40px; text-align: center; color: var(--debit-color); font-weight: 600;">
+              ${currentLang === 'en' ? 'Invalid Data Format' : 'Format Data Tidak Valid'}
+            </td>
+          </tr>
+        `;
+        countChip.textContent = currentLang === 'en' ? '0 rows' : '0 baris';
+        confirmBtn.disabled = true;
+        window._tempImportedItems = [];
+      }
+    }
+
+    async function executeImport() {
+      if (!window._tempImportedItems || window._tempImportedItems.length === 0) return;
+      
+      const itemsToImport = window._tempImportedItems.map(item => ({
+        msg: String(item.msg || '').trim().toLowerCase(),
+        tag: String(item.tag || '').trim().toUpperCase(),
+        sub: String(item.sub || '').trim(),
+        name: String(item.name || item.name_en || '').trim(),
+        name_en: String(item.name_en || item.name || '').trim(),
+        len: String(item.len || '').trim(),
+        mo: String(item.mo || 'o').toLowerCase().trim(),
+        sample: String(item.sample || '').trim(),
+        desc: String(item.desc || item.desc_en || '').trim(),
+        desc_en: String(item.desc_en || item.desc || '').trim(),
+        rules: String(item.rules || item.rules_en || '').trim(),
+        rules_en: String(item.rules_en || item.rules || '').trim(),
+        source: 'manual'
+      }));
+
+      if (isApiConnected) {
+        try {
+          const res = await fetch(`${API_URL}/import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemsToImport)
+          });
+          if (!res.ok) throw new Error('API import failed');
+          const data = await res.json();
+          
+          showToast(
+            currentLang === 'en' 
+              ? `✓ Successfully imported ${data.count} items to Database.` 
+              : `✓ Berhasil mengimpor ${data.count} data ke Database.`
+          );
+          
+          document.getElementById('importJsonTextarea').value = '';
+          validateAndPreview();
+          await loadData();
+          switchSection('tags');
+        } catch (err) {
+          alert('Gagal mengimpor data ke Database: ' + err.message);
+        }
+      } else {
+        // Offline storage import
+        itemsToImport.forEach(item => {
+          const cIdx = CUSTOM.findIndex(d => d.msg === item.msg && d.tag === item.tag && d.sub === item.sub);
+          if (cIdx !== -1) {
+            CUSTOM[cIdx] = item;
+          } else {
+            CUSTOM.push(item);
+          }
+        });
+
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        
+        showToast(
+          currentLang === 'en' 
+            ? `✓ Successfully imported ${itemsToImport.length} items to Cache.` 
+            : `✓ Berhasil mengimpor ${itemsToImport.length} data ke Cache Lokal.`
+        );
+        
+        document.getElementById('importJsonTextarea').value = '';
+        validateAndPreview();
+        await loadData();
+        switchSection('tags');
+      }
+    }
+
+    // ── Settings Page Operations ──
+    async function testConnection() {
+      try {
+        const res = await fetch(API_URL);
+        if (res.ok) {
+          showToast(currentLang === 'id' ? '✓ Koneksi backend database aktif & responsif!' : '✓ Backend database connection active & responsive!');
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        alert(currentLang === 'id' ? '⚠ Koneksi gagal. Backend API server (app.py) tidak aktif.' : '⚠ Connection failed. Backend API server (app.py) is offline.');
+      }
+    }
+
+    function clearLocalStorageCache() {
+      if (confirm(currentLang === 'id' ? 'Hapus semua modifikasi data manual di local storage cache?' : 'Delete all manual data modifications in local storage cache?')) {
+        localStorage.removeItem('swift_custom');
+        CUSTOM = [];
+        showToast(currentLang === 'id' ? 'Cache lokal dibersihkan.' : 'Local cache cleared.');
+        loadData().then(() => {
+          render();
+          updateDashboardStats();
+        });
+      }
+    }
+
+    function exportDatabaseBackup() {
+      const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `swiftdocs-backup-${new Date().toISOString().substring(0, 10)}.json`;
+      a.click();
+      showToast(currentLang === 'id' ? 'Backup JSON diunduh.' : 'JSON backup downloaded.');
+    }
+
+    // ── Toast Notification helper ──
+    let toastTimer;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+  </script>
+</body>
+
+</html>
