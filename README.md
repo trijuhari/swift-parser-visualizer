@@ -1,115 +1,143 @@
 # 📊 SWIFT Reporting Tool
 
-Aplikasi web untuk menelusuri, mengelola, dan memvalidasi kamus referensi tag SWIFT (MT940, MT942, MT950, MT103, dan lainnya). Dilengkapi dengan parser pesan SWIFT mentah, admin dashboard untuk CRUD data, serta backend API berbasis Flask + SQLite.
+A professional web portal for browsing, managing, and validating the SWIFT message tag reference dictionary, with a built-in raw SWIFT message parser & interactive visualizer. Features an admin CMS for CRUD operations, a Flask + SQLite backend API, and full bilingual support (Indonesian / English).
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?logo=javascript&logoColor=black)
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Key Features
 
-| Fitur | Deskripsi |
-|-------|-----------|
-| 📖 **Kamus Referensi** | Tabel interaktif untuk semua tag SWIFT dengan filter, search, sorting, dan pagination |
-| 🔍 **Raw Message Parser** | Parse dan visualisasi pesan SWIFT mentah secara real-time |
-| 🛠️ **Admin Dashboard** | Tambah, edit, hapus tag — termasuk tag bawaan sistem |
-| 📥 **Bulk Import JSON** | Import data tag secara massal dari output AI/LLM |
-| 🌐 **Multi-Bahasa** | Dukungan Bahasa Indonesia dan English |
-| 💾 **Database SQLite** | Penyimpanan persisten dengan composite unique key `(msg, tag, sub)` |
-| 🔄 **Auto-Fill Pintar** | Saat menambah tag yang sudah ada di pesan lain, field otomatis terisi |
-| 📡 **Offline Fallback** | Jika backend mati, otomatis menggunakan data lokal |
+### 🏠 Home Dashboard
+- Interactive card boxes for each available SWIFT message type
+- Displays the **6 most commonly used types** by default (MT940, MT942, MT950, MT103, MT101, MT564)
+- Each card shows a description, tag count, and quick-access buttons to the **Dictionary** and **Parser**
+- Global search to discover all other message types
+- Automatic filtering: only displays records with active status (`is_active = 1`)
+
+### 📖 Reference Dictionary
+- Interactive table for all SWIFT tags with multi-column search, filtering, and sorting
+- Click any tag to view full details including sub-fields, format rules, and samples
+- Clickable structure tags for direct navigation to related tag definitions
+- Filter by message type, mandatory/optional status, and free-text keywords
+
+### 🔍 Visualizer / Raw SWIFT Parser
+The parser supports **8 SWIFT message types** with auto-detection:
+
+| Message Type | Description | Parser |
+|------------|-----------|--------|
+| **MT940** | Customer Statement Message | ✅ Full parser + dashboard visualization |
+| **MT942** | Interim Transaction Report | ✅ Full parser + dashboard visualization |
+| **MT950** | Statement Message | ✅ Full parser + dashboard visualization |
+| **MT103** | Single Customer Credit Transfer | ✅ Full parser + sender/beneficiary cards |
+| **MT101** | Request for Transfer | ✅ Full parser + ordering/beneficiary cards |
+| **MT102** | Multiple Customer Funds Transfer | ✅ Full parser + bulk payment overview |
+| **MT104** | Direct Debit Message | ✅ Full parser + creditor/debtor cards |
+| **MT564** | Corporate Action Notification | ✅ Full parser + corporate action options |
+
+**Advanced parser features:**
+- 💡 **Executive Business Insights** — Each parser type displays a dynamic, contextual business explanation (bilingual ID/EN)
+- ⚠️ **Format Validation** — Automatic detection of missing mandatory tags in the pasted message
+- ⚙️ **Developer Utilities** — View and copy the structured JSON output of the parsed message (for API integration / debugging)
+- 📊 **Transaction Detail Viewer** — Click any transaction row to view fully parsed sub-fields (MT940/942/950)
+- 💰 **Net Cash Flow Analysis** — Automatic inflow/outflow summary with executive narrative (MT940/942/950)
+
+### 🛠️ Admin Portal (CMS)
+- Accessed via direct URL navigation: `admin.html` (no visible button on the public interface)
+- Full CRUD: Create, Read, Update, and Delete SWIFT tags
+- Bulk JSON import for mass data ingestion
+- System tag deactivation (soft-delete) to hide without permanently removing
+- Message type category & metadata management
+
+### 🌐 Bilingual Support (ID / EN)
+- Full support for Bahasa Indonesia (default) and English
+- Real-time language toggle without page reload
+- All labels, descriptions, rules, and business insights available in both languages
+
+### 🌙 Dark Mode
+- Premium dark mode with smooth transitions
+- Supports all components including tables, cards, and parser panels
 
 ---
 
-## 📁 Struktur Proyek
+## 📁 Project Structure
 
 ```
 SWift Statement/
-├── swift-reporting-tabular.html  # Frontend utama (single-page app)
-├── swift-data.json               # Seed data tag SWIFT
-├── PROMPT_TEMPLATE.md            # Template prompt untuk generate JSON via AI
+├── index.html                    # Main frontend (Single Page Application)
+├── admin.html                    # Admin Portal / CMS (direct URL access only)
+├── swift-data.json               # SWIFT tag seed data (offline fallback)
+├── swift-reporting-tabular.html  # Legacy version (deprecated)
+├── PROMPT_TEMPLATE.md            # AI prompt template for generating tag JSON
 ├── .gitignore
 ├── README.md
 │
 ├── backend/                      # Backend API
 │   ├── app.py                    # Flask REST API server (port 8766)
-│   ├── init_db.py                # Script inisialisasi database
-│   ├── schema.sql                # Skema DDL database SQLite
-│   └── swift.db                  # Database SQLite (auto-generated, gitignored)
+│   ├── init_db.py                # Database initialization script
+│   ├── schema.sql                # SQLite DDL schema
+│   └── swift.db                  # SQLite database (auto-generated, gitignored)
 │
-├── scripts/                      # Script utilitas & scraper
-│   ├── build_dictionary.py       # Build kamus dari sumber referensi
-│   ├── add_mt564.py              # Generator data MT564
-│   ├── scrape_gs_swift.py        # Scraper halaman SWIFT docs
-│   ├── scrape_gs_swift2.py       # Scraper v2
-│   └── translate.py              # Helper translasi ID ↔ EN
-│
-└── docs/                         # Dokumentasi referensi (gitignored PDFs)
-    ├── _ ISO20022.pdf
-    └── MT940_Structured.pdf
+└── scripts/                      # Utility scripts & scrapers
+    ├── build_dictionary.py       # Dictionary builder from reference sources
+    ├── add_mt564.py              # MT564 data generator
+    ├── scrape_gs_swift.py        # SWIFT docs scraper v1
+    ├── scrape_gs_swift2.py       # SWIFT docs scraper v2
+    └── translate.py              # ID ↔ EN translation helper
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Inisialisasi Database
+### 1. Initialize the Database
 
 ```bash
 cd backend
 python3 init_db.py
 ```
 
-Ini akan membuat file `swift.db` dan meng-import data dari `swift-data.json`.
+This creates the `swift.db` file and imports all data from `swift-data.json` into the system tables.
 
-### 2. Jalankan Backend API
+### 2. Start the Backend API
 
 ```bash
 python3 backend/app.py
 ```
 
-Server Flask akan berjalan di `http://localhost:8766`.
+The Flask server will start on `http://localhost:8766` with CORS enabled.
 
-### 3. Jalankan Frontend
+### 3. Start the Frontend
 
 ```bash
 python3 -m http.server 8765
 ```
 
-Buka browser → `http://localhost:8765/swift-reporting-tabular.html`
+Open your browser → **`http://localhost:8765`**
+
+> **💡 Note:** If the backend is not running, the frontend will automatically fall back to the local `swift-data.json` data (offline mode).
 
 ---
 
 ## 🔌 API Endpoints
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| `GET` | `/api/tags` | Ambil semua tag (system + custom) |
-| `POST` | `/api/tags` | Tambah/update satu tag (upsert) |
-| `POST` | `/api/tags/import` | Bulk import array of tags |
-| `DELETE` | `/api/tags/<msg>/<tag>/<sub>` | Hapus tag berdasarkan composite key |
-| `POST` | `/api/login` | Autentikasi owner (password: `swift2024`) |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/tags` | Retrieve all tags (system + custom, merged view) |
+| `POST` | `/api/tags` | Create or update a single tag (upsert by composite key) |
+| `POST` | `/api/tags/import` | Bulk import an array of tags |
+| `DELETE` | `/api/tags/<msg>/<tag>/<sub>` | Delete a custom tag or deactivate a system tag |
+| `POST` | `/api/tags/delete-multiple` | Delete/deactivate multiple tags at once |
+| `POST` | `/api/login` | Admin portal authentication |
 
----
+### Example Request
 
-## 📥 Menambah Data Tag Baru
-
-### Cara 1: Manual via Admin Dashboard
-1. Login sebagai Owner
-2. Buka tab **Admin** → klik **+ Tambah Baris**
-3. Ketik jenis pesan (misal `mt103`) — support autocomplete
-4. Isi detail tag → **Simpan**
-
-### Cara 2: Bulk Import via JSON
-1. Generate data menggunakan prompt di [`PROMPT_TEMPLATE.md`](PROMPT_TEMPLATE.md)
-2. Buka tab **Admin** → klik **📥 Import JSON**
-3. Paste JSON → Preview → **Konfirmasi & Impor**
-
-### Cara 3: Langsung via API
 ```bash
+# Add a new tag
 curl -X POST http://localhost:8766/api/tags \
   -H "Content-Type: application/json" \
   -d '{
@@ -129,9 +157,25 @@ curl -X POST http://localhost:8766/api/tags \
 
 ---
 
-## 🗄️ Skema Database
+## 📥 Adding New Tag Data
 
-Database menggunakan **composite unique key** `(msg, tag, sub)` untuk mencegah duplikasi dan memungkinkan tag yang sama (misal Tag `20`) memiliki definisi berbeda di setiap tipe pesan:
+### Option 1: Manual via Admin Portal
+1. Navigate to `admin.html` directly in your browser
+2. Click **+ Add Row** → Fill in tag details → **Save**
+
+### Option 2: Bulk Import via JSON
+1. Generate data using the prompt template in [`PROMPT_TEMPLATE.md`](PROMPT_TEMPLATE.md)
+2. In the Admin Portal → click **📥 Import JSON**
+3. Paste JSON → Preview → **Confirm & Import**
+
+### Option 3: Direct REST API
+Use `POST /api/tags` or `POST /api/tags/import` (see example above)
+
+---
+
+## 🗄️ Database Schema
+
+The database uses a **composite unique key** `(msg, tag, sub)` to prevent duplicates. The same tag (e.g. Tag `:20:`) can have different definitions across different message types:
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -143,26 +187,79 @@ Database menggunakan **composite unique key** `(msg, tag, sub)` untuk mencegah d
 │mt940 │ 25  │     │    │mt103 │ 23B │     │       │
 │mt940 │ 60F │     │    │mt202 │ 20  │     │       │
 │mt940 │ 60F │  1  │    │      │     │     │       │
-│mt940 │ 60F │  2  │    │      │     │     │       │
 └─────────────────────────────────────────────────┘
           ↓ UNION ALL ↓
-    ┌──────────────────────┐
-    │   GET /api/tags      │  ← Frontend reads this
-    │   (merged view)      │
-    └──────────────────────┘
+    ┌──────────────────────────┐
+    │   GET /api/tags          │  ← Frontend reads merged view
+    │   WHERE is_active = 1    │  ← Deactivated items filtered out
+    └──────────────────────────┘
+```
+
+---
+
+## 🎯 Application Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Browser (Client)                      │
+│  ┌──────────┐  ┌──────────────┐  ┌───────────────────┐  │
+│  │   Home    │  │  Reference   │  │  Parser / Viz.    │  │
+│  │ Dashboard │  │ (Dictionary) │  │  (8 MT types)     │  │
+│  └──────────┘  └──────────────┘  └───────────────────┘  │
+│                        │                                 │
+│  ┌─────────────────────┴───────────────────────────────┐ │
+│  │           index.html (SPA + i18n + Dark Mode)       │ │
+│  └─────────────────────┬───────────────────────────────┘ │
+└────────────────────────┼─────────────────────────────────┘
+                         │ fetch() / XMLHttpRequest
+                         ▼
+┌────────────────────────────────────────────────┐
+│           Flask API (localhost:8766)            │
+│  ┌──────────────────────────────────────────┐  │
+│  │  GET /api/tags  │  POST  │  DELETE  │ ... │  │
+│  └──────────────────────────────────────────┘  │
+│                    │                            │
+│            ┌───────┴──────────┐                 │
+│            │   SQLite (swift.db)               │
+│            │   swift_tags + swift_custom_tags   │
+│            └──────────────────┘                 │
+└────────────────────────────────────────────────┘
+
+Fallback (offline): index.html ← swift-data.json
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Vanilla HTML5 + CSS3 + JavaScript (zero dependencies)
-- **Backend**: Python 3.10+ / Flask / flask-cors
-- **Database**: SQLite3
-- **Styling**: Custom CSS dengan dark mode, glassmorphism, micro-animations
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Vanilla HTML5 + CSS3 + JavaScript ES6+ (zero dependencies) |
+| **Backend** | Python 3.10+ / Flask / flask-cors |
+| **Database** | SQLite3 with composite unique constraints |
+| **Styling** | Custom CSS — dark mode, glassmorphism, micro-animations |
+| **Deployment** | Python HTTP server (dev) / deployable to NGINX / Gunicorn |
+
+---
+
+## 📋 Developer Guide
+
+### Adding a New Parser Type
+To add parser support for a new SWIFT message type (e.g. MT202):
+
+1. **Create the parser function**: Add `parseMT202(rawText)` that returns a structured object
+2. **Create the render function**: Add `renderMT202Output(statement)` for dashboard visualization
+3. **Create the insight function**: Add `getMT202BusinessExplanation(statement)` for business analysis
+4. **Register in `parseSwift()`**: Add auto-detection logic and routing to the new parser
+5. **Update `isParserSupported()`**: Add `'mt202'` to the `supported` array
+6. **Update the dropdown**: Add a new `<option>` to `#parserTypeSelect`
+7. **Add sample data**: In `loadSampleData()` add a raw message example
+
+### Adding a New Language
+All UI text is defined in the `i18n` object inside `index.html`. Add a new key to both `i18n.id` and `i18n.en` for each new label.
 
 ---
 
 ## 📄 License
 
-MIT License
+MIT License — Free to use for internal, educational, and commercial purposes.
