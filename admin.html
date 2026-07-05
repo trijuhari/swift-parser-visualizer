@@ -933,6 +933,12 @@
         <a class="menu-item" id="menu-tags" onclick="switchSection('tags')">
           <span>📝</span> <span id="lbl-menuTags">Data Referensi</span>
         </a>
+        <a class="menu-item" id="menu-msgtypes" onclick="switchSection('msgtypes')">
+          <span>✉️</span> <span id="lbl-menuMsgTypes">Jenis Pesan</span>
+        </a>
+        <a class="menu-item" id="menu-categories" onclick="switchSection('categories')">
+          <span>📁</span> <span id="lbl-menuCategories">Kategori Pesan</span>
+        </a>
         <a class="menu-item" id="menu-import" onclick="switchSection('import')">
           <span>📥</span> <span id="lbl-menuImport">Impor JSON</span>
         </a>
@@ -1089,6 +1095,88 @@
                 <button class="icon-btn" id="btnPrevPage" onclick="changePage(-1)">◀</button>
                 <button class="icon-btn" id="btnNextPage" onclick="changePage(1)">▶</button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: JENIS PESAN (MESSAGE TYPES CRUD) ── -->
+      <div id="section-msgtypes" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-msgTypesCrudTitle">Kelola Jenis Pesan (Message Types)</h3>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="openMsgTypeModal()">➕ <span id="lbl-btnAddMsgType">Tambah Jenis Pesan</span></button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Filter & Search for Message Types -->
+            <div class="filters-row" style="margin-bottom: 18px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div class="search-box" style="flex: 1; min-width: 250px; max-width: 400px;">
+                <input type="text" id="msgTypeSearchInput" placeholder="Cari kode pesan atau nama…">
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="lbl-filterCatLabel" style="font-size: 13.5px; font-weight: 600; color: var(--ink-soft);">Kategori:</span>
+                <select id="msgTypeCatFilter" class="select-dropdown" style="padding: 8px 12px;">
+                  <!-- Dynamic categories will be populated here -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Table of Message Types -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 120px;">Kode Pesan</th>
+                    <th>Nama (ID)</th>
+                    <th>Nama (EN)</th>
+                    <th style="width: 180px;">Kategori</th>
+                    <th>Keterangan</th>
+                    <th style="width: 100px;">Sumber</th>
+                    <th style="width: 130px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="msgTypesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION: MESSAGE CATEGORIES ── -->
+      <div id="section-categories" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-secTitleCategories">Kelola Kategori Pesan (Categories)</h3>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="openCategoryModal()">➕ <span id="lbl-btnAddCategory">Tambah Kategori</span></button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Filter & Search for Categories -->
+            <div class="filters-row" style="margin-bottom: 18px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div class="search-box" style="flex: 1; min-width: 250px; max-width: 400px;">
+                <input type="text" id="categorySearchInput" placeholder="Cari kategori...">
+              </div>
+            </div>
+
+            <!-- Table of Categories -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 120px;">Key Kategori</th>
+                    <th style="width: 80px; text-align: center;">Icon</th>
+                    <th>Nama (ID)</th>
+                    <th>Nama (EN)</th>
+                    <th>Keterangan</th>
+                    <th style="width: 100px;">Sumber</th>
+                    <th style="width: 130px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="categoriesTableBody"></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1330,6 +1418,122 @@
       </div>
     </div>
   </div>
+  <!-- ── Message Type Add/Edit Modal ── -->
+  <div class="modal-backdrop" id="msgTypeModalBackdrop" onclick="closeMsgTypeModalOutside(event)">
+    <div class="modal">
+      <h2 id="msgTypeModalTitle" class="modal-title">Tambah Jenis Pesan</h2>
+
+      <div class="form-grid">
+        <!-- Msg Code -->
+        <div class="field">
+          <label id="lbl-formMsgCode">Kode Pesan (e.g. mt103)</label>
+          <input type="text" id="mt_msg" placeholder="mis. mt103" autocomplete="off" style="text-transform: lowercase;">
+        </div>
+
+        <!-- Category -->
+        <div class="field">
+          <label id="lbl-formMsgCategory">Kategori Pesan</label>
+          <select id="mt_category" class="select-dropdown" style="padding: 9px 11px; width: 100%; border: 1.5px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink);">
+            <option value="1">Kategori 1: Pembayaran</option>
+            <option value="9">Kategori 9: Manajemen Kas</option>
+            <option value="5">Kategori 5: Sekuritas</option>
+            <option value="other">Kategori Lainnya</option>
+          </select>
+        </div>
+
+        <!-- Name ID -->
+        <div class="field full">
+          <label id="lbl-formMsgNameID">Nama Pesan (Bahasa Indonesia)</label>
+          <input type="text" id="mt_name" placeholder="mis. Transfer Dana Nasabah Tunggal">
+        </div>
+
+        <!-- Name EN -->
+        <div class="field full">
+          <label id="lbl-formMsgNameEN">Message Name (English)</label>
+          <input type="text" id="mt_name_en" placeholder="e.g. Single Customer Funds Transfer">
+        </div>
+
+        <!-- Description ID -->
+        <div class="field full">
+          <label id="lbl-formMsgDescID">Keterangan (Bahasa Indonesia)</label>
+          <textarea id="mt_desc" placeholder="Keterangan pesan..."></textarea>
+        </div>
+
+        <!-- Description EN -->
+        <div class="field full">
+          <label id="lbl-formMsgDescEN">Description (English)</label>
+          <textarea id="mt_desc_en" placeholder="Message description..."></textarea>
+        </div>
+
+        <!-- Rules/Chips ID -->
+        <div class="field full">
+          <label id="lbl-formMsgChipsID">Label/Chips (ID, pisahkan koma)</label>
+          <input type="text" id="mt_chips" placeholder="mis. Pembayaran, Transfer">
+        </div>
+
+        <!-- Rules/Chips EN -->
+        <div class="field full">
+          <label id="lbl-formMsgChipsEN">Labels/Chips (EN, comma separated)</label>
+          <input type="text" id="mt_chips_en" placeholder="e.g. Payments, Transfer">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeMsgTypeModal()" id="lbl-btnMsgTypeCancel">Batal</button>
+        <button class="btn btn-primary" onclick="saveMsgType()" id="lbl-btnMsgTypeSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Category Add/Edit Modal ── -->
+  <div class="modal-backdrop" id="categoryModalBackdrop" onclick="closeCategoryModalOutside(event)">
+    <div class="modal">
+      <h2 id="categoryModalTitle" class="modal-title">Tambah Kategori</h2>
+
+      <div class="form-grid">
+        <!-- Category Key -->
+        <div class="field">
+          <label id="lbl-formCatKey">Key Kategori (e.g. 1, 9, custom)</label>
+          <input type="text" id="cat_key" placeholder="mis. 2" autocomplete="off">
+        </div>
+
+        <!-- Icon -->
+        <div class="field">
+          <label id="lbl-formCatIcon">Icon / Emoji</label>
+          <input type="text" id="cat_icon" placeholder="mis. 💸, 🏦" autocomplete="off">
+        </div>
+
+        <!-- Name ID -->
+        <div class="field full">
+          <label id="lbl-formCatNameID">Nama Kategori (Bahasa Indonesia)</label>
+          <input type="text" id="cat_name" placeholder="mis. Pembayaran & Cek">
+        </div>
+
+        <!-- Name EN -->
+        <div class="field full">
+          <label id="lbl-formCatNameEN">Category Name (English)</label>
+          <input type="text" id="cat_name_en" placeholder="e.g. Payments & Cheques">
+        </div>
+
+        <!-- Description ID -->
+        <div class="field full">
+          <label id="lbl-formCatDescID">Keterangan (Bahasa Indonesia)</label>
+          <textarea id="cat_desc" placeholder="Keterangan kategori..."></textarea>
+        </div>
+
+        <!-- Description EN -->
+        <div class="field full">
+          <label id="lbl-formCatDescEN">Description (English)</label>
+          <textarea id="cat_desc_en" placeholder="Category description..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeCategoryModal()" id="lbl-btnCatCancel">Batal</button>
+        <button class="btn btn-primary" onclick="saveCategory()" id="lbl-btnCatSave">Simpan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification element -->
   <div id="toast"></div>
@@ -1379,6 +1583,117 @@
       {"msg": "mt940", "tag": "61", "sub": "9", "name": "Detail Tambahan", "name_en": "Supplementary Details", "len": "34x", "mo": "o", "sample": "/OCMT/FIM128945,05/", "desc": "Informasi tambahan transaksi.", "desc_en": "Supplementary information concerning the transaction.", "rules": "Maksimal 34 karakter. Sering digunakan untuk kode mata uang dan nominal asal (original amount) sebelum konversi.", "rules_en": "Max 34 characters. Often used for original amount / currency before conversion.", "source": "gs-docs"}
     ];
 
+    const HOME_MSG_INFO = {
+      mt940: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Laporan Rekening (Account Statement)",
+          desc: "Format standar SWIFT yang dikirimkan oleh bank untuk memberikan rincian transaksi harian dan saldo akhir rekening kepada nasabah."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Account Statement",
+          desc: "Standard SWIFT format sent by bank to provide detailed account transactions and end-of-day balances to the account owner."
+        }
+      },
+      mt942: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Laporan Interim Rekening (Interim Transaction Report)",
+          desc: "Menyediakan rincian mutasi debit dan kredit sementara pada rekening selama hari berjalan sebelum laporan akhir hari dikirim."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Interim Transaction Report",
+          desc: "Provides details of temporary debit and credit entries booked to the account during the day prior to final statement generation."
+        }
+      },
+      mt950: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Pernyataan Rekening Ringkas (Statement Message)",
+          desc: "Laporan saldo dan rincian transaksi ringkas yang dikirim oleh bank kepada bank koresponden atau institusi keuangan lain."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Statement Message",
+          desc: "Summarized account statement sent from one financial institution to another containing transaction logs and balance checks."
+        }
+      },
+      mt103: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Transfer Dana Nasabah Tunggal (Single Customer Transfer)",
+          desc: "Digunakan untuk mengirimkan instruksi pembayaran dana tunggal dari nasabah pengirim ke nasabah penerima di bank lain."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Single Customer Funds Transfer",
+          desc: "Used to execute single customer funds transfer instructions between accounts at different banking institutions globally."
+        }
+      },
+      mt101: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Permintaan Transfer Dana (Request for Transfer)",
+          desc: "Dikirim oleh pemilik rekening untuk meminta bank mendebit rekeningnya dan melakukan transfer dana ke pihak penerima."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Request for Transfer",
+          desc: "Sent by the account owner to instruct a bank to debit their account and transfer funds to specified beneficiaries."
+        }
+      },
+      mt102: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Transfer Dana Nasabah Multi (Multiple Customer Transfer)",
+          desc: "Digunakan untuk mengirimkan instruksi beberapa pembayaran dari nasabah pengirim secara massal/batch ke bank penerima."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Multiple Customer Funds Transfer",
+          desc: "Sent to process multiple credit transfer instructions in a single message payload for batch processing."
+        }
+      },
+      mt104: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Direct Debit & Transfer Debit (Direct Debit Message)",
+          desc: "Digunakan untuk menagih pembayaran dari rekening pembayar di bank lain melalui mekanisme direct debit standar."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Direct Debit & Request for Debit Transfer",
+          desc: "Used to collect payments from accounts at other banks via authorized pre-arranged direct debit schemes."
+        }
+      },
+      mt111: {
+        id: {
+          category: "Kategori 1: Pembayaran Nasabah",
+          title: "Instruksi Kartu Kredit (Credit Card Instruction)",
+          desc: "Mengirimkan instruksi pembayaran terkait tagihan kartu kredit antar bank atau jaringan pembayaran terafiliasi."
+        },
+        en: {
+          category: "Category 1: Customer Payments",
+          title: "Credit Card Instruction",
+          desc: "Used to transmit interbank processing requests for credit card bill payments and settlements."
+        }
+      },
+      mt564: {
+        id: {
+          category: "Kategori 5: Aksi Korporasi",
+          title: "Notifikasi Aksi Korporasi (Corporate Action Notification)",
+          desc: "Menginformasikan pemegang akun mengenai detail peristiwa korporat seperti pembagian dividen, stock split, atau merger."
+        },
+        en: {
+          category: "Category 5: Securities Market",
+          title: "Corporate Action Notification",
+          desc: "Informs account holders about details regarding corporate events such as dividend distributions, stock splits, or mergers."
+        }
+      }
+    };
+
     // Localizations
     const i18n = {
       id: {
@@ -1387,12 +1702,15 @@
         loginPassLabel: "Password",
         menuDash: "Dashboard Overview",
         menuTags: "Data Referensi",
+        menuMsgTypes: "Jenis Pesan",
         menuImport: "Impor JSON",
         menuSettings: "Pengaturan DB",
         secTitleDash: "Dashboard Overview",
         secSubDash: "Selamat datang kembali di panel CMS owner.",
         secTitleTags: "Manajemen Data Referensi",
         secSubTags: "Tambah, edit, dan hapus baris tag referensi kamus SWIFT.",
+        secTitleMsgTypes: "Manajemen Jenis Pesan",
+        secSubMsgTypes: "Tambah, edit, dan hapus jenis pesan standar SWIFT.",
         secTitleImport: "Impor Data JSON",
         secSubImport: "Impor data dalam jumlah besar dengan format array JSON.",
         secTitleSettings: "Pengaturan Database",
@@ -1457,12 +1775,15 @@
         loginPassLabel: "Password",
         menuDash: "Dashboard Overview",
         menuTags: "Reference Data",
+        menuMsgTypes: "Message Types",
         menuImport: "Import JSON",
         menuSettings: "DB Settings",
         secTitleDash: "Dashboard Overview",
         secSubDash: "Welcome back to the owner CMS portal.",
         secTitleTags: "Reference Data Management",
         secSubTags: "Create, read, update, and delete tag reference dictionary records.",
+        secTitleMsgTypes: "Message Types Management",
+        secSubMsgTypes: "Create, read, update, and delete SWIFT message types.",
         secTitleImport: "Import JSON Data",
         secSubImport: "Perform bulk imports using standard JSON array layouts.",
         secTitleSettings: "Database Settings",
@@ -1591,6 +1912,17 @@
       // Update sidebar
       document.getElementById('lbl-menuDash').textContent = dict.menuDash;
       document.getElementById('lbl-menuTags').textContent = dict.menuTags;
+      const lblMenuMsgTypes = document.getElementById('lbl-menuMsgTypes');
+      if (lblMenuMsgTypes) lblMenuMsgTypes.textContent = dict.menuMsgTypes || (currentLang === 'en' ? 'Message Types' : 'Jenis Pesan');
+      const lblMenuCategories = document.getElementById('lbl-menuCategories');
+      if (lblMenuCategories) lblMenuCategories.textContent = currentLang === 'en' ? 'Categories' : 'Kategori Pesan';
+      
+      const lblSecTitleCategories = document.getElementById('lbl-secTitleCategories');
+      if (lblSecTitleCategories) lblSecTitleCategories.textContent = currentLang === 'en' ? 'Manage Message Categories (Categories)' : 'Kelola Kategori Pesan (Categories)';
+
+      const lblBtnAddCategory = document.getElementById('lbl-btnAddCategory');
+      if (lblBtnAddCategory) lblBtnAddCategory.textContent = currentLang === 'en' ? 'Add Category' : 'Tambah Kategori';
+
       document.getElementById('lbl-menuImport').textContent = dict.menuImport;
       document.getElementById('lbl-menuSettings').textContent = dict.menuSettings;
       
@@ -1677,6 +2009,12 @@
       } else if (currentSection === 'settings') {
         titleEl.textContent = dict.secTitleSettings;
         subEl.textContent = dict.secSubSettings;
+      } else if (currentSection === 'msgtypes') {
+        titleEl.textContent = dict.secTitleMsgTypes || (currentLang === 'en' ? 'Message Types Management' : 'Manajemen Jenis Pesan');
+        subEl.textContent = dict.secSubMsgTypes || (currentLang === 'en' ? 'Create, read, update, and delete SWIFT message types.' : 'Tambah, edit, dan hapus jenis pesan standar SWIFT.');
+      } else if (currentSection === 'categories') {
+        titleEl.textContent = currentLang === 'en' ? 'Message Categories Management' : 'Manajemen Kategori Pesan';
+        subEl.textContent = currentLang === 'en' ? 'Manage categories used to group message types.' : 'Kelola kategori yang digunakan untuk mengelompokkan jenis pesan.';
       }
     }
 
@@ -1701,6 +2039,11 @@
         render();
       } else if (sectionId === 'dashboard') {
         updateDashboardStats();
+      } else if (sectionId === 'msgtypes') {
+        populateMsgTypeFilterDropdown();
+        renderMsgTypes();
+      } else if (sectionId === 'categories') {
+        renderCategories();
       }
     }
 
@@ -1716,6 +2059,27 @@
         render();
       });
       
+      const mtSearch = document.getElementById('msgTypeSearchInput');
+      if (mtSearch) {
+        mtSearch.addEventListener('input', () => {
+          renderMsgTypes();
+        });
+      }
+
+      const catSearch = document.getElementById('categorySearchInput');
+      if (catSearch) {
+        catSearch.addEventListener('input', () => {
+          renderCategories();
+        });
+      }
+
+      const mtCatFilter = document.getElementById('msgTypeCatFilter');
+      if (mtCatFilter) {
+        mtCatFilter.addEventListener('change', () => {
+          renderMsgTypes();
+        });
+      }
+
       document.getElementById('searchColumn').addEventListener('change', () => {
         currentPage = 1;
         render();
@@ -1736,6 +2100,72 @@
 
       // Sorting
       initSort();
+    }
+
+    function ensurePredefinedMsgTypes() {
+      const predefinedMsgTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt111', 'mt564'];
+      predefinedMsgTypes.forEach(m => {
+        // Skip if deactivated in DB
+        const deactivated = DATA.some(d => d.msg && d.msg.toLowerCase() === m.toLowerCase() && d.tag === 'MSG_NAME' && d.is_active === 0);
+        if (deactivated) return;
+
+        const exists = DATA.some(d => d.msg && d.msg.toLowerCase() === m.toLowerCase() && d.tag === 'MSG_NAME');
+        if (!exists) {
+          const info = HOME_MSG_INFO[m];
+          let catKey = 'other';
+          if (m.startsWith('mt1')) catKey = '1';
+          else if (m.startsWith('mt9')) catKey = '9';
+          else if (m.startsWith('mt5')) catKey = '5';
+          
+          DATA.push({
+            msg: m,
+            tag: 'MSG_NAME',
+            sub: '',
+            name: info ? info.id.title : '',
+            name_en: info ? info.en.title : '',
+            len: catKey,
+            mo: 'o',
+            desc: info ? info.id.desc : '',
+            desc_en: info ? info.en.desc : '',
+            rules: '',
+            rules_en: '',
+            is_active: 1,
+            source: 'system'
+          });
+        }
+      });
+    }
+
+    function ensurePredefinedCategories() {
+      const predefinedCats = [
+        { key: '1', icon: '💸', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques', desc: 'Digunakan untuk transaksi pembayaran nasabah.', desc_en: 'Used for customer payment transactions.' },
+        { key: '9', icon: '🏦', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management', desc: 'Laporan rekening dan informasi kas saldo.', desc_en: 'Statement messages and cash management logs.' },
+        { key: '5', icon: '📈', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate Activity', desc: 'Informasi aksi korporasi dan sekuritas.', desc_en: 'Securities and corporate action notifications.' }
+      ];
+      predefinedCats.forEach(c => {
+        // Skip if deactivated in DB
+        const deactivated = DATA.some(d => d.msg === 'category' && d.tag === c.key && d.is_active === 0);
+        if (deactivated) return;
+
+        const exists = DATA.some(d => d.msg === 'category' && d.tag === c.key);
+        if (!exists) {
+          DATA.push({
+            msg: 'category',
+            tag: c.key,
+            sub: '',
+            name: c.name,
+            name_en: c.name_en,
+            len: c.icon,
+            mo: 'o',
+            desc: c.desc,
+            desc_en: c.desc_en,
+            rules: '',
+            rules_en: '',
+            is_active: 1,
+            source: 'system'
+          });
+        }
+      });
     }
 
     async function loadData() {
@@ -1774,6 +2204,9 @@
           DATA = [...filteredFallback, ...activeCustom];
         }
       }
+      ensurePredefinedMsgTypes();
+      ensurePredefinedCategories();
+      DATA = DATA.filter(d => d.is_active !== 0);
       populateFilters();
     }
 
@@ -1781,7 +2214,7 @@
       const container = document.getElementById('msgFilterChips');
       if (!container) return;
       
-      const types = [...new Set(DATA.map(r => r.msg))].sort();
+      const types = [...new Set(DATA.filter(r => r.msg && r.msg !== 'category').map(r => r.msg))].sort();
       
       const allActive = activeFilterMsg === 'all' ? 'active' : '';
       let html = `<div class="chip ${allActive}" onclick="selectMsgFilter('all')">ALL</div>`;
@@ -1803,10 +2236,10 @@
 
     function updateDashboardStats() {
       // Calculate totals
-      const totalTags = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME').length;
-      const customTags = DATA.filter(d => d.source === 'manual' && d.sub === '').length;
-      const systemTags = DATA.filter(d => (d.source === 'system' || d.source === 'gs-docs') && d.sub === '').length;
-      const messageTypes = [...new Set(DATA.map(d => d.msg))].length;
+      const totalTags = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME' && d.msg !== 'category').length;
+      const customTags = DATA.filter(d => d.source === 'manual' && d.sub === '' && d.msg !== 'category' && d.tag !== 'MSG_NAME').length;
+      const systemTags = DATA.filter(d => (d.source === 'system' || d.source === 'gs-docs') && d.sub === '' && d.msg !== 'category' && d.tag !== 'MSG_NAME').length;
+      const messageTypes = DATA.filter(d => d.tag === 'MSG_NAME').length;
       
       document.getElementById('stat-total-tags').textContent = totalTags;
       document.getElementById('stat-custom-tags').textContent = customTags;
@@ -1815,7 +2248,7 @@
 
       // Populate Quick Table (last 5 added tags)
       const quickTableBody = document.getElementById('quickTableBody');
-      const lastFive = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME').slice(-5).reverse();
+      const lastFive = DATA.filter(d => d.sub === '' && d.tag !== 'MSG_NAME' && d.msg !== 'category').slice(-5).reverse();
       
       quickTableBody.innerHTML = lastFive.map(r => {
         const badgeCls = r.source === 'manual' ? 'badge-msg badge-custom' : 'badge-msg ' + r.msg;
@@ -2029,8 +2462,634 @@
     function populateMsgTypes() {
       const dl = document.getElementById('msgTypeList');
       if (!dl) return;
-      const types = [...new Set(DATA.map(r => r.msg))].sort();
+      const types = [...new Set(DATA.filter(r => r.msg && r.msg !== 'category').map(r => r.msg))].sort();
       dl.innerHTML = types.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+    }
+
+    // ── Message Type CRUD Operations ──
+    function populateMsgTypeCategories() {
+      const select = document.getElementById('mt_category');
+      if (!select) return;
+      
+      const customCats = DATA.filter(d => d.msg === 'category');
+      const predefined = [
+        { key: '1', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques' },
+        { key: '9', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management' },
+        { key: '5', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate' }
+      ];
+      
+      const allCats = [...predefined];
+      customCats.forEach(cc => {
+        if (!allCats.some(c => c.key === cc.tag)) {
+          allCats.push({
+            key: cc.tag,
+            name: cc.name,
+            name_en: cc.name_en
+          });
+        }
+      });
+      
+      allCats.push({ key: 'other', name: 'Kategori Lainnya', name_en: 'Other Categories' });
+      
+      select.innerHTML = allCats.map(c => {
+        const displayName = currentLang === 'en' ? (c.name_en || c.name) : (c.name || c.name_en);
+        return `<option value="${c.key}">${displayName}</option>`;
+      }).join('');
+    }
+
+    function populateMsgTypeFilterDropdown() {
+      const select = document.getElementById('msgTypeCatFilter');
+      if (!select) return;
+      
+      const customCats = DATA.filter(d => d.msg === 'category');
+      const predefined = [
+        { key: 'all', name: 'Semua Kategori', name_en: 'All Categories' },
+        { key: '1', name: 'Kategori 1: Pembayaran & Cek', name_en: 'Category 1: Customer Payments & Cheques' },
+        { key: '9', name: 'Kategori 9: Manajemen Kas', name_en: 'Category 9: Cash Management' },
+        { key: '5', name: 'Kategori 5: Sekuritas & Korporasi', name_en: 'Category 5: Securities & Corporate' }
+      ];
+      
+      const allCats = [...predefined];
+      customCats.forEach(cc => {
+        if (!allCats.some(c => c.key === cc.tag)) {
+          allCats.push({
+            key: cc.tag,
+            name: cc.name,
+            name_en: cc.name_en
+          });
+        }
+      });
+      
+      allCats.push({ key: 'other', name: 'Kategori Lainnya', name_en: 'Other Categories' });
+      
+      select.innerHTML = allCats.map(c => {
+        const displayName = currentLang === 'en' ? (c.name_en || c.name) : (c.name || c.name_en);
+        return `<option value="${c.key}">${displayName}</option>`;
+      }).join('');
+    }
+
+    function resolveCategoryForAdmin(msgType, categoryKeyFromDb) {
+      let catKey = categoryKeyFromDb;
+      if (!catKey) {
+        const mt = msgType.toLowerCase();
+        if (mt.startsWith('mt1')) catKey = '1';
+        else if (mt.startsWith('mt9')) catKey = '9';
+        else if (mt.startsWith('mt5')) catKey = '5';
+        else catKey = 'other';
+      }
+      
+      const catRow = DATA.find(d => d.msg === 'category' && d.tag === catKey);
+      if (catRow) {
+        return {
+          key: catKey,
+          icon: catRow.len || '📄',
+          name: currentLang === 'en' ? (catRow.name_en || catRow.name) : (catRow.name || catRow.name_en)
+        };
+      }
+      
+      if (catKey === '1') {
+        return {
+          key: '1',
+          icon: '💸',
+          name: currentLang === 'en' ? 'Category 1: Customer Payments' : 'Kategori 1: Pembayaran & Cek'
+        };
+      } else if (catKey === '9') {
+        return {
+          key: '9',
+          icon: '🏦',
+          name: currentLang === 'en' ? 'Category 9: Cash Management' : 'Kategori 9: Manajemen Kas'
+        };
+      } else if (catKey === '5') {
+        return {
+          key: '5',
+          icon: '📈',
+          name: currentLang === 'en' ? 'Category 5: Securities' : 'Kategori 5: Sekuritas & Korporasi'
+        };
+      }
+      
+      return {
+        key: 'other',
+        icon: '📁',
+        name: currentLang === 'en' ? 'Other Categories' : 'Kategori Lainnya'
+      };
+    }
+
+    function renderMsgTypes() {
+      const tbody = document.getElementById('msgTypesTableBody');
+      if (!tbody) return;
+
+      const qInput = document.getElementById('msgTypeSearchInput');
+      const q = qInput ? qInput.value.toLowerCase().trim() : '';
+
+      const catFilterSelect = document.getElementById('msgTypeCatFilter');
+      const catFilter = catFilterSelect ? catFilterSelect.value : 'all';
+
+      // Find all rows where tag === 'MSG_NAME'
+      let rows = DATA.filter(r => r.tag === 'MSG_NAME');
+
+      // Filter by search query
+      if (q) {
+        rows = rows.filter(r => {
+          const msg = r.msg.toLowerCase();
+          const name = (r.name || '').toLowerCase();
+          const nameEn = (r.name_en || '').toLowerCase();
+          const desc = (r.desc || '').toLowerCase();
+          const descEn = (r.desc_en || '').toLowerCase();
+          return msg.includes(q) || name.includes(q) || nameEn.includes(q) || desc.includes(q) || descEn.includes(q);
+        });
+      }
+
+      // Filter by category
+      if (catFilter !== 'all') {
+        rows = rows.filter(r => {
+          return (r.len || 'other') === catFilter;
+        });
+      }
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--ink-soft);">${currentLang === 'en' ? 'No message types found.' : 'Tidak ada jenis pesan ditemukan.'}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const catInfo = resolveCategoryForAdmin(r.msg, r.len);
+        const nameText = currentLang === 'en' ? (r.name_en || r.name) : (r.name || r.name_en);
+        const descText = currentLang === 'en' ? (r.desc_en || r.desc) : (r.desc || r.desc_en);
+        const sourceLabel = r.source === 'manual' ? 'Manual' : 'System';
+        
+        return `
+          <tr>
+            <td><span class="badge-msg ${r.msg}">${r.msg.toUpperCase()}</span></td>
+            <td><strong>${highlight(r.name || '', q)}</strong></td>
+            <td><strong>${highlight(r.name_en || '', q)}</strong></td>
+            <td><span class="home-card-cat-badge" style="display:inline-block; font-size:11px; padding:2px 6px;">${catInfo.icon} ${catInfo.name}</span></td>
+            <td style="font-size:12.5px; color: var(--ink-soft); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(descText || '')}">${highlight(descText || '—', q)}</td>
+            <td><span class="source-dot ${r.source === 'manual' ? 'local' : 'db'}"></span>${sourceLabel}</td>
+            <td onclick="event.stopPropagation()" style="text-align: center;">
+              <button class="act-btn edit" onclick="editMsgType('${r.msg}')">Edit</button>
+              <button class="act-btn delete" onclick="deleteMsgType('${r.msg}')">Hapus</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openMsgTypeModal() {
+      document.getElementById('msgTypeModalTitle').textContent = currentLang === 'en' ? 'Add Message Type' : 'Tambah Jenis Pesan';
+      
+      // Clear form inputs
+      document.getElementById('mt_msg').value = '';
+      document.getElementById('mt_msg').disabled = false;
+      document.getElementById('mt_name').value = '';
+      document.getElementById('mt_name_en').value = '';
+      document.getElementById('mt_desc').value = '';
+      document.getElementById('mt_desc_en').value = '';
+      document.getElementById('mt_chips').value = '';
+      document.getElementById('mt_chips_en').value = '';
+      
+      populateMsgTypeCategories();
+      document.getElementById('mt_category').value = '1';
+      
+      const backdrop = document.getElementById('msgTypeModalBackdrop');
+      delete backdrop.dataset.editMsg;
+      backdrop.classList.add('open');
+    }
+
+    function editMsgType(msg) {
+      const r = DATA.find(d => d.msg && d.msg.trim().toLowerCase() === msg.trim().toLowerCase() && d.tag === 'MSG_NAME');
+      if (!r) {
+        alert(currentLang === 'en' ? 'Message type data not found.' : 'Data jenis pesan tidak ditemukan.');
+        return;
+      }
+
+      document.getElementById('msgTypeModalTitle').textContent = currentLang === 'en' ? 'Edit Message Type' : 'Edit Jenis Pesan';
+      
+      document.getElementById('mt_msg').value = r.msg;
+      document.getElementById('mt_msg').disabled = true;
+      document.getElementById('mt_name').value = r.name || '';
+      document.getElementById('mt_name_en').value = r.name_en || '';
+      document.getElementById('mt_desc').value = r.desc || '';
+      document.getElementById('mt_desc_en').value = r.desc_en || '';
+      document.getElementById('mt_chips').value = r.rules || '';
+      document.getElementById('mt_chips_en').value = r.rules_en || '';
+      
+      populateMsgTypeCategories();
+      document.getElementById('mt_category').value = r.len || '1';
+
+      const backdrop = document.getElementById('msgTypeModalBackdrop');
+      backdrop.dataset.editMsg = msg;
+      backdrop.classList.add('open');
+    }
+
+    function closeMsgTypeModal() {
+      const backdrop = document.getElementById('msgTypeModalBackdrop');
+      if (backdrop) {
+        backdrop.classList.remove('open');
+        delete backdrop.dataset.editMsg;
+      }
+    }
+
+    function closeMsgTypeModalOutside(e) {
+      const backdrop = document.getElementById('msgTypeModalBackdrop');
+      if (e.target === backdrop) {
+        closeMsgTypeModal();
+      }
+    }
+
+    async function saveMsgType() {
+      const msg = document.getElementById('mt_msg').value.trim().toLowerCase();
+      const name = document.getElementById('mt_name').value.trim();
+      const name_en = document.getElementById('mt_name_en').value.trim() || name;
+      const desc = document.getElementById('mt_desc').value.trim();
+      const desc_en = document.getElementById('mt_desc_en').value.trim() || desc;
+      const category = document.getElementById('mt_category').value;
+      const rules = document.getElementById('mt_chips').value.trim();
+      const rules_en = document.getElementById('mt_chips_en').value.trim() || rules;
+
+      if (!msg) { alert(currentLang === 'en' ? 'Message code is required.' : 'Kode pesan wajib diisi.'); return; }
+      if (!name) { alert(currentLang === 'en' ? 'Message name is required.' : 'Nama pesan wajib diisi.'); return; }
+
+      const backdrop = document.getElementById('msgTypeModalBackdrop');
+      const isEditing = backdrop.dataset.editMsg;
+
+      const row = {
+        msg,
+        tag: 'MSG_NAME',
+        sub: '',
+        name,
+        name_en,
+        len: category,
+        mo: 'o',
+        desc,
+        desc_en,
+        rules,
+        rules_en,
+        source: 'manual'
+      };
+
+      if (isApiConnected) {
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(row)
+          });
+          if (!res.ok) throw new Error('API save failed');
+          showToast(currentLang === 'id' ? '✓ Jenis Pesan berhasil disimpan.' : '✓ Message Type saved successfully.');
+          closeMsgTypeModal();
+          await loadData();
+          renderMsgTypes();
+        } catch (err) {
+          alert('Gagal menyimpan Jenis Pesan: ' + err.message);
+        }
+      } else {
+        const ci = CUSTOM.findIndex(d => d.msg === msg && d.tag === 'MSG_NAME');
+        if (ci !== -1) {
+          CUSTOM[ci] = row;
+        } else {
+          CUSTOM.push(row);
+        }
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'id' ? '✓ Jenis Pesan disimpan lokal (Offline).' : '✓ Message Type saved locally (Offline).');
+        closeMsgTypeModal();
+        await loadData();
+        renderMsgTypes();
+      }
+    }
+
+    async function deleteMsgType(msg) {
+      if (!confirm(currentLang === 'en' ? `Are you sure you want to delete message type "${msg.toUpperCase()}"?` : `Apakah Anda yakin ingin menghapus jenis pesan "${msg.toUpperCase()}"?` )) {
+        return;
+      }
+
+      const r = DATA.find(d => d.msg && d.msg.trim().toLowerCase() === msg.trim().toLowerCase() && d.tag === 'MSG_NAME');
+      const isSystem = r && r.source === 'system';
+
+      if (isApiConnected) {
+        try {
+          if (isSystem) {
+            // Save as deactivated in db
+            const row = {
+              msg,
+              tag: 'MSG_NAME',
+              sub: '',
+              name: r.name || '',
+              name_en: r.name_en || '',
+              len: r.len || '',
+              mo: 'o',
+              desc: r.desc || '',
+              desc_en: r.desc_en || '',
+              rules: '',
+              rules_en: '',
+              is_active: 0,
+              source: 'manual'
+            };
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(row)
+            });
+            if (!res.ok) throw new Error('API deactivate failed');
+          } else {
+            // Revert custom message type / delete custom override
+            const res = await fetch(`${API_URL}/${msg}/MSG_NAME/`, {
+              method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('API delete failed');
+          }
+          showToast(currentLang === 'id' ? '✓ Jenis Pesan berhasil dihapus.' : '✓ Message Type deleted successfully.');
+          await loadData();
+          renderMsgTypes();
+        } catch (err) {
+          alert('Gagal menghapus Jenis Pesan: ' + err.message);
+        }
+      } else {
+        const ci = CUSTOM.findIndex(d => d.msg && d.msg.trim().toLowerCase() === msg.trim().toLowerCase() && d.tag === 'MSG_NAME');
+        if (isSystem) {
+          const row = {
+            msg,
+            tag: 'MSG_NAME',
+            sub: '',
+            name: r.name || '',
+            name_en: r.name_en || '',
+            len: r.len || '',
+            mo: 'o',
+            desc: r.desc || '',
+            desc_en: r.desc_en || '',
+            rules: '',
+            rules_en: '',
+            is_active: 0,
+            source: 'manual'
+          };
+          if (ci !== -1) {
+            CUSTOM[ci] = row;
+          } else {
+            CUSTOM.push(row);
+          }
+        } else {
+          if (ci !== -1) {
+            CUSTOM.splice(ci, 1);
+          }
+        }
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'id' ? '✓ Jenis Pesan dihapus lokal (Offline).' : '✓ Message Type deleted locally (Offline).');
+        await loadData();
+        renderMsgTypes();
+      }
+    }
+
+    // ── Category CRUD Operations ──
+    function renderCategories() {
+      const tbody = document.getElementById('categoriesTableBody');
+      if (!tbody) return;
+
+      const qInput = document.getElementById('categorySearchInput');
+      const q = qInput ? qInput.value.toLowerCase().trim() : '';
+
+      // Find all rows where msg === 'category'
+      let rows = DATA.filter(r => r.msg === 'category');
+
+      // Filter by search query
+      if (q) {
+        rows = rows.filter(r => {
+          const key = r.tag.toLowerCase();
+          const name = (r.name || '').toLowerCase();
+          const nameEn = (r.name_en || '').toLowerCase();
+          const desc = (r.desc || '').toLowerCase();
+          const descEn = (r.desc_en || '').toLowerCase();
+          return key.includes(q) || name.includes(q) || nameEn.includes(q) || desc.includes(q) || descEn.includes(q);
+        });
+      }
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--ink-soft);">${currentLang === 'en' ? 'No categories found.' : 'Tidak ada kategori ditemukan.'}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const nameText = currentLang === 'en' ? (r.name_en || r.name) : (r.name || r.name_en);
+        const descText = currentLang === 'en' ? (r.desc_en || r.desc) : (r.desc || r.desc_en);
+        const sourceLabel = r.source === 'system' ? 'System' : 'Manual';
+        
+        return `
+          <tr>
+            <td><code style="font-family: var(--mono); font-weight:700;">${r.tag}</code></td>
+            <td style="text-align: center; font-size: 18px;">${r.len || '📄'}</td>
+            <td><strong>${highlight(r.name || '', q)}</strong></td>
+            <td><strong>${highlight(r.name_en || '', q)}</strong></td>
+            <td style="font-size:12.5px; color: var(--ink-soft); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(descText || '')}">${highlight(descText || '—', q)}</td>
+            <td><span class="source-dot ${r.source === 'system' ? 'db' : 'local'}"></span>${sourceLabel}</td>
+            <td onclick="event.stopPropagation()" style="text-align: center;">
+              <button class="act-btn edit" onclick="editCategory('${r.tag}')">Edit</button>
+              <button class="act-btn delete" onclick="deleteCategory('${r.tag}')">Hapus</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openCategoryModal() {
+      document.getElementById('categoryModalTitle').textContent = currentLang === 'en' ? 'Add Category' : 'Tambah Kategori';
+      
+      document.getElementById('cat_key').value = '';
+      document.getElementById('cat_key').disabled = false;
+      document.getElementById('cat_icon').value = '';
+      document.getElementById('cat_name').value = '';
+      document.getElementById('cat_name_en').value = '';
+      document.getElementById('cat_desc').value = '';
+      document.getElementById('cat_desc_en').value = '';
+      
+      const backdrop = document.getElementById('categoryModalBackdrop');
+      delete backdrop.dataset.editKey;
+      backdrop.classList.add('open');
+    }
+
+    function editCategory(key) {
+      const r = DATA.find(d => d.msg === 'category' && d.tag === key);
+      if (!r) {
+        alert(currentLang === 'en' ? 'Category not found.' : 'Kategori tidak ditemukan.');
+        return;
+      }
+
+      document.getElementById('categoryModalTitle').textContent = currentLang === 'en' ? 'Edit Category' : 'Edit Kategori';
+      
+      document.getElementById('cat_key').value = r.tag;
+      document.getElementById('cat_key').disabled = true;
+      document.getElementById('cat_icon').value = r.len || '';
+      document.getElementById('cat_name').value = r.name || '';
+      document.getElementById('cat_name_en').value = r.name_en || '';
+      document.getElementById('cat_desc').value = r.desc || '';
+      document.getElementById('cat_desc_en').value = r.desc_en || '';
+
+      const backdrop = document.getElementById('categoryModalBackdrop');
+      backdrop.dataset.editKey = key;
+      backdrop.classList.add('open');
+    }
+
+    function closeCategoryModal() {
+      const backdrop = document.getElementById('categoryModalBackdrop');
+      if (backdrop) {
+        backdrop.classList.remove('open');
+        delete backdrop.dataset.editKey;
+      }
+    }
+
+    function closeCategoryModalOutside(e) {
+      const backdrop = document.getElementById('categoryModalBackdrop');
+      if (e.target === backdrop) {
+        closeCategoryModal();
+      }
+    }
+
+    async function saveCategory() {
+      const key = document.getElementById('cat_key').value.trim();
+      const icon = document.getElementById('cat_icon').value.trim() || '📄';
+      const name = document.getElementById('cat_name').value.trim();
+      const name_en = document.getElementById('cat_name_en').value.trim() || name;
+      const desc = document.getElementById('cat_desc').value.trim();
+      const desc_en = document.getElementById('cat_desc_en').value.trim() || desc;
+
+      if (!key) { alert(currentLang === 'en' ? 'Category key is required.' : 'Key kategori wajib diisi.'); return; }
+      if (!name) { alert(currentLang === 'en' ? 'Category name is required.' : 'Nama kategori wajib diisi.'); return; }
+
+      const backdrop = document.getElementById('categoryModalBackdrop');
+      
+      const row = {
+        msg: 'category',
+        tag: key,
+        sub: '',
+        name,
+        name_en,
+        len: icon,
+        mo: 'o',
+        desc,
+        desc_en,
+        rules: '',
+        rules_en: '',
+        source: 'manual'
+      };
+
+      if (isApiConnected) {
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(row)
+          });
+          if (!res.ok) throw new Error('API save failed');
+          showToast(currentLang === 'id' ? '✓ Kategori berhasil disimpan.' : '✓ Category saved successfully.');
+          closeCategoryModal();
+          await loadData();
+          renderCategories();
+          
+          if (typeof populateMsgTypeFilterDropdown === 'function') populateMsgTypeFilterDropdown();
+          if (typeof populateMsgTypeCategories === 'function') populateMsgTypeCategories();
+        } catch (err) {
+          alert('Gagal menyimpan Kategori: ' + err.message);
+        }
+      } else {
+        const ci = CUSTOM.findIndex(d => d.msg === 'category' && d.tag === key);
+        if (ci !== -1) {
+          CUSTOM[ci] = row;
+        } else {
+          CUSTOM.push(row);
+        }
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'id' ? '✓ Kategori disimpan lokal (Offline).' : '✓ Category saved locally (Offline).');
+        closeCategoryModal();
+        await loadData();
+        renderCategories();
+        
+        if (typeof populateMsgTypeFilterDropdown === 'function') populateMsgTypeFilterDropdown();
+        if (typeof populateMsgTypeCategories === 'function') populateMsgTypeCategories();
+      }
+    }
+
+    async function deleteCategory(key) {
+      if (!confirm(currentLang === 'en' ? `Are you sure you want to delete category "${key}"?` : `Apakah Anda yakin ingin menghapus kategori "${key}"?` )) {
+        return;
+      }
+
+      const r = DATA.find(d => d.msg === 'category' && d.tag === key);
+      const isSystem = r && r.source === 'system';
+
+      if (isApiConnected) {
+        try {
+          if (isSystem) {
+            // Save as deactivated in db
+            const row = {
+              msg: 'category',
+              tag: key,
+              sub: '',
+              name: r.name || '',
+              name_en: r.name_en || '',
+              len: r.len || '',
+              mo: 'o',
+              desc: r.desc || '',
+              desc_en: r.desc_en || '',
+              rules: '',
+              rules_en: '',
+              is_active: 0,
+              source: 'manual'
+            };
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(row)
+            });
+            if (!res.ok) throw new Error('API deactivate failed');
+          } else {
+            // Delete custom category
+            const res = await fetch(`${API_URL}/category/${key}/`, {
+              method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('API delete failed');
+          }
+          showToast(currentLang === 'id' ? '✓ Kategori berhasil dihapus.' : '✓ Category deleted successfully.');
+          await loadData();
+          renderCategories();
+          
+          if (typeof populateMsgTypeFilterDropdown === 'function') populateMsgTypeFilterDropdown();
+          if (typeof populateMsgTypeCategories === 'function') populateMsgTypeCategories();
+        } catch (err) {
+          alert('Gagal menghapus Kategori: ' + err.message);
+        }
+      } else {
+        const ci = CUSTOM.findIndex(d => d.msg === 'category' && d.tag === key);
+        if (isSystem) {
+          const row = {
+            msg: 'category',
+            tag: key,
+            sub: '',
+            name: r.name || '',
+            name_en: r.name_en || '',
+            len: r.len || '',
+            mo: 'o',
+            desc: r.desc || '',
+            desc_en: r.desc_en || '',
+            rules: '',
+            rules_en: '',
+            is_active: 0,
+            source: 'manual'
+          };
+          if (ci !== -1) {
+            CUSTOM[ci] = row;
+          } else {
+            CUSTOM.push(row);
+          }
+        } else {
+          if (ci !== -1) {
+            CUSTOM.splice(ci, 1);
+          }
+        }
+        localStorage.setItem('swift_custom', JSON.stringify(CUSTOM));
+        showToast(currentLang === 'id' ? '✓ Kategori dihapus lokal (Offline).' : '✓ Category deleted locally (Offline).');
+        await loadData();
+        renderCategories();
+        
+        if (typeof populateMsgTypeFilterDropdown === 'function') populateMsgTypeFilterDropdown();
+        if (typeof populateMsgTypeCategories === 'function') populateMsgTypeCategories();
+      }
     }
 
     function openModal() {

@@ -1316,6 +1316,10 @@
       position: relative;
       overflow: hidden;
       box-shadow: 0 4px 20px var(--shadow);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
     }
     
     .home-hero::after {
@@ -1334,6 +1338,9 @@
       max-width: 680px;
       position: relative;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     
     .hero-eyebrow {
@@ -1364,9 +1371,11 @@
     /* Homepage search box */
     .home-search-box {
       position: relative;
+      width: 100%;
       max-width: 500px;
       box-shadow: 0 4px 12px var(--shadow);
       border-radius: 10px;
+      margin: 0 auto;
     }
     
     .home-search-box input {
@@ -1455,29 +1464,166 @@
       margin-top: 2px;
     }
     
-    /* Homepage filters */
-    .home-filter-section {
+    /* Modal Styles */
+    .home-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .home-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .home-modal-container {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 650px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .home-modal-overlay.active .home-modal-container {
+      transform: scale(1);
+    }
+    .home-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .home-modal-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .home-modal-close {
+      background: none;
+      border: none;
+      color: var(--ink-soft);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      transition: all 0.2s ease;
+    }
+    .home-modal-close:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .home-modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex-grow: 1;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--ink-soft);
+    }
+    .home-modal-desc {
+      font-size: 14.5px;
+      color: var(--ink);
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+    }
+    .home-modal-section-title {
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 20px 0 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .home-modal-tag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: var(--paper);
+    }
+    .home-modal-tag-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--line);
-      padding-bottom: 16px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 13px;
     }
-    
-    .home-filter-title {
-      font-family: var(--serif);
-      font-size: 20px;
+    .home-modal-tag-badge {
+      font-family: var(--mono);
       font-weight: 700;
-      color: var(--ink);
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 50px;
+      text-align: center;
     }
-    
-    .home-filter-chips {
+    .home-modal-tag-name {
+      flex-grow: 1;
+      margin-left: 12px;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+    .home-modal-tag-mo {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 32px;
+      text-align: center;
+    }
+    .home-modal-tag-mo.m {
+      color: hsl(140, 70%, 30%);
+      background: hsl(140, 70%, 93%);
+    }
+    .home-modal-tag-mo.o {
+      color: hsl(36, 75%, 35%);
+      background: hsl(36, 75%, 93%);
+    }
+    .home-modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--paper);
     }
     
     /* Homepage Cards Grid */
@@ -1637,10 +1783,7 @@
       .home-hero h1 {
         font-size: 28px;
       }
-      .home-filter-section {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+      /* Removed home filter section styles */
     }
   </style>
 </head>
@@ -1726,17 +1869,41 @@
         </div>
       </div>
 
-      <!-- Categories Filter Section -->
-      <div class="home-filter-section">
-        <div class="home-filter-title" id="lbl-filterTitle">Filter Kategori</div>
-        <div class="home-filter-chips" id="homeFilterChips">
-          <!-- Will be populated dynamically -->
-        </div>
-      </div>
-
       <!-- Categories Cards Grid -->
       <div class="home-cards-grid" id="homeCardsContainer">
         <!-- Will be populated dynamically -->
+      </div>
+
+      <!-- Modal Detail Pesan SWIFT -->
+      <div id="homeModalOverlay" class="home-modal-overlay" onclick="closeHomeModal()">
+        <div class="home-modal-container" onclick="event.stopPropagation()">
+          <div class="home-modal-header">
+            <div class="home-modal-title-area">
+              <span id="modalCatBadge" class="home-card-cat-badge"></span>
+              <h2 id="modalTitle" class="home-card-title" style="font-size:22px; margin-top:8px;"></h2>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span id="modalMsgBadge" class="home-card-badge"></span>
+              <button class="home-modal-close" onclick="closeHomeModal()">&times;</button>
+            </div>
+          </div>
+          <div class="home-modal-body">
+            <div id="modalDesc" class="home-modal-desc"></div>
+            
+            <div class="home-modal-section-title">
+              📋 <span id="lbl-modalFields">Struktur Field / Tag</span>
+            </div>
+            <div id="modalStatsText" style="margin-bottom: 12px; font-size:12px; font-weight:600; color:var(--ink-soft);"></div>
+            <div id="modalTagList" class="home-modal-tag-list">
+              <!-- Will be populated dynamically -->
+            </div>
+          </div>
+          <div class="home-modal-footer">
+            <button class="home-card-btn home-card-btn-secondary" onclick="closeHomeModal()"><span id="lbl-modalClose">Tutup</span></button>
+            <button id="modalBtnKamus" class="home-card-btn home-card-btn-secondary">📖 <span id="lbl-modalKamus">Kamus</span></button>
+            <button id="modalBtnParser" class="home-card-btn home-card-btn-primary">🔍 <span id="lbl-modalParser">Parser</span></button>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -4563,7 +4730,12 @@ SALARY PAYMENTS
         homeCardViewParser: "Buka Parser",
         homeCardTagsCount: "Tag terdaftar",
         homeCardMandatory: "Wajib",
-        homeCardOptional: "Opsional"
+        homeCardOptional: "Opsional",
+        
+        lblModalFields: "Struktur Field / Tag",
+        lblModalClose: "Tutup",
+        lblModalKamus: "Kamus",
+        lblModalParser: "Parser"
       },
       en: {
         export: "⬇ Export CSV",
@@ -4642,7 +4814,12 @@ SALARY PAYMENTS
         homeCardViewParser: "Open Parser",
         homeCardTagsCount: "Registered tags",
         homeCardMandatory: "Mandatory",
-        homeCardOptional: "Optional"
+        homeCardOptional: "Optional",
+        
+        lblModalFields: "Field / Tag Structure",
+        lblModalClose: "Close",
+        lblModalKamus: "Dictionary",
+        lblModalParser: "Parser"
       }
     };
 
@@ -4757,8 +4934,6 @@ SALARY PAYMENTS
       }
     };
 
-    let homeSelectedCategory = 'all';
-
     function resolveCategory(msgType, categoryKeyFromDb) {
       let catKey = categoryKeyFromDb;
       if (!catKey) {
@@ -4817,50 +4992,7 @@ SALARY PAYMENTS
       const statCountCustom = document.getElementById('stat-count-custom');
       if (statCountCustom) statCountCustom.innerText = customTags;
 
-      renderHomeChips();
       renderHomeCards();
-    }
-
-    function renderHomeChips() {
-      const container = document.getElementById('homeFilterChips');
-      if (!container) return;
-
-      const dict = i18n[currentLang];
-      
-      const categories = [
-        { key: 'all', icon: '📁', label: dict.homeCatAll || 'Semua Kategori' },
-        { key: '1', icon: '💸', label: dict.homeCat1 || 'Kategori 1: Pembayaran' },
-        { key: '9', icon: '🏦', label: dict.homeCat9 || 'Kategori 9: Manajemen Kas' },
-        { key: '5', icon: '📈', label: dict.homeCat5 || 'Kategori 5: Sekuritas' }
-      ];
-
-      const dbCategories = DATA.filter(d => d.msg === 'category');
-      dbCategories.forEach(cat => {
-        if (cat.tag !== '1' && cat.tag !== '9' && cat.tag !== '5') {
-          categories.push({
-            key: cat.tag,
-            icon: cat.len || '⚙️',
-            label: currentLang === 'en' ? (cat.name_en || cat.name) : (cat.name || cat.name_en)
-          });
-        }
-      });
-
-      let html = '';
-      categories.forEach(cat => {
-        const active = homeSelectedCategory === cat.key ? 'active' : '';
-        html += `<div class="chip ${active}" data-homecat="${cat.key}" data-icon="${cat.icon}">${cat.label}</div>`;
-      });
-
-      container.innerHTML = html;
-
-      const chips = container.querySelectorAll('.chip');
-      chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-          homeSelectedCategory = chip.dataset.homecat;
-          renderHomeChips();
-          renderHomeCards();
-        });
-      });
     }
 
     function renderHomeCards() {
@@ -4901,10 +5033,6 @@ SALARY PAYMENTS
 
         const catInfo = resolveCategory(msg, catKey);
 
-        if (homeSelectedCategory !== 'all' && catInfo.key !== homeSelectedCategory) {
-          return;
-        }
-
         const matchesQuery = !q || 
                             msg.includes(q) || 
                             title.toLowerCase().includes(q) || 
@@ -4918,7 +5046,7 @@ SALARY PAYMENTS
         const countOptional = typeTags.filter(t => t.mo === 'o').length;
 
         html += `
-          <div class="home-card" onclick="goToReference('${msg}')">
+          <div class="home-card" onclick="showMsgDetails('${msg}')">
             <div class="home-card-header">
               <span class="home-card-cat-badge">${catInfo.icon} ${catInfo.name}</span>
               <span class="home-card-badge">${getMsgLabel(msg)}</span>
@@ -4965,6 +5093,106 @@ SALARY PAYMENTS
     function goToParser(msgType) {
       switchTab('parser');
       loadSampleData(msgType.toLowerCase());
+    }
+
+    function showMsgDetails(msg) {
+      const msgNameRow = DATA.find(d => d.msg && d.msg.toLowerCase() === msg && d.tag === 'MSG_NAME');
+      
+      let title = '';
+      let desc = '';
+      let catKey = '';
+
+      if (msgNameRow) {
+        title = currentLang === 'en' ? (msgNameRow.name_en || msgNameRow.name) : (msgNameRow.name || msgNameRow.name_en);
+        desc = currentLang === 'en' ? (msgNameRow.desc_en || msgNameRow.desc) : (msgNameRow.desc || msgNameRow.desc_en);
+        catKey = msgNameRow.len;
+      }
+
+      if (!title && HOME_MSG_INFO[msg]) {
+        title = HOME_MSG_INFO[msg][currentLang].title;
+      }
+      if (!desc && HOME_MSG_INFO[msg]) {
+        desc = HOME_MSG_INFO[msg][currentLang].desc;
+      }
+
+      const catInfo = resolveCategory(msg, catKey);
+
+      const typeTags = DATA.filter(d => d.msg && d.msg.toLowerCase() === msg && d.sub === '' && d.tag !== 'MSG_NAME');
+      const countTotal = typeTags.length;
+      const countMandatory = typeTags.filter(t => t.mo === 'm').length;
+      const countOptional = typeTags.filter(t => t.mo === 'o').length;
+
+      const modalCatBadge = document.getElementById('modalCatBadge');
+      if (modalCatBadge) modalCatBadge.innerHTML = `${catInfo.icon} ${catInfo.name}`;
+      
+      const modalMsgBadge = document.getElementById('modalMsgBadge');
+      if (modalMsgBadge) modalMsgBadge.innerText = getMsgLabel(msg);
+      
+      const modalTitle = document.getElementById('modalTitle');
+      if (modalTitle) modalTitle.innerText = title || msg.toUpperCase();
+      
+      const modalDesc = document.getElementById('modalDesc');
+      if (modalDesc) modalDesc.innerText = desc || (currentLang === 'en' ? 'SWIFT Financial Message reference details.' : 'Rincian referensi pesan keuangan SWIFT.');
+
+      const dict = i18n[currentLang];
+      
+      const modalStatsText = document.getElementById('modalStatsText');
+      if (modalStatsText) {
+        modalStatsText.innerHTML = `
+          <b>${countTotal}</b> ${dict.homeCardTagsCount || 'Tag'} (${countMandatory} ${dict.homeCardMandatory || 'Wajib'} • ${countOptional} ${dict.homeCardOptional || 'Opsional'})
+        `;
+      }
+
+      const tagListContainer = document.getElementById('modalTagList');
+      if (tagListContainer) {
+        if (typeTags.length === 0) {
+          tagListContainer.innerHTML = `<div style="padding:12px; text-align:center; color:var(--ink-soft);">${currentLang === 'en' ? 'No fields registered.' : 'Tidak ada field yang terdaftar.'}</div>`;
+        } else {
+          let listHtml = '';
+          typeTags.forEach(t => {
+            const tagName = currentLang === 'en' ? (t.name_en || t.name) : (t.name || t.name_en);
+            const moClass = t.mo ? t.mo.toLowerCase() : 'o';
+            const moLabel = t.mo ? t.mo.toUpperCase() : 'O';
+            listHtml += `
+              <div class="home-modal-tag-item">
+                <span class="home-modal-tag-badge">:${t.tag}</span>
+                <span class="home-modal-tag-name" title="${tagName}">${tagName}</span>
+                <span class="home-modal-tag-mo ${moClass}">${moLabel}</span>
+              </div>
+            `;
+          });
+          tagListContainer.innerHTML = listHtml;
+        }
+      }
+
+      const modalBtnKamus = document.getElementById('modalBtnKamus');
+      if (modalBtnKamus) {
+        modalBtnKamus.onclick = () => {
+          closeHomeModal();
+          goToReference(msg);
+        };
+      }
+
+      const modalBtnParser = document.getElementById('modalBtnParser');
+      if (modalBtnParser) {
+        if (msg === 'mt940' || msg === 'mt564') {
+          modalBtnParser.style.display = 'inline-flex';
+          modalBtnParser.onclick = () => {
+            closeHomeModal();
+            goToParser(msg);
+          };
+        } else {
+          modalBtnParser.style.display = 'none';
+        }
+      }
+
+      const overlay = document.getElementById('homeModalOverlay');
+      if (overlay) overlay.classList.add('active');
+    }
+
+    function closeHomeModal() {
+      const overlay = document.getElementById('homeModalOverlay');
+      if (overlay) overlay.classList.remove('active');
     }
 
     let currentLang = localStorage.getItem('swift_lang') || 'id';
@@ -5044,9 +5272,15 @@ SALARY PAYMENTS
       if (lblStatLabelTags) lblStatLabelTags.innerText = dict.homeStatsTags;
       const lblStatLabelCustom = document.getElementById('lbl-statLabelCustom');
       if (lblStatLabelCustom) lblStatLabelCustom.innerText = dict.homeStatsCustom;
-      
-      const lblFilterTitle = document.getElementById('lbl-filterTitle');
-      if (lblFilterTitle) lblFilterTitle.innerText = currentLang === 'en' ? "Filter Categories" : "Filter Kategori";
+
+      const lblModalFields = document.getElementById('lbl-modalFields');
+      if (lblModalFields) lblModalFields.innerText = dict.lblModalFields;
+      const lblModalClose = document.getElementById('lbl-modalClose');
+      if (lblModalClose) lblModalClose.innerText = dict.lblModalClose;
+      const lblModalKamus = document.getElementById('lbl-modalKamus');
+      if (lblModalKamus) lblModalKamus.innerText = dict.lblModalKamus;
+      const lblModalParser = document.getElementById('lbl-modalParser');
+      if (lblModalParser) lblModalParser.innerText = dict.lblModalParser;
 
       // Re-render home content with updated lang
       renderHome();

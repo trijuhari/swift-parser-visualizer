@@ -20,14 +20,13 @@ def get_tags():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Combine system tags and active custom tags in a single union query
+        # Combine system tags and custom tags in a single union query, including is_active status
         query = """
-        SELECT id, msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source, created_at
+        SELECT id, msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source, 1 AS is_active, created_at
         FROM swift_tags
         UNION ALL
-        SELECT id + 100000 AS id, msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source, created_at
+        SELECT id + 100000 AS id, msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source, is_active, created_at
         FROM swift_custom_tags
-        WHERE is_active = 1
         """
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -63,6 +62,14 @@ def save_tag():
         rules = (data.get('rules') or '').strip()
         rules_en = (data.get('rules_en') or '').strip()
         source = (data.get('source') or 'manual').strip()
+        is_active = data.get('is_active', 1)
+        if isinstance(is_active, bool):
+            is_active = 1 if is_active else 0
+        else:
+            try:
+                is_active = int(is_active)
+            except:
+                is_active = 1
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -87,7 +94,7 @@ def save_tag():
             cursor.execute("""
             INSERT INTO swift_custom_tags (
                 msg, tag, sub, name, name_en, len, mo, sample, desc, desc_en, rules, rules_en, source, is_active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(msg, tag, sub) DO UPDATE SET
                 name=excluded.name,
                 name_en=excluded.name_en,
@@ -98,9 +105,9 @@ def save_tag():
                 desc_en=excluded.desc_en,
                 rules=excluded.rules,
                 rules_en=excluded.rules_en,
-                is_active=1,
+                is_active=excluded.is_active,
                 updated_at=CURRENT_TIMESTAMP;
-            """, (msg, tag, sub, name, name_en, length, mo, sample, desc, desc_en, rules, rules_en, source))
+            """, (msg, tag, sub, name, name_en, length, mo, sample, desc, desc_en, rules, rules_en, source, is_active))
         
         conn.commit()
         conn.close()
