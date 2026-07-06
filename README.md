@@ -48,13 +48,17 @@ The parser supports **9 SWIFT message types** with auto-detection:
 - 📊 **Transaction Detail Viewer** — Click any transaction row to view fully parsed sub-fields (MT940/942/950)
 - 💰 **Net Cash Flow Analysis** — Automatic inflow/outflow summary with executive narrative (MT940/942/950)
 - 🔒 **One-Click SWIFT Data Anonymizer** — Instant client data masking (names, accounts, amounts) directly in the browser, allowing developers and operators to share or troubleshoot production messages safely without violating banking privacy regulations (GDPR/UU PDP).
+- 🛡️ **GuardDog Compliance Engine (AML)** — Automated real-time scanning of ordering party, beneficiary, BICs, and narratives against sanctions lists (OFAC, UN, EU), high-risk FATF countries, dual-use keywords, and structuring patterns (amounts approaching $10,000).
+- ⚡ **SWIFT gpi Transaction Tracker** — Visualizes correspondent bank hops, status milestones (ACSC, ACSP, HOLD, RJCT) using UETR (Tag `:121:`), and deducts intermediary bank fees and FX spreads.
 
 ### 🛠️ Admin Portal (CMS)
 - Accessed via direct URL navigation: `admin.html` (no visible button on the public interface)
 - Full CRUD: Create, Read, Update, and Delete SWIFT tags
+- **Compliance Rules CMS**: Dedicated interface to manage active compliance and AML screening rules (create, edit, soft-delete)
 - Bulk JSON import for mass data ingestion
 - System tag deactivation (soft-delete) to hide without permanently removing
 - Message type category & metadata management
+
 
 ### 🔄 Reconciliation Simulator
 - **Multi-Message Processing**: Supports loading and parsing multiple statement messages and payment messages at once (separated by double newlines or `---`).
@@ -95,6 +99,7 @@ SWift Statement/
 │   └── swift.db                  # SQLite database (auto-generated, gitignored)
 │
 └── scripts/                      # Utility scripts & scrapers
+    ├── setup_compliance_db.py    # Compliance & AML rules setup script
     ├── build_dictionary.py       # Dictionary builder from reference sources
     ├── add_mt564.py              # MT564 data generator
     ├── scrape_gs_swift.py        # SWIFT docs scraper v1
@@ -111,6 +116,7 @@ SWift Statement/
 ```bash
 cd backend
 python3 init_db.py
+python3 ../scripts/setup_compliance_db.py
 ```
 
 ### 2. Start Both Backend & Frontend Automatically
@@ -135,6 +141,7 @@ Open your browser → **`http://localhost:8765`**
 
 ## 🔌 API Endpoints
 
+### SWIFT Tag Dictionary Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/tags` | Retrieve all tags (system + custom, merged view) |
@@ -143,6 +150,13 @@ Open your browser → **`http://localhost:8765`**
 | `DELETE` | `/api/tags/<msg>/<tag>/<sub>` | Delete a custom tag or deactivate a system tag |
 | `POST` | `/api/tags/delete-multiple` | Delete/deactivate multiple tags at once |
 | `POST` | `/api/login` | Admin portal authentication |
+
+### Compliance/AML Rules Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/compliance/rules` | Retrieve all active AML and sanctions screening rules |
+| `POST` | `/api/compliance/rules` | Create or update a compliance screening rule |
+| `DELETE` | `/api/compliance/rules/<id>` | Soft-delete/deactivate a compliance screening rule |
 
 ### Example Request
 
@@ -185,6 +199,7 @@ Use `POST /api/tags` or `POST /api/tags/import` (see example above)
 
 ## 🗄️ Database Schema
 
+### SWIFT Tags Tables
 The database uses a **composite unique key** `(msg, tag, sub)` to prevent duplicates. The same tag (e.g. Tag `:20:`) can have different definitions across different message types:
 
 ```
@@ -204,6 +219,15 @@ The database uses a **composite unique key** `(msg, tag, sub)` to prevent duplic
     │   WHERE is_active = 1    │  ← Deactivated items filtered out
     └──────────────────────────┘
 ```
+
+### Compliance Rules Table (`swift_compliance_rules`)
+This table holds the patterns and keywords matched by the GuardDog Compliance Engine during parsing:
+* `category`: Rule category (`sanction`, `country`, `keyword_dual_use`, `keyword_aml`, `structuring`)
+* `pattern`: The pattern to look for (entity name, country code, amount range)
+* `reason`/`reason_en`: Bilingual explanations for flagged violations
+* `severity`: Severity level (`low`, `medium`, `high`)
+* `score`: Risk points to add (accumulated risk scale up to 100)
+* `is_active`: Soft-delete status indicator (`1` = active, `0` = inactive)
 
 ---
 
