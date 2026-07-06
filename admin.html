@@ -898,6 +898,22 @@
       box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 25%, transparent);
     }
 
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-info { background: #e0f2fe; color: #075985; }
+    
+    html.dark .badge-danger { background: #450a0a; color: #fca5a5; }
+    html.dark .badge-warning { background: #451a03; color: #fcd34d; }
+    html.dark .badge-info { background: #0c4a6e; color: #7dd3fc; }
+
     /* Toast Notification */
     #toast {
       position: fixed;
@@ -1176,6 +1192,9 @@
         </a>
         <a class="menu-item" id="menu-categories" onclick="switchSection('categories')">
           <span>📁</span> <span id="lbl-menuCategories">Kategori Pesan</span>
+        </a>
+        <a class="menu-item" id="menu-compliance" onclick="switchSection('compliance')">
+          <span>🛡️</span> <span id="lbl-menuCompliance">Aturan Kepatuhan</span>
         </a>
         <a class="menu-item" id="menu-import" onclick="switchSection('import')">
           <span>📥</span> <span id="lbl-menuImport">Impor JSON</span>
@@ -1573,6 +1592,55 @@
         </div>
       </div>
 
+      <!-- ── SECTION: COMPLIANCE RULES ── -->
+      <div id="section-compliance" class="dashboard-section" style="display: none;">
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="lbl-complianceTitle">Kelola Aturan Kepatuhan (AML & Sanctions)</h3>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="openComplianceModal()">➕ <span id="lbl-btnAddComplianceRule">Tambah Aturan</span></button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Filter & Search for Rules -->
+            <div class="filters-row" style="margin-bottom: 18px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div class="search-box" style="flex: 1; min-width: 250px; max-width: 400px;">
+                <input type="text" id="complianceSearchInput" placeholder="Cari aturan, nama sanksi, atau kata kunci..." oninput="renderComplianceRules()">
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="lbl-filterCompCatLabel" style="font-size: 13.5px; font-weight: 600; color: var(--ink-soft);">Kategori Aturan:</span>
+                <select id="complianceCatFilter" class="select-dropdown" style="padding: 8px 12px;" onchange="renderComplianceRules()">
+                  <option value="all">Semua Kategori</option>
+                  <option value="sanction">Daftar Sanksi (Sanctions)</option>
+                  <option value="country">Negara Risiko Tinggi (FATF Country)</option>
+                  <option value="keyword_dual_use">Barang Ganda (Dual-Use Keywords)</option>
+                  <option value="keyword_aml">Kata Kunci Pencucian Uang (AML Keywords)</option>
+                  <option value="structuring">Pecah Transaksi (Structuring Alert)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Table of Rules -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 140px;">Kategori</th>
+                    <th>Pola / Nilai</th>
+                    <th>Keterangan (ID)</th>
+                    <th>Keterangan (EN)</th>
+                    <th style="width: 100px; text-align: center;">Tingkat</th>
+                    <th style="width: 80px; text-align: center;">Skor</th>
+                    <th style="width: 130px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="complianceTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1822,6 +1890,68 @@
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeCategoryModal()" id="lbl-btnCatCancel">Batal</button>
         <button class="btn btn-primary" onclick="saveCategory()" id="lbl-btnCatSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Compliance Rule Add/Edit Modal ── -->
+  <div class="modal-backdrop" id="complianceModalBackdrop" onclick="closeComplianceModalOutside(event)">
+    <div class="modal">
+      <h2 id="complianceModalTitle" class="modal-title">Tambah Aturan Kepatuhan</h2>
+
+      <div class="form-grid">
+        <!-- Category -->
+        <div class="field">
+          <label>Kategori Aturan</label>
+          <select id="comp_category" onchange="toggleComplianceFields()">
+            <option value="sanction">Daftar Sanksi (Sanctions)</option>
+            <option value="country">Negara Risiko Tinggi (FATF Country)</option>
+            <option value="keyword_dual_use">Barang Ganda (Dual-Use Keywords)</option>
+            <option value="keyword_aml">Kata Kunci Pencucian Uang (AML Keywords)</option>
+            <option value="structuring">Pecah Transaksi (Structuring Alert)</option>
+          </select>
+        </div>
+
+        <!-- Severity -->
+        <div class="field">
+          <label>Tingkat Kerawanan</label>
+          <select id="comp_severity">
+            <option value="low">Rendah (Low)</option>
+            <option value="medium">Sedang (Medium)</option>
+            <option value="high">Tinggi (High)</option>
+          </select>
+        </div>
+
+        <!-- Pattern / Value -->
+        <div class="field full">
+          <label id="compPatternLabel">Pola / Nilai (e.g. Nama Orang, Kode BIC, Kata Kunci, Min-Max)</label>
+          <input type="text" id="comp_pattern" placeholder="mis. Ali Al-Sadr atau 9000-10000" autocomplete="off">
+        </div>
+
+        <!-- Score -->
+        <div class="field full">
+          <label>Poin Kontribusi Skor Risiko (0 - 100)</label>
+          <input type="number" id="comp_score" min="0" max="100" placeholder="mis. 25" value="20">
+        </div>
+
+        <!-- Reason ID -->
+        <div class="field full">
+          <label>Deskripsi Deteksi (Bahasa Indonesia)</label>
+          <input type="text" id="comp_reason" placeholder="mis. Terdeteksi dalam narasi transaksi.">
+        </div>
+
+        <!-- Reason EN -->
+        <div class="field full">
+          <label>Detection Description (English)</label>
+          <input type="text" id="comp_reason_en" placeholder="e.g. Detected in transaction narrative.">
+        </div>
+      </div>
+
+      <input type="hidden" id="comp_id">
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeComplianceModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveComplianceRule()">Simpan</button>
       </div>
     </div>
   </div>
@@ -2245,12 +2375,18 @@
       if (lblMenuMsgTypes) lblMenuMsgTypes.textContent = dict.menuMsgTypes || (currentLang === 'en' ? 'Message Types' : 'Jenis Pesan');
       const lblMenuCategories = document.getElementById('lbl-menuCategories');
       if (lblMenuCategories) lblMenuCategories.textContent = currentLang === 'en' ? 'Categories' : 'Kategori Pesan';
+      const lblMenuCompliance = document.getElementById('lbl-menuCompliance');
+      if (lblMenuCompliance) lblMenuCompliance.textContent = currentLang === 'en' ? 'Compliance Rules' : 'Aturan Kepatuhan';
       
       const lblSecTitleCategories = document.getElementById('lbl-secTitleCategories');
       if (lblSecTitleCategories) lblSecTitleCategories.textContent = currentLang === 'en' ? 'Manage Message Categories (Categories)' : 'Kelola Kategori Pesan (Categories)';
+      const lblComplianceTitle = document.getElementById('lbl-complianceTitle');
+      if (lblComplianceTitle) lblComplianceTitle.textContent = currentLang === 'en' ? 'Manage Compliance Rules (AML & Sanctions)' : 'Kelola Aturan Kepatuhan (AML & Sanctions)';
 
       const lblBtnAddCategory = document.getElementById('lbl-btnAddCategory');
       if (lblBtnAddCategory) lblBtnAddCategory.textContent = currentLang === 'en' ? 'Add Category' : 'Tambah Kategori';
+      const lblBtnAddComplianceRule = document.getElementById('lbl-btnAddComplianceRule');
+      if (lblBtnAddComplianceRule) lblBtnAddComplianceRule.textContent = currentLang === 'en' ? 'Add Compliance Rule' : 'Tambah Aturan';
 
       document.getElementById('lbl-menuImport').textContent = dict.menuImport;
       document.getElementById('lbl-menuSettings').textContent = dict.menuSettings;
@@ -2372,6 +2508,9 @@
       } else if (currentSection === 'categories') {
         titleEl.textContent = currentLang === 'en' ? 'Message Categories Management' : 'Manajemen Kategori Pesan';
         subEl.textContent = currentLang === 'en' ? 'Manage categories used to group message types.' : 'Kelola kategori yang digunakan untuk mengelompokkan jenis pesan.';
+      } else if (currentSection === 'compliance') {
+        titleEl.textContent = currentLang === 'en' ? 'Compliance Rules Management' : 'Manajemen Aturan Kepatuhan';
+        subEl.textContent = currentLang === 'en' ? 'Manage AML rules, high-risk countries, and sanctions watchlists.' : 'Kelola aturan AML, daftar negara berisiko tinggi, dan sanksi.';
       }
     }
 
@@ -2401,6 +2540,8 @@
         renderMsgTypes();
       } else if (sectionId === 'categories') {
         renderCategories();
+      } else if (sectionId === 'compliance') {
+        loadComplianceRulesList();
       }
     }
 
@@ -4399,6 +4540,188 @@
       toastTimer = setTimeout(() => {
         toast.classList.remove('show');
       }, 2500);
+    }
+    // ── Compliance Rules Management ──
+    let COMPLIANCE_RULES = [];
+
+    async function loadComplianceRulesList() {
+      try {
+        const res = await fetch('http://localhost:8766/api/compliance/rules');
+        if (!res.ok) throw new Error('Failed to fetch compliance rules');
+        COMPLIANCE_RULES = await res.json();
+      } catch (e) {
+        console.warn("Backend API offline. Using fallback compliance rules list.");
+        COMPLIANCE_RULES = [
+          { id: 1, category: 'sanction', pattern: 'Ali Al-Sadr', reason: 'OFAC - Terorisme Internasional', reason_en: 'OFAC - International Terrorism', severity: 'high', score: 60 },
+          { id: 2, category: 'sanction', pattern: 'Mohammad Farhad', reason: 'Daftar Sanksi Terkonsolidasi UE - Pencucian Uang', reason_en: 'EU Consolidated Sanction List - Money Laundering', severity: 'high', score: 60 }
+        ];
+      }
+      renderComplianceRules();
+    }
+
+    function renderComplianceRules() {
+      const tbody = document.getElementById('complianceTableBody');
+      if (!tbody) return;
+
+      const query = document.getElementById('complianceSearchInput').value.toLowerCase().trim();
+      const filter = document.getElementById('complianceCatFilter').value;
+
+      let filtered = COMPLIANCE_RULES;
+
+      if (filter !== 'all') {
+        filtered = filtered.filter(r => r.category === filter);
+      }
+
+      if (query) {
+        filtered = filtered.filter(r => 
+          r.pattern.toLowerCase().includes(query) ||
+          r.reason.toLowerCase().includes(query) ||
+          r.reason_en.toLowerCase().includes(query) ||
+          r.category.toLowerCase().includes(query)
+        );
+      }
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="padding: 40px; text-align: center; color: var(--ink-soft); font-style: italic;">
+              ${currentLang === 'en' ? 'No compliance rules found' : 'Tidak ada aturan kepatuhan ditemukan'}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(r => {
+        let catLabel = r.category;
+        if (r.category === 'sanction') catLabel = currentLang === 'en' ? 'Sanctions List' : 'Daftar Sanksi';
+        else if (r.category === 'country') catLabel = currentLang === 'en' ? 'FATF Country' : 'Negara Risiko FATF';
+        else if (r.category === 'keyword_dual_use') catLabel = currentLang === 'en' ? 'Dual-Use Goods' : 'Barang Ganda';
+        else if (r.category === 'keyword_aml') catLabel = currentLang === 'en' ? 'AML Keywords' : 'Kata Kunci AML';
+        else if (r.category === 'structuring') catLabel = currentLang === 'en' ? 'Structuring Alert' : 'Pecah Transaksi';
+
+        const severityBadge = `<span class="badge ${r.severity === 'high' ? 'badge-danger' : (r.severity === 'medium' ? 'badge-warning' : 'badge-info')}">${r.severity}</span>`;
+
+        return `
+          <tr>
+            <td><strong>${catLabel}</strong></td>
+            <td><code>${r.pattern}</code></td>
+            <td>${r.reason}</td>
+            <td>${r.reason_en}</td>
+            <td style="text-align: center;">${severityBadge}</td>
+            <td style="text-align: center;"><strong>${r.score}</strong></td>
+            <td style="text-align: center;">
+              <button class="act-btn edit" onclick="openComplianceModal(${JSON.stringify(r).replace(/"/g, '&quot;')})">${currentLang === 'en' ? 'Edit' : 'Ubah'}</button>
+              <button class="act-btn delete" onclick="deleteComplianceRule(${r.id})">${currentLang === 'en' ? 'Delete' : 'Hapus'}</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openComplianceModal(rule = null) {
+      const backdrop = document.getElementById('complianceModalBackdrop');
+      const title = document.getElementById('complianceModalTitle');
+      
+      backdrop.classList.add('open');
+      
+      if (rule) {
+        title.textContent = currentLang === 'en' ? 'Edit Compliance Rule' : 'Ubah Aturan Kepatuhan';
+        document.getElementById('comp_id').value = rule.id;
+        document.getElementById('comp_category').value = rule.category;
+        document.getElementById('comp_severity').value = rule.severity;
+        document.getElementById('comp_pattern').value = rule.pattern;
+        document.getElementById('comp_score').value = rule.score;
+        document.getElementById('comp_reason').value = rule.reason;
+        document.getElementById('comp_reason_en').value = rule.reason_en;
+      } else {
+        title.textContent = currentLang === 'en' ? 'Add Compliance Rule' : 'Tambah Aturan Kepatuhan';
+        document.getElementById('comp_id').value = '';
+        document.getElementById('comp_category').value = 'sanction';
+        document.getElementById('comp_severity').value = 'medium';
+        document.getElementById('comp_pattern').value = '';
+        document.getElementById('comp_score').value = '20';
+        document.getElementById('comp_reason').value = '';
+        document.getElementById('comp_reason_en').value = '';
+      }
+      toggleComplianceFields();
+    }
+
+    function closeComplianceModal() {
+      document.getElementById('complianceModalBackdrop').classList.remove('open');
+    }
+
+    function closeComplianceModalOutside(e) {
+      if (e.target.id === 'complianceModalBackdrop') {
+        closeComplianceModal();
+      }
+    }
+
+    function toggleComplianceFields() {
+      const cat = document.getElementById('comp_category').value;
+      const patternLabel = document.getElementById('compPatternLabel');
+      
+      if (cat === 'country') {
+        patternLabel.textContent = currentLang === 'en' ? 'Country BIC Code (2 letters, e.g. IR, KP)' : 'Kode BIC Negara (2 Karakter, mis. IR, KP)';
+      } else if (cat === 'structuring') {
+        patternLabel.textContent = currentLang === 'en' ? 'Amount Range (Format: min-max, e.g. 9000-10000)' : 'Rentang Nominal (Format Min-Max, mis. 9000-10000)';
+      } else if (cat === 'sanction') {
+        patternLabel.textContent = currentLang === 'en' ? 'Sanctioned Name (Fuzzy Match, e.g. Ali Al-Sadr)' : 'Nama Terkena Sanksi (Pencocokan Fuzzy, mis. Ali Al-Sadr)';
+      } else {
+        patternLabel.textContent = currentLang === 'en' ? 'Keyword Pattern (e.g. centrifuge)' : 'Pola Kata Kunci (mis. centrifuge)';
+      }
+    }
+
+    async function saveComplianceRule() {
+      const id = document.getElementById('comp_id').value;
+      const category = document.getElementById('comp_category').value;
+      const severity = document.getElementById('comp_severity').value;
+      const pattern = document.getElementById('comp_pattern').value.trim();
+      const score = parseInt(document.getElementById('comp_score').value) || 20;
+      const reason = document.getElementById('comp_reason').value.trim();
+      const reason_en = document.getElementById('comp_reason_en').value.trim();
+
+      if (!pattern || !reason || !reason_en) {
+        alert(currentLang === 'en' ? 'All fields are required!' : 'Semua kolom wajib diisi!');
+        return;
+      }
+
+      const payload = { category, severity, pattern, score, reason, reason_en };
+      if (id) payload.id = parseInt(id);
+
+      try {
+        const res = await fetch('http://localhost:8766/api/compliance/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Save failed');
+        
+        showToast(currentLang === 'en' ? 'Rule saved successfully!' : 'Aturan berhasil disimpan!');
+        closeComplianceModal();
+        await loadComplianceRulesList();
+      } catch (e) {
+        alert(currentLang === 'en' ? 'Failed to save compliance rule' : 'Gagal menyimpan aturan kepatuhan');
+      }
+    }
+
+    async function deleteComplianceRule(id) {
+      const conf = confirm(currentLang === 'en' ? 'Are you sure you want to delete this rule?' : 'Apakah Anda yakin ingin menghapus aturan ini?');
+      if (!conf) return;
+
+      try {
+        const res = await fetch(`http://localhost:8766/api/compliance/rules/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('Delete failed');
+        
+        showToast(currentLang === 'en' ? 'Rule deleted successfully!' : 'Aturan berhasil dihapus!');
+        await loadComplianceRulesList();
+      } catch (e) {
+        alert(currentLang === 'en' ? 'Failed to delete rule' : 'Gagal menghapus aturan');
+      }
     }
   </script>
 </body>

@@ -1871,6 +1871,7 @@
       <button class="nav-btn" id="tab-parser" onclick="switchTab('parser')" title="Visualizer / Parser Raw SWIFT">🔍 <span id="lbl-tabParser">Parser</span></button>
       <button class="nav-btn" id="tab-reconciliation" onclick="switchTab('reconciliation')" title="Reconciliation Simulator">🔄 <span id="lbl-tabReconciliation">Rekonsiliasi</span></button>
       <button class="nav-btn" id="tab-linked-simulator" onclick="switchTab('linked-simulator')" title="Linked Simulator">🔗 <span id="lbl-tabLinkedSimulator">Simulasi Rantai</span></button>
+      <button class="nav-btn" id="tab-intelligence" onclick="switchTab('intelligence')" title="SWIFT Intelligence Hub">🛡️ <span id="lbl-tabIntelligence">Hub Intelijen</span></button>
       <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 ID</button>
       <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙 Dark Mode</button>
     </div>
@@ -2121,6 +2122,7 @@
           <button class="btn btn-primary" onclick="parseSwift()" id="pBtn">Parse Message</button>
           <button class="btn btn-ghost" onclick="clearParser()" id="btnClearParser">✕ Bersihkan</button>
           <button class="btn btn-ghost" onclick="anonymizeInput()" id="btnAnonymize" style="border-color: var(--gold); color: var(--gold); background: transparent; font-weight: 700;">🔒 Sensor Data Sensitif</button>
+          <button class="btn btn-ghost" onclick="runIntelScanFromParser()" id="btnParserIntel" style="border-color: var(--accent); color: var(--accent); background: transparent; font-weight: 700;">🛡️ Run Intelligence Scan</button>
         </div>
       </div>
 
@@ -2477,6 +2479,512 @@ JOHN DOE
       </div>
     </div>
 
+    <div id="view-intelligence" style="display:none; margin-bottom: 40px;">
+      <style>
+        /* Modern styling for SWIFT Intelligence Hub */
+        .intel-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          margin-top: 24px;
+        }
+        @media (max-width: 1024px) {
+          .intel-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .intel-card {
+          background: var(--panel);
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: var(--card-shadow);
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          box-sizing: border-box;
+        }
+        .intel-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1.5px solid var(--line);
+          padding-bottom: 12px;
+          margin-bottom: 8px;
+        }
+        .intel-card-title {
+          font-family: var(--serif);
+          font-size: 18px;
+          font-weight: 800;
+          color: var(--ink);
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .risk-gauge-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          padding: 10px 0;
+        }
+        .risk-gauge {
+          width: 160px;
+          height: 160px;
+          position: relative;
+        }
+        .risk-gauge svg {
+          width: 100%;
+          height: 100%;
+          transform: rotate(-90deg);
+        }
+        .risk-gauge-bg {
+          fill: none;
+          stroke: var(--line);
+          stroke-width: 12;
+        }
+        .risk-gauge-fill {
+          fill: none;
+          stroke: var(--accent);
+          stroke-width: 12;
+          stroke-dasharray: 440;
+          stroke-dashoffset: 440;
+          stroke-linecap: round;
+          transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.8s;
+        }
+        .risk-gauge-text {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+        }
+        .risk-score-value {
+          font-family: var(--serif);
+          font-size: 32px;
+          font-weight: 800;
+          line-height: 1;
+          color: var(--ink);
+        }
+        .risk-score-label {
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: var(--ink-soft);
+          font-weight: 700;
+          margin-top: 4px;
+        }
+        .risk-badge {
+          display: inline-block;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 6px 16px;
+          border-radius: 20px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-top: 10px;
+          text-align: center;
+          border: 1px solid transparent;
+        }
+        .risk-badge.safe {
+          background: var(--accent-soft);
+          color: var(--accent);
+          border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+        }
+        .risk-badge.warning {
+          background: var(--gold-soft);
+          color: var(--gold);
+          border-color: color-mix(in srgb, var(--gold) 30%, transparent);
+        }
+        .risk-badge.danger {
+          background: var(--debit-bg);
+          color: var(--debit-color);
+          border-color: color-mix(in srgb, var(--debit-color) 30%, transparent);
+        }
+        .flag-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+        .flag-table th {
+          text-align: left;
+          color: var(--ink-soft);
+          font-weight: 700;
+          padding: 8px 10px;
+          border-bottom: 1.5px solid var(--line);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .flag-table td {
+          padding: 10px;
+          border-bottom: 1px solid var(--line);
+          vertical-align: middle;
+        }
+        .flag-severity {
+          display: inline-block;
+          font-size: 9.5px;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .flag-severity.high {
+          background: var(--debit-bg);
+          color: var(--debit-color);
+        }
+        .flag-severity.medium {
+          background: var(--gold-soft);
+          color: var(--gold);
+        }
+        .flag-severity.low {
+          background: var(--row-hover);
+          color: var(--ink-soft);
+        }
+        .gpi-hop-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 10px;
+          position: relative;
+          background: var(--paper);
+          border-radius: 12px;
+          border: 1px solid var(--line);
+          overflow-x: auto;
+          box-sizing: border-box;
+          gap: 12px;
+        }
+        .gpi-hop-node {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 6px;
+          flex: 1;
+          min-width: 90px;
+          position: relative;
+          z-index: 2;
+        }
+        .gpi-hop-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          background: var(--panel);
+          border: 2px solid var(--line);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          color: var(--ink-soft);
+          transition: all 0.3s ease;
+          box-shadow: var(--shadow);
+        }
+        .gpi-hop-node.active .gpi-hop-icon {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--accent-soft);
+          transform: scale(1.1);
+          box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+        }
+        .gpi-hop-node.hold .gpi-hop-icon {
+          border-color: var(--debit-color);
+          color: var(--debit-color);
+          background: var(--debit-bg);
+          animation: pulseBorder 1.5s infinite;
+        }
+        .gpi-hop-node.success .gpi-hop-icon {
+          border-color: var(--accent);
+          color: #ffffff;
+          background: var(--accent);
+        }
+        @keyframes pulseBorder {
+          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .gpi-hop-name {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--ink);
+          max-width: 100px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .gpi-hop-bic {
+          font-family: var(--mono);
+          font-size: 9px;
+          color: var(--ink-soft);
+        }
+        .gpi-hop-status {
+          font-size: 9px;
+          font-weight: 800;
+          color: var(--ink-soft);
+          padding: 2px 6px;
+          background: var(--line);
+          border-radius: 10px;
+          text-transform: uppercase;
+        }
+        .gpi-hop-node.active .gpi-hop-status {
+          background: var(--accent-soft);
+          color: var(--accent);
+        }
+        .gpi-hop-node.hold .gpi-hop-status {
+          background: var(--debit-bg);
+          color: var(--debit-color);
+        }
+        .gpi-line {
+          position: absolute;
+          top: 41px;
+          left: 45px;
+          right: 45px;
+          height: 3px;
+          background: var(--line);
+          z-index: 1;
+        }
+        .gpi-line-progress {
+          height: 100%;
+          background: var(--accent);
+          width: 0%;
+          transition: width 0.8s ease-in-out;
+        }
+        .gpi-line-progress.hold {
+          background: var(--debit-color);
+        }
+        .sla-timeline {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          position: relative;
+          padding-left: 20px;
+          border-left: 2px solid var(--line);
+          margin-left: 10px;
+        }
+        .sla-item {
+          position: relative;
+        }
+        .sla-item::before {
+          content: "";
+          position: absolute;
+          left: -27px;
+          top: 6px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--panel);
+          border: 2px solid var(--line);
+          transition: all 0.3s ease;
+        }
+        .sla-item.active::before {
+          border-color: var(--accent);
+          background: var(--accent);
+        }
+        .sla-item.warning::before {
+          border-color: var(--gold);
+          background: var(--gold);
+        }
+        .sla-item.danger::before {
+          border-color: var(--debit-color);
+          background: var(--debit-color);
+        }
+        .sla-title {
+          font-weight: 700;
+          font-size: 12.5px;
+          color: var(--ink);
+        }
+        .sla-time {
+          font-size: 10.5px;
+          color: var(--ink-soft);
+          font-family: var(--mono);
+        }
+        .sla-desc {
+          font-size: 11.5px;
+          color: var(--ink-soft);
+          margin-top: 2px;
+        }
+      </style>
+
+      <!-- Header Section -->
+      <div style="margin-bottom: 24px;">
+        <h2 id="lbl-intelligenceTitle" style="font-family: var(--serif); font-size: 26px; font-weight: 800; color: var(--ink); margin: 0 0 6px 0;">Pusat Inteligensia &amp; Kepatuhan SWIFT</h2>
+        <p id="lbl-intelligenceDesc" style="color: var(--ink-soft); font-size: 14px; margin: 0;">Analisis kepatuhan otomatis (AML/Sanksi) dan simulasi pelacakan transaksi SWIFT gpi secara real-time.</p>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="card-panel" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: var(--card-shadow);">
+        <label id="lbl-intelRawInputLabel" style="display: block; font-weight: 700; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px;">Tempel Pesan SWIFT untuk Analisis Intelijen</label>
+        <textarea id="intelRawInput" style="width: 100%; height: 140px; padding: 12px; border: 1.5px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: 13px; background: var(--paper); color: var(--ink); resize: vertical; margin-bottom: 12px;" placeholder="Paste raw SWIFT message (e.g. MT103, MT202) here..."></textarea>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="runIntelligenceScan()" id="btnRunIntel">🛡️ Jalankan Analisis Intelijen</button>
+          <button class="btn btn-ghost" onclick="loadIntelAmlDemo()" id="btnLoadIntelAmlDemo">💡 Contoh Kasus AML</button>
+          <button class="btn btn-ghost" onclick="loadIntelGpiDemo()" id="btnLoadIntelGpiDemo">💡 Contoh Kasus gpi</button>
+          <button class="btn btn-ghost" onclick="clearIntel()" id="btnClearIntel">✕ Bersihkan</button>
+        </div>
+      </div>
+
+      <!-- Output Panel Container (Hidden initially until scanned) -->
+      <div id="intelOutputContainer" style="display: none;">
+        <div class="intel-grid">
+          
+          <!-- Column 1: SWIFT GuardDog (Compliance & AML Scanner) -->
+          <div class="intel-card">
+            <div class="intel-card-header">
+              <h3 class="intel-card-title" id="lbl-guardDogTitle">🛡️ SWIFT GuardDog (Penyaringan Kepatuhan)</h3>
+              <span id="intel-compliance-status-badge" class="risk-badge">AMAN</span>
+            </div>
+
+            <!-- Risk Score Gauge -->
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px; align-items: center;">
+              <div class="risk-gauge-container">
+                <div class="risk-gauge">
+                  <svg viewBox="0 0 160 160">
+                    <circle class="risk-gauge-bg" cx="80" cy="80" r="70" />
+                    <circle class="risk-gauge-fill" id="intel-risk-gauge-circle" cx="80" cy="80" r="70" />
+                  </svg>
+                  <div class="risk-gauge-text">
+                    <div class="risk-score-value" id="intel-risk-score-val">0</div>
+                    <div class="risk-score-label" id="lbl-riskScore">SKOR</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h4 style="margin: 0 0 6px 0; font-family: var(--serif); font-size: 15px; font-weight: 700;" id="lbl-riskLevel">Tingkat Risiko</h4>
+                <p id="intel-risk-explanation" style="font-size: 12.5px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Tidak ada indikasi pelanggaran sanksi global, yurisdiksi berisiko tinggi, atau pola pencucian uang terdeteksi.</p>
+              </div>
+            </div>
+
+            <!-- Flags Breakdown Table -->
+            <div style="margin-top: 10px;">
+              <h4 style="margin: 0 0 10px 0; font-family: var(--serif); font-size: 13.5px; font-weight: 700;">Aturan Kepatuhan Terpicu</h4>
+              <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);">
+                <table class="flag-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 80px;">Kategori</th>
+                      <th style="width: 60px;">Tag</th>
+                      <th>Detail Temuan</th>
+                      <th style="width: 70px; text-align: center;">Tingkat</th>
+                    </tr>
+                  </thead>
+                  <tbody id="intel-flags-table-body">
+                    <tr>
+                      <td colspan="4" style="text-align: center; color: var(--ink-soft); padding: 20px;">Belum ada hasil analisis.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Remediation Portal -->
+            <div style="border-top: 1.5px solid var(--line); padding-top: 16px; margin-top: 10px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+              <button class="btn btn-ghost" id="btnIntelOverride" onclick="simulateIntelOverride()" style="font-size: 12px; padding: 6px 12px; display: none;">🔑 Otorisasi Override</button>
+              <button class="btn btn-ghost" id="btnIntelSar" onclick="simulateIntelSar()" style="font-size: 12px; padding: 6px 12px; border-color: var(--debit-color); color: var(--debit-color); display: none;">📝 Laporkan SAR</button>
+            </div>
+          </div>
+
+          <!-- Column 2: SWIFT gpi Tracker & SLA Predictor -->
+          <div class="intel-card">
+            <div class="intel-card-header">
+              <h3 class="intel-card-title" id="lbl-gpiTrackerTitle">⚡ Pelacak SWIFT gpi &amp; SLA</h3>
+              <div id="intel-gpi-status" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);">ACSC</div>
+            </div>
+
+            <!-- UETR and details -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+              <div>
+                <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em;">gpi UETR (Tag :121:)</div>
+                <div id="intel-uetr-val" style="font-family: var(--mono); font-size: 12px; font-weight: 700; word-break: break-all; color: var(--gold);">eb1a6b0c-7b00-4b2a-bf30-58c0c1b7a2bb</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em;">Nominal Transaksi</div>
+                <div id="intel-amount-val" style="font-size: 13.5px; font-weight: 700; color: var(--ink);">USD 10,000.00</div>
+              </div>
+            </div>
+
+            <!-- Interactive gpi Hop Route Diagram -->
+            <div>
+              <h4 style="margin: 0 0 10px 0; font-family: var(--serif); font-size: 13.5px; font-weight: 700;">Jalur bank Koresponden (gpi Hops)</h4>
+              <div class="gpi-hop-wrapper">
+                <div class="gpi-line"><div class="gpi-line-progress" id="intel-gpi-line-progress" style="width: 100%;"></div></div>
+                
+                <!-- Hop 1: Originator Bank -->
+                <div class="gpi-hop-node success" id="gpi-hop-1">
+                  <div class="gpi-hop-icon">🏦</div>
+                  <div class="gpi-hop-name" id="gpi-hop-1-name">Origin Bank</div>
+                  <div class="gpi-hop-bic" id="gpi-hop-1-bic">SNDRXX22</div>
+                  <div class="gpi-hop-status">INIT</div>
+                </div>
+
+                <!-- Hop 2: Correspondent Bank 1 -->
+                <div class="gpi-hop-node success" id="gpi-hop-2">
+                  <div class="gpi-hop-icon">🏢</div>
+                  <div class="gpi-hop-name" id="gpi-hop-2-name">Corresp 1</div>
+                  <div class="gpi-hop-bic" id="gpi-hop-2-bic">CORRXX33</div>
+                  <div class="gpi-hop-status">ACSP</div>
+                </div>
+
+                <!-- Hop 3: Correspondent Bank 2 -->
+                <div class="gpi-hop-node success" id="gpi-hop-3">
+                  <div class="gpi-hop-icon">🏢</div>
+                  <div class="gpi-hop-name" id="gpi-hop-3-name">Corresp 2</div>
+                  <div class="gpi-hop-bic" id="gpi-hop-3-bic">CORRXX44</div>
+                  <div class="gpi-hop-status">ACSP</div>
+                </div>
+
+                <!-- Hop 4: Beneficiary Bank -->
+                <div class="gpi-hop-node success" id="gpi-hop-4">
+                  <div class="gpi-hop-icon">📥</div>
+                  <div class="gpi-hop-name" id="gpi-hop-4-name">Benef Bank</div>
+                  <div class="gpi-hop-bic" id="gpi-hop-4-bic">RCVRXX55</div>
+                  <div class="gpi-hop-status">ACSC</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fee & FX Spread Breakdown -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px;">
+              <h4 style="margin: 0 0 12px 0; font-family: var(--serif); font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 6px;">Perincian Biaya Pengiriman &amp; Nilai Bersih</h4>
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--ink-soft);">Jumlah Asal Kiriman</span>
+                  <span id="intel-fee-orig" style="font-weight: 600;">USD 10,000.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--ink-soft);">Biaya Bank Koresponden 1</span>
+                  <span id="intel-fee-hop1" style="color: var(--debit-color); font-weight: 600;">-USD 25.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--ink-soft);">Biaya Bank Koresponden 2</span>
+                  <span id="intel-fee-hop2" style="color: var(--debit-color); font-weight: 600;">-USD 15.00</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; display: none;" id="intel-fx-spread-row">
+                  <span style="color: var(--ink-soft);">Selisih Kurs Konversi (FX Spread)</span>
+                  <span id="intel-fee-fx" style="color: var(--debit-color); font-weight: 600;">-USD 12.50</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1.5px solid var(--line); padding-top: 8px; font-weight: 700; font-size: 13.5px;">
+                  <span>Nilai Bersih Diterima Nasabah</span>
+                  <span id="intel-fee-net" style="color: var(--accent);">USD 9,960.00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SLA Timeline -->
+            <div>
+              <h4 style="margin: 0 0 12px 0; font-family: var(--serif); font-size: 13.5px; font-weight: 700;">Milestones Pengiriman (gpi SLA Timeline)</h4>
+              <div class="sla-timeline" id="intel-sla-timeline">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
     <footer>
       <span id="lbl-footer">SWIFT Messaging Portal &copy; 2026. Referensi &amp; Parser Visualisasi Pesan Keuangan Standar SWIFT.</span>
       <span id="lbl-footer2" style="display: none;"></span>
@@ -2555,6 +3063,9 @@ JOHN DOE
           
           document.getElementById('dataSourceInfo').innerHTML = '<span class="source-dot manual"></span>Data lokal';
         }
+      }
+      if (typeof loadComplianceRules === 'function') {
+        await loadComplianceRules();
       }
       init();
     }
@@ -3678,6 +4189,8 @@ JOHN DOE
       if (tabReconciliation) tabReconciliation.classList.toggle('active', tabId === 'reconciliation');
       const tabLinked = document.getElementById('tab-linked-simulator');
       if (tabLinked) tabLinked.classList.toggle('active', tabId === 'linked-simulator');
+      const tabIntel = document.getElementById('tab-intelligence');
+      if (tabIntel) tabIntel.classList.toggle('active', tabId === 'intelligence');
 
       // Update views visibility
       const viewHome = document.getElementById('view-home');
@@ -3690,6 +4203,8 @@ JOHN DOE
       if (viewReconciliation) viewReconciliation.style.display = tabId === 'reconciliation' ? 'block' : 'none';
       const viewLinked = document.getElementById('view-linked-simulator');
       if (viewLinked) viewLinked.style.display = tabId === 'linked-simulator' ? 'block' : 'none';
+      const viewIntel = document.getElementById('view-intelligence');
+      if (viewIntel) viewIntel.style.display = tabId === 'intelligence' ? 'block' : 'none';
       const viewDetail = document.getElementById('view-detail');
       if (viewDetail) viewDetail.style.display = tabId === 'detail' ? 'block' : 'none';
 
@@ -7930,7 +8445,24 @@ JAKARTA, INDONESIA
         lblDetailOptionalTags: "Tag Opsional",
         lblDetailTableTitle: "Spesifikasi Struktur Tag",
         thDetailName: "Nama Field",
-        thDetailDesc: "Keterangan / Aturan Validasi"
+        thDetailDesc: "Keterangan / Aturan Validasi",
+        
+        lblTabIntelligence: "Hub Intelijen",
+        lblIntelligenceTitle: "Pusat Inteligensia & Kepatuhan SWIFT",
+        lblIntelligenceDesc: "Analisis kepatuhan otomatis (AML/Sanksi) dan simulasi pelacakan transaksi SWIFT gpi secara real-time.",
+        lblIntelRawInputLabel: "Tempel Pesan SWIFT untuk Analisis Intelijen",
+        btnRunIntel: "🛡️ Jalankan Analisis Intelijen",
+        btnLoadIntelAmlDemo: "💡 Contoh Kasus AML",
+        btnLoadIntelGpiDemo: "💡 Contoh Kasus gpi",
+        btnClearIntel: "✕ Bersihkan",
+        lblGuardDogTitle: "🛡️ SWIFT GuardDog (Penyaringan Kepatuhan)",
+        lblGpiTrackerTitle: "⚡ Pelacak SWIFT gpi & SLA",
+        lblRiskScore: "SKOR RISIKO",
+        lblRiskLevel: "Tingkat Risiko",
+        lblComplianceHold: "PENAHAHAN KEPATUHAN",
+        lblSafe: "AMAN",
+        lblWarning: "PERINGATAN",
+        lblHighRisk: "RISIKO TINGGI"
       },
       en: {
         lblAnalyticsTitle: "Reference Analytics & Visualization",
@@ -8053,7 +8585,24 @@ JAKARTA, INDONESIA
         lblDetailOptionalTags: "Optional Tags",
         lblDetailTableTitle: "Tag Structure Specification",
         thDetailName: "Field Name",
-        thDetailDesc: "Description / Validation Rules"
+        thDetailDesc: "Description / Validation Rules",
+        
+        lblTabIntelligence: "Intelligence Hub",
+        lblIntelligenceTitle: "SWIFT Intelligence & Compliance Hub",
+        lblIntelligenceDesc: "Automated compliance screening (AML/Sanctions) and real-time SWIFT gpi transaction tracking simulation.",
+        lblIntelRawInputLabel: "Paste SWIFT Message for Intelligence Analysis",
+        btnRunIntel: "🛡️ Run Intelligence Scan",
+        btnLoadIntelAmlDemo: "💡 Load AML Demo Case",
+        btnLoadIntelGpiDemo: "💡 Load gpi Demo Case",
+        btnClearIntel: "✕ Clear",
+        lblGuardDogTitle: "🛡️ SWIFT GuardDog (Compliance Screening)",
+        lblGpiTrackerTitle: "⚡ SWIFT gpi Tracker & SLA",
+        lblRiskScore: "RISK SCORE",
+        lblRiskLevel: "Risk Level",
+        lblComplianceHold: "COMPLIANCE HOLD",
+        lblSafe: "SAFE",
+        lblWarning: "WARNING",
+        lblHighRisk: "HIGH RISK"
       }
     };
 
@@ -8758,6 +9307,46 @@ JAKARTA, INDONESIA
 
       const lblTabLinkedSimulator = document.getElementById('lbl-tabLinkedSimulator');
       if (lblTabLinkedSimulator) lblTabLinkedSimulator.innerText = dict.lblTabLinkedSimulator;
+
+      const lblTabIntelligence = document.getElementById('lbl-tabIntelligence');
+      if (lblTabIntelligence) lblTabIntelligence.innerText = dict.lblTabIntelligence;
+
+      const lblIntelligenceTitle = document.getElementById('lbl-intelligenceTitle');
+      if (lblIntelligenceTitle) lblIntelligenceTitle.innerText = dict.lblIntelligenceTitle;
+
+      const lblIntelligenceDesc = document.getElementById('lbl-intelligenceDesc');
+      if (lblIntelligenceDesc) lblIntelligenceDesc.innerText = dict.lblIntelligenceDesc;
+
+      const lblIntelRawInputLabel = document.getElementById('lbl-intelRawInputLabel');
+      if (lblIntelRawInputLabel) lblIntelRawInputLabel.innerText = dict.lblIntelRawInputLabel;
+
+      const btnRunIntel = document.getElementById('btnRunIntel');
+      if (btnRunIntel) btnRunIntel.innerText = dict.btnRunIntel;
+
+      const btnLoadIntelAmlDemo = document.getElementById('btnLoadIntelAmlDemo');
+      if (btnLoadIntelAmlDemo) btnLoadIntelAmlDemo.innerText = dict.btnLoadIntelAmlDemo;
+
+      const btnLoadIntelGpiDemo = document.getElementById('btnLoadIntelGpiDemo');
+      if (btnLoadIntelGpiDemo) btnLoadIntelGpiDemo.innerText = dict.btnLoadIntelGpiDemo;
+
+      const btnClearIntel = document.getElementById('btnClearIntel');
+      if (btnClearIntel) btnClearIntel.innerText = dict.btnClearIntel;
+
+      const lblGuardDogTitle = document.getElementById('lbl-guardDogTitle');
+      if (lblGuardDogTitle) lblGuardDogTitle.innerText = dict.lblGuardDogTitle;
+
+      const lblGpiTrackerTitle = document.getElementById('lbl-gpiTrackerTitle');
+      if (lblGpiTrackerTitle) lblGpiTrackerTitle.innerText = dict.lblGpiTrackerTitle;
+
+      const lblRiskScore = document.getElementById('lbl-riskScore');
+      if (lblRiskScore) lblRiskScore.innerText = dict.lblRiskScore;
+
+      const lblRiskLevel = document.getElementById('lbl-riskLevel');
+      if (lblRiskLevel) lblRiskLevel.innerText = dict.lblRiskLevel;
+
+      if (currentIntelAnalysis) {
+        renderIntelligenceOutput();
+      }
 
       const lblLinkedSimulatorTitle = document.getElementById('lbl-linkedSimulatorTitle');
       if (lblLinkedSimulatorTitle) lblLinkedSimulatorTitle.innerText = dict.lblLinkedSimulatorTitle;
@@ -10610,6 +11199,659 @@ BOB JOHNSON
       linkedActiveStepIndex = 0;
       linkedActiveTagHighlight = null;
       updateLinkedMessages();
+    }
+
+    // ==========================================
+    // SWIFT Intelligence Hub Code Engine (GuardDog & gpi Tracker)
+    // ==========================================
+    let MOCK_SANCTIONS_LIST = [
+      { name: "Ali Al-Sadr", reason: "OFAC - Terrorist Financing", list: "SDN (OFAC)" },
+      { name: "Mohammad Farhad", reason: "EU Consolidated Sanction List - Money Laundering", list: "EU List" },
+      { name: "Saddam Hussein", reason: "UN Consolidated List - Weapons of Mass Destruction", list: "UN List" },
+      { name: "Cartel de Sinaloa", reason: "OFAC - Narcotics Trafficking", list: "SDN (OFAC)" },
+      { name: "Kim Jong-Un", reason: "UN Sanctions - WMD Financing", list: "UN List" },
+      { name: "Aleksey Shevtsov", reason: "EU Sanctions - Cyber Warfare Activities", list: "EU List" },
+      { name: "Al-Qaeda", reason: "UN Al-Qaida Sanctions Committee", list: "UN List" },
+      { name: "Hezbollah", reason: "OFAC - Foreign Terrorist Organization", list: "SDN (OFAC)" }
+    ];
+
+    let HIGH_RISK_COUNTRIES = {
+      "IR": { name: "Iran", risk: "High (FATF Blacklist)", reason: "Non-cooperative G-20 AML/CFT" },
+      "KP": { name: "North Korea", risk: "High (FATF Blacklist)", reason: "Non-cooperative G-20 AML/CFT" },
+      "MM": { name: "Myanmar", risk: "High (FATF Grey List)", reason: "Strategic deficiencies in AML/CFT" },
+      "RU": { name: "Russia", risk: "High (Sanctions / Geopolitical)", reason: "Comprehensive financial sanctions" },
+      "SY": { name: "Syria", risk: "High (FATF Grey List)", reason: "Deficiencies in AML/CFT compliance" },
+      "YE": { name: "Yemen", risk: "High (FATF Grey List)", reason: "Deficiencies in AML/CFT compliance" },
+      "IQ": { name: "Iraq", risk: "High (Geopolitical Risk)", reason: "Enhanced due diligence jurisdiction" }
+    };
+
+    let DUAL_USE_GOODS_KEYWORDS = [
+      "centrifuge", "uranium", "aluminum tubing", "carbon fiber", "military-grade",
+      "drone", "weapons", "missile", "radar", "explosive", "yellowcake", "ballistic"
+    ];
+
+    let AML_KEYWORDS = [
+      "unregistered", "cash payout", "shell corp", "underground banking", "round-tripping",
+      "anonymous account", "trust agreement", "bearer share", "tax haven"
+    ];
+
+    let STRUCTURING_RULES = [
+      { min: 9000, max: 10000, reason: "Jumlah transaksi mendekati batas pelaporan wajib USD 10.000", reason_en: "Transaction amount sits right below the mandatory reporting threshold of USD 10,000", severity: "low", score: 15 }
+    ];
+
+    async function loadComplianceRules() {
+      try {
+        const res = await fetch('http://localhost:8766/api/compliance/rules');
+        if (!res.ok) throw new Error('API fetch failed');
+        const rules = await res.json();
+        
+        const sanctions = [];
+        const countries = {};
+        const dualUse = [];
+        const aml = [];
+        const struct = [];
+
+        rules.forEach(r => {
+          if (r.category === 'sanction') {
+            sanctions.push({ name: r.pattern, reason: r.reason_en, list: r.reason });
+          } else if (r.category === 'country') {
+            countries[r.pattern.toUpperCase()] = { name: r.reason_en.split('(')[1]?.replace(')', '') || r.reason_en, risk: 'High', reason: r.reason_en };
+          } else if (r.category === 'keyword_dual_use') {
+            dualUse.push(r.pattern.toLowerCase());
+          } else if (r.category === 'keyword_aml') {
+            aml.push(r.pattern.toLowerCase());
+          } else if (r.category === 'structuring') {
+            const parts = r.pattern.split('-');
+            if (parts.length === 2) {
+              struct.push({
+                min: parseFloat(parts[0]),
+                max: parseFloat(parts[1]),
+                reason: r.reason,
+                reason_en: r.reason_en,
+                severity: r.severity,
+                score: r.score
+              });
+            }
+          }
+        });
+
+        if (sanctions.length > 0) MOCK_SANCTIONS_LIST = sanctions;
+        if (Object.keys(countries).length > 0) HIGH_RISK_COUNTRIES = countries;
+        if (dualUse.length > 0) DUAL_USE_GOODS_KEYWORDS = dualUse;
+        if (aml.length > 0) AML_KEYWORDS = aml;
+        if (struct.length > 0) STRUCTURING_RULES = struct;
+        
+        console.log("Compliance rules loaded from database.");
+      } catch (e) {
+        console.warn("Failed to load compliance rules from API, using defaults:", e);
+      }
+    }
+
+    function calculateFuzzySimilarity(str1, str2) {
+      if (!str1 || !str2) return 0;
+      str1 = str1.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+      str2 = str2.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+      
+      if (str1 === str2) return 1.0;
+      if (str1.includes(str2) || str2.includes(str1)) {
+        return Math.min(str1.length, str2.length) / Math.max(str1.length, str2.length) * 0.9;
+      }
+      
+      const track = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+      for (let i = 0; i <= str1.length; i += 1) track[0][i] = i;
+      for (let j = 0; j <= str2.length; j += 1) track[j][0] = j;
+      for (let j = 1; j <= str2.length; j += 1) {
+        for (let i = 1; i <= str1.length; i += 1) {
+          const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+          track[j][i] = Math.min(
+            track[j][i - 1] + 1, // deletion
+            track[j - 1][i] + 1, // insertion
+            track[j - 1][i - 1] + indicator // substitution
+          );
+        }
+      }
+      const distance = track[str2.length][str1.length];
+      const maxLength = Math.max(str1.length, str2.length);
+      return 1.0 - (distance / maxLength);
+    }
+
+    function runIntelScanFromParser() {
+      const rawText = document.getElementById('rawInput').value;
+      if (!rawText.trim()) {
+        showToast(currentLang === 'en' ? 'Please paste a SWIFT message first!' : 'Silakan tempel pesan SWIFT terlebih dahulu!');
+        return;
+      }
+      document.getElementById('intelRawInput').value = rawText;
+      switchTab('intelligence');
+      runIntelligenceScan();
+    }
+
+    function clearIntel() {
+      document.getElementById('intelRawInput').value = '';
+      document.getElementById('intelOutputContainer').style.display = 'none';
+      showToast(currentLang === 'en' ? 'Cleared!' : 'Dibersihkan!');
+    }
+
+    function loadIntelAmlDemo() {
+      const sample = `{1:F01SNDRXX22AXXX0000000000}{2:I103RCVRXX55N}{3:{108:12345678}{121:eb1a6b0c-7b00-4b2a-bf30-58c0c1b7a2bb}}{4:
+:20:FT260706-9900
+:23B:CRED
+:32A:260706USD9900,00
+:50K:/12345678
+MOHAMMAD FARHAD
+JAKARTA, INDONESIA
+:56A:CORRXX33
+:57A:CORRXX44
+:59:/9876543210
+ALI AL-SADR
+BAGHDAD, IRAQ
+:70:PAYMENT FOR INDUSTRIAL CENTRIFUGE PARTS
+:71A:SHA
+-}`;
+      document.getElementById('intelRawInput').value = sample;
+      showToast(currentLang === 'en' ? 'AML/Sanctions demo message loaded!' : 'Pesan demo AML/Sanksi berhasil dimuat!');
+      runIntelligenceScan();
+    }
+
+    function loadIntelGpiDemo() {
+      const sample = `{1:F01SNDRXX22AXXX0000000000}{2:I103RCVRXX55N}{3:{108:87654321}{121:3f2c5d1b-8e9a-4c7b-b0d1-f2e3a4b5c6d7}}{4:
+:20:GPIDEMO7765
+:23B:CRED
+:32A:260706EUR250000,00
+:50A:JOHNDOE88
+JOHN DOE CORP
+PARIS, FRANCE
+:52A:SNDRXX22
+:56A:CORRXX33
+:57A:CORRXX44
+:59:/8765432109
+ACME SERVICES INC
+NEW YORK, USA
+:70:INVOICE PAYMENT FOR CONSULTING
+:71A:SHA
+-}`;
+      document.getElementById('intelRawInput').value = sample;
+      showToast(currentLang === 'en' ? 'gpi Standard demo message loaded!' : 'Pesan demo gpi standar berhasil dimuat!');
+      runIntelligenceScan();
+    }
+
+    let currentIntelAnalysis = null;
+
+    function runIntelligenceScan() {
+      const rawText = document.getElementById('intelRawInput').value;
+      if (!rawText.trim()) {
+        showToast(currentLang === 'en' ? 'Please enter a raw SWIFT message!' : 'Silakan masukkan pesan SWIFT mentah!');
+        return;
+      }
+
+      // Parse blocks and basic tags
+      const textBlock = rawText.match(/\{4:([\s\S]*?)\}/);
+      const tagContent = textBlock ? textBlock[1] : rawText;
+
+      // Extract general values
+      let amount = 0;
+      let currency = 'USD';
+      let uetr = '';
+      
+      const uetrMatch = rawText.match(/\{121:([A-Za-z0-9\-]+)\}/);
+      if (uetrMatch) {
+        uetr = uetrMatch[1];
+      } else {
+        // Generate stable mock UETR based on message content hash
+        let hash = 0;
+        for (let i = 0; i < rawText.length; i++) {
+          hash = (hash << 5) - hash + rawText.charCodeAt(i);
+          hash |= 0;
+        }
+        const hex = Math.abs(hash).toString(16).padStart(8, '0');
+        uetr = `eb1a6b0c-7b00-4b2a-${hex.substring(0, 4)}-${hex.substring(4, 8)}58c0`;
+      }
+
+      // Parse tags
+      const tags = {};
+      const tagRegex = /:([0-9]{2}[A-Z]*):([\s\S]*?)(?=\n:[0-9]{2}[A-Z]*:|\n-\})/g;
+      let match;
+      while ((match = tagRegex.exec(tagContent)) !== null) {
+        tags[match[1]] = match[2].trim();
+      }
+
+      // Handle fallback regex if double newlines are used instead of strict block 4
+      if (Object.keys(tags).length === 0) {
+        const fallbackRegex = /:([0-9]{2}[A-Z]*):([\s\S]*?)(?=\n:[0-9]{2}[A-Z]*:|$)/g;
+        while ((match = fallbackRegex.exec(tagContent)) !== null) {
+          tags[match[1]] = match[2].trim();
+        }
+      }
+
+      // Extract Amount (Tag 32A or 33B)
+      const tag32A = tags['32A'] || '';
+      if (tag32A) {
+        const amtMatch = tag32A.match(/([0-9]{6})([A-Z]{3})([0-9,\.]+)/);
+        if (amtMatch) {
+          currency = amtMatch[2];
+          amount = parseFloat(amtMatch[3].replace(',', '.'));
+        }
+      }
+
+      // Extract Entities
+      const orderingCustomer = tags['50K'] || tags['50A'] || tags['50F'] || '';
+      const beneficiary = tags['59'] || tags['59A'] || '';
+      const remittanceInfo = tags['70'] || tags['86'] || '';
+
+      // Perform Compliance Checks (GuardDog Engine)
+      const flags = [];
+      let riskScore = 0;
+
+      // 1. Sanctions check on Ordering Customer
+      if (orderingCustomer) {
+        const lines = orderingCustomer.split('\n');
+        let name = lines[0];
+        if (name.startsWith('/') && lines.length > 1) {
+          name = lines[1];
+        }
+        
+        MOCK_SANCTIONS_LIST.forEach(sanctioned => {
+          const sim = calculateFuzzySimilarity(name, sanctioned.name);
+          if (sim > 0.70) {
+            const severity = sim > 0.85 ? 'high' : 'medium';
+            flags.push({
+              category: 'Sanction Match',
+              tag: '50K/A',
+              detail: `Ordering Customer "${name.trim()}" mirip (${Math.round(sim * 100)}%) dengan "${sanctioned.name}" di daftar sanksi ${sanctioned.list} (${sanctioned.reason})`,
+              detail_en: `Ordering Customer "${name.trim()}" matches (${Math.round(sim * 100)}%) with "${sanctioned.name}" on ${sanctioned.list} (${sanctioned.reason})`,
+              severity: severity,
+              score: sim > 0.85 ? 60 : 35
+            });
+          }
+        });
+      }
+
+      // 2. Sanctions check on Beneficiary
+      if (beneficiary) {
+        const lines = beneficiary.split('\n');
+        let name = lines[0];
+        if (name.startsWith('/') && lines.length > 1) {
+          name = lines[1];
+        }
+
+        MOCK_SANCTIONS_LIST.forEach(sanctioned => {
+          const sim = calculateFuzzySimilarity(name, sanctioned.name);
+          if (sim > 0.70) {
+            const severity = sim > 0.85 ? 'high' : 'medium';
+            flags.push({
+              category: 'Sanction Match',
+              tag: '59',
+              detail: `Beneficiary "${name.trim()}" mirip (${Math.round(sim * 100)}%) dengan "${sanctioned.name}" di daftar sanksi ${sanctioned.list} (${sanctioned.reason})`,
+              detail_en: `Beneficiary "${name.trim()}" matches (${Math.round(sim * 100)}%) with "${sanctioned.name}" on ${sanctioned.list} (${sanctioned.reason})`,
+              severity: severity,
+              score: sim > 0.85 ? 60 : 35
+            });
+          }
+        });
+      }
+
+      // 3. High Risk Jurisdiction (BIC codes check)
+      const bicTags = ['52A', '56A', '57A', '58A'];
+      bicTags.forEach(bt => {
+        const bicVal = tags[bt] || '';
+        if (bicVal) {
+          const cleanBic = bicVal.replace(/[^A-Z0-9]/g, '');
+          if (cleanBic.length >= 6) {
+            const countryCode = cleanBic.substring(4, 6);
+            if (HIGH_RISK_COUNTRIES[countryCode]) {
+              const country = HIGH_RISK_COUNTRIES[countryCode];
+              flags.push({
+                category: 'FATF Country Risk',
+                tag: bt,
+                detail: `BIC Bank "${cleanBic}" melibatkan negara ${country.name} yang tergolong berisiko tinggi FATF (${country.reason})`,
+                detail_en: `Bank BIC "${cleanBic}" involves country ${country.name} which is classified as FATF High Risk (${country.reason})`,
+                severity: 'high',
+                score: 30
+              });
+            }
+          }
+        }
+      });
+
+      // 4. Dual-Use Goods keywords in narrative
+      if (remittanceInfo) {
+        DUAL_USE_GOODS_KEYWORDS.forEach(kw => {
+          if (remittanceInfo.toLowerCase().includes(kw)) {
+            flags.push({
+              category: 'Dual-Use Goods',
+              tag: tags['70'] ? '70' : '86',
+              detail: `Kata kunci barang militer/teknologi ganda "${kw.toUpperCase()}" terdeteksi dalam narasi transaksi.`,
+              detail_en: `Dual-use/military technology keyword "${kw.toUpperCase()}" detected in transaction narrative.`,
+              severity: 'medium',
+              score: 25
+            });
+          }
+        });
+
+        // 5. AML Red Flags
+        AML_KEYWORDS.forEach(kw => {
+          if (remittanceInfo.toLowerCase().includes(kw)) {
+            flags.push({
+              category: 'AML Pattern',
+              tag: tags['70'] ? '70' : '86',
+              detail: `Kata kunci pola pencucian uang "${kw.toUpperCase()}" terdeteksi dalam narasi transaksi.`,
+              detail_en: `Money laundering indicator keyword "${kw.toUpperCase()}" detected in transaction narrative.`,
+              severity: 'medium',
+              score: 20
+            });
+          }
+        });
+      }
+
+      // 6. Structuring check
+      STRUCTURING_RULES.forEach(r => {
+        if (currency === 'USD' && amount >= r.min && amount <= r.max) {
+          flags.push({
+            category: 'Structuring Alert',
+            tag: tags['32A'] ? '32A' : (tags['33B'] ? '33B' : '32A'),
+            detail: r.reason.replace('USD 10.000', `USD ${amount.toLocaleString()}`).replace('USD 10,000', `USD ${amount.toLocaleString()}`),
+            detail_en: r.reason_en.replace('USD 10,000', `USD ${amount.toLocaleString()}`),
+            severity: r.severity,
+            score: r.score
+          });
+        }
+      });
+
+      // Aggregate Risk Score
+      flags.forEach(f => {
+        riskScore += f.score;
+      });
+      riskScore = Math.min(riskScore, 100);
+
+      // Save analysis state
+      currentIntelAnalysis = {
+        amount,
+        currency,
+        uetr,
+        flags,
+        riskScore,
+        tags,
+        overridden: false,
+        justification: ''
+      };
+
+      renderIntelligenceOutput();
+      document.getElementById('intelOutputContainer').style.display = 'block';
+      showToast(currentLang === 'en' ? 'Intelligence analysis complete!' : 'Analisis intelijen selesai!');
+    }
+
+    function renderIntelligenceOutput() {
+      if (!currentIntelAnalysis) return;
+
+      const { amount, currency, uetr, flags, riskScore, tags, overridden } = currentIntelAnalysis;
+
+      // Render score & gauge
+      document.getElementById('intel-risk-score-val').innerText = riskScore;
+      const circle = document.getElementById('intel-risk-gauge-circle');
+      if (circle) {
+        const offset = 440 - (440 * riskScore) / 100;
+        circle.style.strokeDashoffset = offset;
+        
+        // Color based on risk
+        if (riskScore < 25) {
+          circle.style.stroke = 'var(--accent)';
+        } else if (riskScore < 60) {
+          circle.style.stroke = 'var(--gold)';
+        } else {
+          circle.style.stroke = 'var(--debit-color)';
+        }
+      }
+
+      // Status Badge
+      const statusBadge = document.getElementById('intel-compliance-status-badge');
+      const overrideBtn = document.getElementById('btnIntelOverride');
+      const sarBtn = document.getElementById('btnIntelSar');
+      const riskExplanation = document.getElementById('intel-risk-explanation');
+
+      if (overridden) {
+        statusBadge.className = 'risk-badge safe';
+        statusBadge.innerText = currentLang === 'en' ? 'OVERRIDDEN' : 'DISETUJUI';
+        overrideBtn.style.display = 'none';
+        sarBtn.style.display = 'none';
+        riskExplanation.innerText = currentLang === 'en' 
+          ? `Override authorized. Justification: "${currentIntelAnalysis.justification}"` 
+          : `Override disetujui. Justifikasi: "${currentIntelAnalysis.justification}"`;
+      } else if (riskScore < 25) {
+        statusBadge.className = 'risk-badge safe';
+        statusBadge.innerText = currentLang === 'en' ? 'SAFE' : 'AMAN';
+        overrideBtn.style.display = 'none';
+        sarBtn.style.display = 'none';
+        riskExplanation.innerText = currentLang === 'en'
+          ? "No warning flags matched. The payment flow satisfies global compliance regulations."
+          : "Tidak ada indikasi risiko pelanggaran. Pembayaran memenuhi regulasi kepatuhan global.";
+      } else if (riskScore < 60) {
+        statusBadge.className = 'risk-badge warning';
+        statusBadge.innerText = currentLang === 'en' ? 'WARNING' : 'PERINGATAN';
+        overrideBtn.style.display = 'block';
+        sarBtn.style.display = 'none';
+        riskExplanation.innerText = currentLang === 'en'
+          ? "Minor risks or potential matches found. Requires review and verification of counterparty details."
+          : "Risiko minor atau kecocokan parsial ditemukan. Memerlukan peninjauan dan verifikasi identitas lawan transaksi.";
+      } else {
+        statusBadge.className = 'risk-badge danger';
+        statusBadge.innerText = currentLang === 'en' ? 'COMPLIANCE HOLD' : 'PENAHAHAN KEPATUHAN';
+        overrideBtn.style.display = 'block';
+        sarBtn.style.display = 'block';
+        riskExplanation.innerText = currentLang === 'en'
+          ? "CRITICAL RISK! Multiple compliance flags or direct sanctions match. Transaction locked automatically."
+          : "RISIKO TINGGI! Ditemukan indikasi sanksi langsung atau beberapa pelanggaran kepatuhan. Transaksi ditahan otomatis.";
+      }
+
+      // Render Flags Table
+      const tableBody = document.getElementById('intel-flags-table-body');
+      if (flags.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--accent); font-weight: 700; padding: 24px;">
+              ✅ ${currentLang === 'en' ? 'No violations or flags triggered.' : 'Tidak ada indikasi sanksi/pelanggaran terdeteksi.'}
+            </td>
+          </tr>
+        `;
+      } else {
+        tableBody.innerHTML = flags.map(f => {
+          const detailText = currentLang === 'en' ? f.detail_en : f.detail;
+          const severityText = currentLang === 'en' ? f.severity : (f.severity === 'high' ? 'tinggi' : (f.severity === 'medium' ? 'sedang' : 'rendah'));
+          return `
+            <tr>
+              <td><span style="font-weight:700;color:var(--ink);">${f.category}</span></td>
+              <td><span style="font-family:var(--mono);color:var(--gold);">:${f.tag}:</span></td>
+              <td><span style="font-size:12px;line-height:1.4;">${detailText}</span></td>
+              <td style="text-align:center;"><span class="flag-severity ${f.severity}">${severityText}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // gpi Section - UETR & Amount
+      document.getElementById('intel-uetr-val').innerText = uetr;
+      document.getElementById('intel-amount-val').innerText = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // Dynamic Hop Names & BICs
+      let hop1Name = 'Originator Bank', hop1Bic = 'SNDRXX22';
+      let hop2Name = 'Correspondent A', hop2Bic = tags['56A'] || tags['56C'] || 'CORRXX33';
+      let hop3Name = 'Correspondent B', hop3Bic = tags['57A'] || tags['57C'] || 'CORRXX44';
+      let hop4Name = 'Beneficiary Bank', hop4Bic = tags['58A'] || tags['53A'] || tags['59A'] || 'RCVRXX55';
+
+      // Clean up BICs
+      hop1Bic = hop1Bic.replace(/[^A-Z0-9]/g, '').substring(0, 11);
+      hop2Bic = hop2Bic.replace(/[^A-Z0-9]/g, '').substring(0, 11);
+      hop3Bic = hop3Bic.replace(/[^A-Z0-9]/g, '').substring(0, 11);
+      hop4Bic = hop4Bic.replace(/[^A-Z0-9]/g, '').substring(0, 11);
+
+      document.getElementById('gpi-hop-1-name').innerText = currentLang === 'en' ? 'Sender Bank' : 'Bank Pengirim';
+      document.getElementById('gpi-hop-1-bic').innerText = hop1Bic;
+
+      document.getElementById('gpi-hop-2-name').innerText = hop2Bic.startsWith('CORR') ? (currentLang === 'en' ? 'Corresp Bank 1' : 'Bank Korespon 1') : hop2Bic.substring(0, 6);
+      document.getElementById('gpi-hop-2-bic').innerText = hop2Bic;
+
+      document.getElementById('gpi-hop-3-name').innerText = hop3Bic.startsWith('CORR') ? (currentLang === 'en' ? 'Corresp Bank 2' : 'Bank Korespon 2') : hop3Bic.substring(0, 6);
+      document.getElementById('gpi-hop-3-bic').innerText = hop3Bic;
+
+      document.getElementById('gpi-hop-4-name').innerText = currentLang === 'en' ? 'Receiver Bank' : 'Bank Penerima';
+      document.getElementById('gpi-hop-4-bic').innerText = hop4Bic;
+
+      // Hop States based on Risk
+      const h1 = document.getElementById('gpi-hop-1');
+      const h2 = document.getElementById('gpi-hop-2');
+      const h3 = document.getElementById('gpi-hop-3');
+      const h4 = document.getElementById('gpi-hop-4');
+      const lineProgress = document.getElementById('intel-gpi-line-progress');
+      const gpiStatus = document.getElementById('intel-gpi-status');
+
+      // Clear all classes
+      [h1, h2, h3, h4].forEach(h => h.className = 'gpi-hop-node');
+      lineProgress.className = 'gpi-line-progress';
+
+      if (overridden) {
+        h1.className = 'gpi-hop-node success';
+        h2.className = 'gpi-hop-node success';
+        h3.className = 'gpi-hop-node success';
+        h4.className = 'gpi-hop-node success';
+        lineProgress.style.width = '100%';
+        gpiStatus.innerText = 'ACSC';
+        gpiStatus.style.color = 'var(--accent)';
+        gpiStatus.style.background = 'var(--accent-soft)';
+        gpiStatus.style.borderColor = 'color-mix(in srgb, var(--accent) 20%, transparent)';
+      } else if (riskScore >= 60) {
+        // Paused on hold at Hop 2 (Correspondent A) due to sanksi
+        h1.className = 'gpi-hop-node success';
+        h2.className = 'gpi-hop-node hold';
+        h3.className = 'gpi-hop-node';
+        h4.className = 'gpi-hop-node';
+        lineProgress.style.width = '33%';
+        lineProgress.className = 'gpi-line-progress hold';
+        gpiStatus.innerText = 'HOLD';
+        gpiStatus.style.color = 'var(--debit-color)';
+        gpiStatus.style.background = 'var(--debit-bg)';
+        gpiStatus.style.borderColor = 'color-mix(in srgb, var(--debit-color) 20%, transparent)';
+      } else if (riskScore >= 25) {
+        // Warning: Paused at Hop 3 for additional audit, but settled
+        h1.className = 'gpi-hop-node success';
+        h2.className = 'gpi-hop-node success';
+        h3.className = 'gpi-hop-node hold';
+        h4.className = 'gpi-hop-node';
+        lineProgress.style.width = '66%';
+        lineProgress.className = 'gpi-line-progress hold';
+        gpiStatus.innerText = 'ACSP (AUDIT)';
+        gpiStatus.style.color = 'var(--gold)';
+        gpiStatus.style.background = 'var(--gold-soft)';
+        gpiStatus.style.borderColor = 'color-mix(in srgb, var(--gold) 20%, transparent)';
+      } else {
+        // Safe: fully success
+        h1.className = 'gpi-hop-node success';
+        h2.className = 'gpi-hop-node success';
+        h3.className = 'gpi-hop-node success';
+        h4.className = 'gpi-hop-node success';
+        lineProgress.style.width = '100%';
+        gpiStatus.innerText = 'ACSC';
+        gpiStatus.style.color = 'var(--accent)';
+        gpiStatus.style.background = 'var(--accent-soft)';
+        gpiStatus.style.borderColor = 'color-mix(in srgb, var(--accent) 20%, transparent)';
+      }
+
+      // Fee Breakdown calculation
+      let fee1 = 25.00;
+      let fee2 = 15.00;
+      let fxSpread = 0.00;
+      let isFx = false;
+
+      // Currency check for FX Spread
+      if (currency !== 'USD') {
+        isFx = true;
+        fxSpread = Math.round(amount * 0.0005 * 100) / 100; // 0.05% spread
+        document.getElementById('intel-fx-spread-row').style.display = 'flex';
+      } else {
+        document.getElementById('intel-fx-spread-row').style.display = 'none';
+      }
+
+      const netVal = Math.max(0, amount - fee1 - fee2 - fxSpread);
+
+      document.getElementById('intel-fee-orig').innerText = `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+      document.getElementById('intel-fee-hop1').innerText = `-${currency} ${fee1.toFixed(2)}`;
+      document.getElementById('intel-fee-hop2').innerText = `-${currency} ${fee2.toFixed(2)}`;
+      if (isFx) {
+        document.getElementById('intel-fee-fx').innerText = `-${currency} ${fxSpread.toFixed(2)}`;
+      }
+      document.getElementById('intel-fee-net').innerText = `${currency} ${netVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+      // SLA Timeline rendering
+      const slaTimeline = document.getElementById('intel-sla-timeline');
+      
+      let steps = [];
+      if (overridden) {
+        steps = [
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Payment Initiated' : 'Pembayaran Diinisiasi', time: 'T+0', desc: currentLang === 'en' ? 'Transaction generated at Sender Bank' : 'Transaksi dibuat di Bank Pengirim' },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Compliance Overridden' : 'Persetujuan Kepatuhan Manual', time: 'T+14m', desc: `Supervisor approved hold. Justification: "${currentIntelAnalysis.justification}"` },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Correspondent Settlement' : 'Penyelesaian Koresponden', time: 'T+38m', desc: currentLang === 'en' ? 'Interbank settlement cleared' : 'Penyelesaian antarbank selesai' },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Beneficiary Credited' : 'Penerima Dikreditkan', time: 'T+52m', desc: currentLang === 'en' ? 'Funds available (ACSC status reached)' : 'Dana tersedia (Status ACSC tercapai)' }
+        ];
+      } else if (riskScore >= 60) {
+        steps = [
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Payment Initiated' : 'Pembayaran Diinisiasi', time: 'T+0', desc: currentLang === 'en' ? 'Transaction generated at Sender Bank' : 'Transaksi dibuat di Bank Pengirim' },
+          { active: true, type: 'danger', title: currentLang === 'en' ? 'Compliance Hold triggered' : 'Penahanan Kepatuhan Dipicu', time: 'T+3m', desc: currentLang === 'en' ? 'Direct match with sanctioned entity. Paused at Correspondent Bank.' : 'Kecocokan langsung dengan entitas sanksi. Ditangguhkan di Bank Koresponden.' },
+          { active: false, type: '', title: currentLang === 'en' ? 'Correspondent Settlement' : 'Penyelesaian Koresponden', time: '--', desc: currentLang === 'en' ? 'Pending compliance release' : 'Menunggu pelepasan kepatuhan' },
+          { active: false, type: '', title: currentLang === 'en' ? 'Beneficiary Credited' : 'Penerima Dikreditkan', time: '--', desc: currentLang === 'en' ? 'Pending compliance release' : 'Menunggu pelepasan kepatuhan' }
+        ];
+      } else if (riskScore >= 25) {
+        steps = [
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Payment Initiated' : 'Pembayaran Diinisiasi', time: 'T+0', desc: currentLang === 'en' ? 'Transaction generated at Sender Bank' : 'Transaksi dibuat di Bank Pengirim' },
+          { active: true, type: 'warning', title: currentLang === 'en' ? 'Compliance Warning Flagged' : 'Peringatan Kepatuhan Ditandai', time: 'T+4m', desc: currentLang === 'en' ? 'Fuzzy matches or amount structuring detected. Manual verification required.' : 'Kecocokan fuzzy atau pola pemecahan nominal terdeteksi. Verifikasi manual diperlukan.' },
+          { active: false, type: '', title: currentLang === 'en' ? 'Correspondent Settlement' : 'Penyelesaian Koresponden', time: '--', desc: currentLang === 'en' ? 'Pending manual transaction audit' : 'Menunggu audit transaksi manual' },
+          { active: false, type: '', title: currentLang === 'en' ? 'Beneficiary Credited' : 'Penerima Dikreditkan', time: '--', desc: currentLang === 'en' ? 'Pending manual transaction audit' : 'Menunggu audit transaksi manual' }
+        ];
+      } else {
+        steps = [
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Payment Initiated' : 'Pembayaran Diinisiasi', time: 'T+0', desc: currentLang === 'en' ? 'Transaction generated at Sender Bank' : 'Transaksi dibuat di Bank Pengirim' },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'AML Screen Approved' : 'Pemeriksaan AML Disetujui', time: 'T+2m', desc: currentLang === 'en' ? 'Automated screening complete. No match.' : 'Pemindaian otomatis selesai. Tidak ada indikasi.' },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Correspondent Settlement' : 'Penyelesaian Koresponden', time: 'T+25m', desc: currentLang === 'en' ? 'Interbank settlement cleared' : 'Penyelesaian antarbank selesai' },
+          { active: true, type: 'active', title: currentLang === 'en' ? 'Beneficiary Credited' : 'Penerima Dikreditkan', time: 'T+38m', desc: currentLang === 'en' ? 'Funds available (ACSC status reached)' : 'Dana tersedia (Status ACSC tercapai)' }
+        ];
+      }
+
+      slaTimeline.innerHTML = steps.map(s => `
+        <div class="sla-item ${s.active ? 'active' : ''} ${s.type}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="sla-title">${s.title}</div>
+            <div class="sla-time">${s.time}</div>
+          </div>
+          <div class="sla-desc">${s.desc}</div>
+        </div>
+      `).join('');
+    }
+
+    function simulateIntelOverride() {
+      const justification = prompt(
+        currentLang === 'en' 
+          ? 'Enter Compliance Override Justification (requires Supervisor credentials):' 
+          : 'Masukkan Justifikasi Override Kepatuhan (memerlukan otorisasi Supervisor):',
+        'False positive. Verification confirmed sender identity.'
+      );
+      if (justification === null) return; // cancelled
+      if (!justification.trim()) {
+        alert(currentLang === 'en' ? 'Justification cannot be empty!' : 'Justifikasi tidak boleh kosong!');
+        return;
+      }
+
+      currentIntelAnalysis.overridden = true;
+      currentIntelAnalysis.justification = justification;
+      renderIntelligenceOutput();
+      showToast(currentLang === 'en' ? 'Compliance hold overridden successfully!' : 'Penahanan kepatuhan berhasil disetujui!');
+    }
+
+    function simulateIntelSar() {
+      const confirmSar = confirm(
+        currentLang === 'en'
+          ? 'Are you sure you want to draft and submit a SAR (Suspicious Activity Report) to the Financial Intelligence Unit?'
+          : 'Apakah Anda yakin ingin membuat draf dan mengirimkan SAR (Laporan Transaksi Keuangan Mencurigakan) ke Pusat Pelaporan Keuangan (PPATK)?'
+      );
+      if (!confirmSar) return;
+
+      showToast(currentLang === 'en' ? 'SAR draft created and transmitted!' : 'Draf SAR berhasil dibuat dan dikirimkan!');
     }
 
     loadData().then(() => {

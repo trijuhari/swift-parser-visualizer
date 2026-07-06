@@ -277,6 +277,96 @@ def login():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/compliance/rules', methods=['GET'])
+def get_compliance_rules():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        SELECT id, category, pattern, reason, reason_en, severity, score, is_active, created_at
+        FROM swift_compliance_rules
+        WHERE is_active = 1
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        data = [dict(row) for row in rows]
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/compliance/rules', methods=['POST'])
+def save_compliance_rule():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "Missing request body"}), 400
+            
+        category = (data.get('category') or '').strip()
+        pattern = (data.get('pattern') or '').strip()
+        reason = (data.get('reason') or '').strip()
+        reason_en = (data.get('reason_en') or '').strip()
+        severity = (data.get('severity') or 'medium').strip()
+        try:
+            score = int(data.get('score', 20))
+        except:
+            score = 20
+        
+        if not category or not pattern or not reason or not reason_en:
+            return jsonify({"error": "category, pattern, reason, and reason_en are required"}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        rule_id = data.get('id')
+        if rule_id:
+            # Update existing
+            cursor.execute("""
+            UPDATE swift_compliance_rules
+            SET category=?, pattern=?, reason=?, reason_en=?, severity=?, score=?
+            WHERE id=?
+            """, (category, pattern, reason, reason_en, severity, score, rule_id))
+            message = "Rule updated successfully"
+        else:
+            # Insert new
+            cursor.execute("""
+            INSERT INTO swift_compliance_rules (category, pattern, reason, reason_en, severity, score)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (category, pattern, reason, reason_en, severity, score))
+            rule_id = cursor.lastrowid
+            message = "Rule created successfully"
+            
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success", "message": message, "id": rule_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/compliance/rules/<int:rule_id>', methods=['DELETE'])
+def delete_compliance_rule(rule_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Soft delete: update is_active to 0
+        cursor.execute("""
+        UPDATE swift_compliance_rules
+        SET is_active = 0
+        WHERE id = ?
+        """, (rule_id,))
+        
+        affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        if affected == 0:
+            return jsonify({"error": "Rule not found"}), 404
+            
+        return jsonify({"status": "success", "message": "Rule deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     # Run the server on port 8766
     app.run(host='0.0.0.0', port=8766, debug=True)
