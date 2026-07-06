@@ -1997,6 +1997,18 @@
           title: "General Financial Institution Transfer",
           desc: "Used to execute funds transfers between financial institutions or correspondent banks without involving retail customers."
         }
+      },
+      mt202cov: {
+        id: {
+          category: "Kategori 2: Transfer Lembaga Keuangan",
+          title: "Cover Payment (MT202 COV)",
+          desc: "Format transaksi antarbank koresponden untuk mendanai instruksi pembayaran nasabah (MT103) yang dikirim secara terpisah."
+        },
+        en: {
+          category: "Category 2: Financial Institution Transfers",
+          title: "Cover Payment (MT202 COV)",
+          desc: "Correspondent bank transfer used to cover/fund a client payment instruction (MT103) sent via a separate channel."
+        }
       }
     };
 
@@ -2448,7 +2460,7 @@
     }
 
     function ensurePredefinedMsgTypes() {
-      const predefinedMsgTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt111', 'mt564', 'mt202'];
+      const predefinedMsgTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt111', 'mt564', 'mt202', 'mt202cov'];
       predefinedMsgTypes.forEach(m => {
         // Skip if deactivated in DB
         const deactivated = DATA.some(d => d.msg && d.msg.toLowerCase() === m.toLowerCase() && d.tag === 'MSG_NAME' && d.is_active === 0);

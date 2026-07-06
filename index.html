@@ -80,6 +80,8 @@
       max-width: 1280px;
       margin: 0 auto;
       padding: 24px 32px 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .eyebrow {
@@ -415,6 +417,7 @@
     .badge-msg.mt942 { background: #0e7490; }
     .badge-msg.mt950 { background: #b45309; }
     .badge-msg.mt564 { background: #7c3aed; }
+    .badge-msg.mt910 { background: #059669; }
 
     .tag-cell {
       font-family: var(--mono);
@@ -1685,13 +1688,17 @@
     }
 
     footer {
-      margin-top: 48px;
+      clear: both;
+      display: block;
+      margin-top: 64px;
       font-size: 13px;
       color: var(--ink-soft);
       border-top: 1px solid var(--line);
-      padding-top: 24px;
+      padding: 32px 0 48px 0;
       text-align: center;
       line-height: 1.6;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     mark {
@@ -1863,6 +1870,7 @@
       <button class="nav-btn" id="tab-reference" onclick="switchTab('reference')" title="Kamus Referensi">📖 <span id="lbl-tabKamus">Kamus</span></button>
       <button class="nav-btn" id="tab-parser" onclick="switchTab('parser')" title="Visualizer / Parser Raw SWIFT">🔍 <span id="lbl-tabParser">Parser</span></button>
       <button class="nav-btn" id="tab-reconciliation" onclick="switchTab('reconciliation')" title="Reconciliation Simulator">🔄 <span id="lbl-tabReconciliation">Rekonsiliasi</span></button>
+      <button class="nav-btn" id="tab-linked-simulator" onclick="switchTab('linked-simulator')" title="Linked Simulator">🔗 <span id="lbl-tabLinkedSimulator">Simulasi Rantai</span></button>
       <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 ID</button>
       <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙 Dark Mode</button>
     </div>
@@ -2243,6 +2251,232 @@ JOHN DOE
       </div>
     </div>
 
+    <div id="view-linked-simulator" style="display:none; margin-bottom: 40px;">
+      <style>
+        #view-linked-simulator input.input-modern,
+        #view-linked-simulator select {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 12px;
+          border: 1.5px solid var(--line);
+          border-radius: 6px;
+          font-family: var(--sans);
+          font-size: 13px;
+          background: var(--paper);
+          color: var(--ink);
+          outline: none;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        #view-linked-simulator input.input-modern:focus,
+        #view-linked-simulator select:focus {
+          border-color: var(--primary-color) !important;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .swift-tag-interactive:hover {
+          background: rgba(16, 185, 129, 0.12);
+          box-shadow: 0 0 0 1.5px rgba(16, 185, 129, 0.4);
+        }
+        .timeline-node {
+          cursor: pointer;
+          padding: 8px 12px;
+          background: var(--paper);
+          border: 1.5px solid var(--line);
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 12px;
+          color: var(--ink-soft);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          min-width: 110px;
+          text-align: center;
+          transition: all 0.2s ease;
+          user-select: none;
+        }
+        .timeline-node.active {
+          background: var(--primary-color);
+          border-color: var(--primary-color);
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+        }
+        .timeline-node:hover:not(.active) {
+          border-color: var(--primary-color);
+          color: var(--primary-color);
+          background: rgba(59, 130, 246, 0.05);
+        }
+        .timeline-arrow {
+          font-size: 16px;
+          color: var(--primary-color);
+          opacity: 0.6;
+          user-select: none;
+          margin: 0 4px;
+        }
+        .highlight-linked {
+          background: rgba(245, 158, 11, 0.2) !important;
+          border: 1.5px solid #f59e0b !important;
+          animation: pulseHighlight 1.5s infinite;
+        }
+        @keyframes pulseHighlight {
+          0% { opacity: 0.8; }
+          50% { opacity: 1; }
+          100% { opacity: 0.8; }
+        }
+      </style>
+
+      <!-- Title/Description -->
+      <div style="margin-bottom: 24px;">
+        <h2 id="lbl-linkedSimulatorTitle" style="font-family: var(--serif); font-size: 26px; font-weight: 800; color: var(--ink); margin: 0 0 6px 0;">Simulator Rantai Transaksi SWIFT</h2>
+        <p id="lbl-linkedSimulatorDesc" style="color: var(--ink-soft); font-size: 14px; margin: 0;">Simulasikan dan visualisasikan keterkaitan antar pesan SWIFT dalam satu rantai transaksi keuangan.</p>
+      </div>
+
+      <!-- Scenario Selector -->
+      <div class="card-panel" style="margin-bottom: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <label id="lbl-linkedSelectScenario" style="font-weight: 700; color: var(--ink); font-size: 14px; margin: 0;">Pilih Skenario:</label>
+          <select id="linkedScenarioSelect" onchange="changeLinkedScenario()">
+            <option value="cover" id="opt-scenCover">Metode Pembayaran Cover (MT101 ➔ MT103 ➔ MT202 COV ➔ MT910 ➔ MT940)</option>
+            <option value="mt940_lifecycle" id="opt-scen940">Siklus Hidup Laporan MT940 (Harian Kredit/Debit Ledger)</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-ghost" onclick="loadLinkedDemoData()" id="btnLinkedDemo">💡 Muat Data Demo</button>
+          <button class="btn btn-ghost" onclick="resetLinkedSimulator()" id="btnLinkedReset">✕ Reset</button>
+        </div>
+      </div>
+
+      <!-- Scenario Story Illustration Card -->
+      <div class="card-panel" id="linked-story-card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%); border: 1.5px dashed var(--primary-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow);">
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+          <div style="font-size: 28px; background: rgba(59, 130, 246, 0.1); padding: 10px; border-radius: 10px; line-height: 1; display: flex; align-items: center; justify-content: center; color: var(--primary-color);">📖</div>
+          <div style="flex: 1;">
+            <h4 id="lbl-storyTitle" style="font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink); margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+              Ilustrasi Cerita Skenario / Scenario Story Illustration
+            </h4>
+            <div id="linked-story-text" style="margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.6;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspace Container -->
+      <div style="display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start;">
+        
+        <!-- Left: Form Parameters -->
+        <div class="card-panel" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); box-sizing: border-box;">
+          <h3 style="font-family: var(--serif); font-size: 16px; font-weight: 800; color: var(--ink); margin: 0 0 16px 0; border-bottom: 1.5px solid var(--line); padding-bottom: 8px;" id="lbl-paramsTitle">Parameter Transaksi</h3>
+          
+          <!-- Cover Form -->
+          <div id="linked-form-cover" style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">SENDER (CUSTOMER)</label>
+              <input type="text" id="link-cov-sender" oninput="updateLinkedMessages()" class="input-modern" value="JOHN DOE CORP">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">SENDER BANK (BIC)</label>
+              <input type="text" id="link-cov-sender-bank" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="BICEJKT1AXXX">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">CORRESPONDENT BANK A (BIC)</label>
+              <input type="text" id="link-cov-corr-a" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="CORRJPJT1AXXX">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">CORRESPONDENT BANK B (BIC)</label>
+              <input type="text" id="link-cov-corr-b" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="CORRUS33AXXX">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">RECEIVER BANK (BIC)</label>
+              <input type="text" id="link-cov-receiver-bank" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="BICNY99AXXX">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">BENEFICIARY (CUSTOMER)</label>
+              <input type="text" id="link-cov-beneficiary" oninput="updateLinkedMessages()" class="input-modern" value="ALICE SMITH LTD">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">CURRENCY</label>
+                <input type="text" id="link-cov-currency" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="USD">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">AMOUNT</label>
+                <input type="number" id="link-cov-amount" oninput="updateLinkedMessages()" class="input-modern" value="50000.00">
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">TRANSACTION REFERENCE (:20)</label>
+              <input type="text" id="link-cov-ref" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="TX-2026-9901">
+            </div>
+          </div>
+
+          <!-- MT940 Form -->
+          <div id="linked-form-mt940" style="display: none; flex-direction: column; gap: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">ACCOUNT NUMBER (:25)</label>
+              <input type="text" id="link-940-acc" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="ACC888888">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">CURRENCY</label>
+                <input type="text" id="link-940-currency" oninput="updateLinkedMessages()" class="input-modern" style="font-family: var(--mono);" value="USD">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">OPENING BALANCE (:60F)</label>
+                <input type="number" id="link-940-open-bal" oninput="updateLinkedMessages()" class="input-modern" value="100000.00">
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--line); padding-top: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-soft);">TRANSACTIONS LIST</label>
+                <button class="btn btn-primary" onclick="addLinked940Tx(event)" style="padding: 4px 8px; font-size: 11px;">+ Add Tx</button>
+              </div>
+              <div id="link-940-tx-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; padding-right: 4px;">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+          
+        </div>
+
+        <!-- Right: Visualizer & Details -->
+        <div style="display: grid; grid-template-rows: auto 600px; gap: 24px;">
+          
+          <!-- Visual Timeline -->
+          <div class="card-panel" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow);">
+            <h3 style="font-family: var(--serif); font-size: 14px; font-weight: 800; color: var(--ink); margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.05em;" id="lbl-timelineTitle">Visualisasi Rantai Pesan</h3>
+            <div id="linked-timeline-container" style="display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 4px; border-radius: 8px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Raw & Parsed side-by-side -->
+          <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; align-items: stretch; height: 600px;">
+            
+            <!-- Raw SWIFT Text -->
+            <div class="card-panel" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <label style="font-weight: 700; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin: 0;">Raw SWIFT Message</label>
+                <button class="btn btn-ghost" onclick="copyLinkedActiveRaw()" style="padding: 4px 8px; font-size: 11px;">📋 Copy</button>
+              </div>
+              <div id="linkedRawPre" style="height: 510px; margin: 0; padding: 14px; border: 1.5px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: 12.5px; background: var(--paper); color: var(--ink); overflow: auto; white-space: pre-wrap; line-height: 1.5; box-sizing: border-box;"></div>
+            </div>
+
+            <!-- Parsed Details & Inspector -->
+            <div class="card-panel" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <label style="font-weight: 700; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin: 0;" id="lbl-inspectorTitle">Relational Inspector</label>
+              </div>
+              <div id="linkedInspectorContent" style="height: 510px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 4px; padding-bottom: 16px; box-sizing: border-box;">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
     <footer>
       <span id="lbl-footer">SWIFT Messaging Portal &copy; 2026. Referensi &amp; Parser Visualisasi Pesan Keuangan Standar SWIFT.</span>
       <span id="lbl-footer2" style="display: none;"></span>
@@ -2490,6 +2724,22 @@ JOHN DOE
       {"msg": "mt564", "tag": "16R", "sub": "ADDINFO", "name": "Mulai Blok — Informasi Tambahan", "name_en": "Start of Block — Additional Information", "len": "16x", "mo": "o", "sample": "ADDINFO", "desc": "Menandai awal Sequence F (Informasi Tambahan). Opsional.", "desc_en": "Marks the start of Sequence F (Additional Information). Optional.", "rules": "Nilai: ADDINFO", "rules_en": "Value: ADDINFO", "source": "gs-docs"},
       {"msg": "mt564", "tag": "70E", "sub": "ADTX", "name": "Teks Tambahan", "name_en": "Additional Text", "len": "10*35x", "mo": "o", "sample": "Untuk pertanyaan hubungi custodian Anda.", "desc": "Narasi bebas untuk informasi tambahan.", "desc_en": "Free-form narrative for additional information.", "rules": "Maksimal 10 baris, masing-masing 35 karakter.", "rules_en": "Maximum 10 lines, each 35 characters.", "source": "gs-docs"},
       {"msg": "mt564", "tag": "16S", "sub": "ADDINFO", "name": "Akhir Blok — Informasi Tambahan", "name_en": "End of Block — Additional Information", "len": "16x", "mo": "o", "sample": "ADDINFO", "desc": "Menandai akhir Sequence F.", "desc_en": "Marks the end of Sequence F block.", "rules": "Nilai: ADDINFO", "rules_en": "Value: ADDINFO", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "MSG_NAME", "sub": "", "name": "Konfirmasi Kredit (Confirmation of Credit)", "name_en": "Confirmation of Credit", "len": "9", "mo": "o", "sample": "", "desc": "Format transaksi konfirmasi kredit yang dikirimkan oleh bank koresponden kepada pemilik rekening (bank penerima) sebagai pemberitahuan bahwa rekeningnya telah dikredit sejumlah dana.", "desc_en": "Standard SWIFT message sent by a correspondent bank to the account owner (receiving bank) to confirm that its account has been credited with a specified amount.", "rules": "", "rules_en": "", "source": "system"},
+      {"msg": "mt910", "tag": "20", "sub": "", "name": "Referensi Transaksi", "name_en": "Transaction Reference Number", "len": "16x", "mo": "m", "sample": "CR-TX-2026-9901", "desc": "Mengidentifikasi pesan MT910 secara unik.", "desc_en": "Uniquely identifies this MT910 confirmation message.", "rules": "Karakter alfanumerik. Panjang maksimal 16 karakter.", "rules_en": "Alphanumeric characters. Max length 16 characters.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "21", "sub": "", "name": "Referensi Terkait", "name_en": "Related Reference", "len": "16x", "mo": "m", "sample": "COV-TX-2026-9901", "desc": "Merujuk ke referensi transaksi asal yang mendasarinya (seperti referensi pesan cover MT202 atau transfer MT103).", "desc_en": "Refers to the underlying transaction reference (e.g. cover payment reference or transfer reference).", "rules": "Karakter alfanumerik. Panjang maksimal 16 karakter.", "rules_en": "Alphanumeric characters. Max length 16 characters.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "25", "sub": "", "name": "Identifikasi Rekening", "name_en": "Account Identification", "len": "35x", "mo": "o", "sample": "/ACC-CORR-REC", "desc": "Mengidentifikasi rekening pemilik yang dikredit dana di bank pengirim pesan.", "desc_en": "Identifies the account of the owner being credited at the sending bank.", "rules": "Panjang maksimal 35 karakter.", "rules_en": "Max length 35 characters.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "32A", "sub": "", "name": "Tanggal Valuta, Kode Mata Uang, dan Jumlah", "name_en": "Value Date, Currency Code, and Amount", "len": "6!n3!a15d", "mo": "m", "sample": "260706USD50000,00", "desc": "Menentukan tanggal valuta, kode mata uang, dan nominal dana yang dikreditkan.", "desc_en": "Specifies the value date, currency code, and credited amount.", "rules": "Format: [YYMMDD][Mata Uang][Jumlah]. Pemisah desimal koma (,). Tanpa spasi.", "rules_en": "Format: [YYMMDD][Currency][Amount]. Decimal separator is comma (,). No spaces.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "32A", "sub": "1", "name": "Tanggal Valuta", "name_en": "Value Date", "len": "6n", "mo": "m", "sample": "260706", "desc": "Tanggal efektif pembukuan kredit dana (YYMMDD).", "desc_en": "Effective date of the credit entry (YYMMDD).", "rules": "Format tanggal: YYMMDD.", "rules_en": "Date format: YYMMDD.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "32A", "sub": "2", "name": "Kode Mata Uang", "name_en": "Currency Code", "len": "3a", "mo": "m", "sample": "USD", "desc": "Kode mata uang ISO 4217.", "desc_en": "ISO 4217 currency code.", "rules": "Kode mata uang ISO 3 karakter uppercase.", "rules_en": "ISO 3-character uppercase currency code.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "32A", "sub": "3", "name": "Jumlah Kredit", "name_en": "Credited Amount", "len": "15d", "mo": "m", "sample": "50000,00", "desc": "Nilai nominal dana yang dikreditkan.", "desc_en": "Nominal value of the credited funds.", "rules": "Pemisah desimal berupa koma (,). Tanpa pemisah ribuan. Maksimal 15 karakter.", "rules_en": "Decimal separator is comma (,). No thousands separator. Max 15 characters.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "50A", "sub": "", "name": "Nasabah Pengirim (Ordering Customer) - Pilihan A", "name_en": "Ordering Customer - Option A", "len": "[/34x]\n4!a2!a2!c[3!c]", "mo": "o", "sample": "BICEJKT1AXXX", "desc": "Nasabah yang menginstruksikan transaksi (diidentifikasi dengan BIC).", "desc_en": "Customer who ordered the transaction (identified by BIC).", "rules": "Format: Nomor rekening opsional diawali slash (/), diikuti oleh BIC 8 atau 11 karakter.", "rules_en": "Format: Optional account number prefixed by slash (/), followed by 8 or 11 character BIC.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "50F", "sub": "", "name": "Nasabah Pengirim (Ordering Customer) - Pilihan F", "name_en": "Ordering Customer - Option F", "len": "35x\n4*35x", "mo": "o", "sample": "/1122334455\n1/JOHN DOE CORP\n2/JAKARTA, ID", "desc": "Nasabah yang menginstruksikan transaksi (dengan format terstruktur nama & alamat).", "desc_en": "Customer who ordered the transaction (with structured name & address format).", "rules": "Menggunakan format baris terstruktur SWIFT dengan kode angka penanda.", "rules_en": "Uses structured SWIFT line format with code indicators.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "50K", "sub": "", "name": "Nasabah Pengirim (Ordering Customer) - Pilihan K", "name_en": "Ordering Customer - Option K", "len": "[/34x]\n4*35x", "mo": "o", "sample": "/1122334455\nJOHN DOE CORP\nJAKARTA, INDONESIA", "desc": "Nasabah yang menginstruksikan transaksi (nama & alamat bebas).", "desc_en": "Customer who ordered the transaction (unstructured name & address).", "rules": "Baris pertama berisi nomor rekening dengan slash (/), baris berikutnya nama dan alamat (maksimal 4 baris).", "rules_en": "First line contains account number prefixed by slash (/), subsequent lines for name and address (max 4 lines).", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "52A", "sub": "", "name": "Lembaga Pengirim (Ordering Institution) - Pilihan A", "name_en": "Ordering Institution - Option A", "len": "[/34x]\n4!a2!a2!c[3!c]", "mo": "o", "sample": "BICEJKT1AXXX", "desc": "Lembaga keuangan yang menginstruksikan transaksi (diidentifikasi dengan BIC).", "desc_en": "Financial institution that ordered the transaction (identified by BIC).", "rules": "Format: Nomor rekening opsional diawali slash (/), diikuti oleh BIC 8 atau 11 karakter.", "rules_en": "Format: Optional account number prefixed by slash (/), followed by 8 or 11 character BIC.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "52D", "sub": "", "name": "Lembaga Pengirim (Ordering Institution) - Pilihan D", "name_en": "Ordering Institution - Option D", "len": "[/34x]\n4*35x", "mo": "o", "sample": "/112233\nBANK CENTRAL ASIA\nJAKARTA, ID", "desc": "Lembaga keuangan yang menginstruksikan transaksi (nama & alamat bebas).", "desc_en": "Financial institution that ordered the transaction (unstructured name & address).", "rules": "Baris pertama berisi nomor rekening opsional, baris berikutnya nama dan alamat.", "rules_en": "First line contains optional account number, subsequent lines for name and address.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "56A", "sub": "", "name": "Lembaga Perantara (Intermediary Institution) - Pilihan A", "name_en": "Intermediary Institution - Option A", "len": "[/34x]\n4!a2!a2!c[3!c]", "mo": "o", "sample": "CITIUS33XXXX", "desc": "Lembaga keuangan perantara tempat dana disalurkan sebelum ke penerima.", "desc_en": "Financial institution intermediary through which the funds are routed.", "rules": "Format: Nomor rekening opsional diawali slash (/), diikuti oleh BIC 8 atau 11 karakter.", "rules_en": "Format: Optional account number prefixed by slash (/), followed by 8 or 11 character BIC.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "56D", "sub": "", "name": "Lembaga Perantara (Intermediary Institution) - Pilihan D", "name_en": "Intermediary Institution - Option D", "len": "[/34x]\n4*35x", "mo": "o", "sample": "/998877\nCITIBANK NY\nNEW YORK, USA", "desc": "Lembaga keuangan perantara (nama & alamat bebas).", "desc_en": "Financial institution intermediary (unstructured name & address).", "rules": "Baris pertama berisi nomor rekening opsional, baris berikutnya nama dan alamat.", "rules_en": "First line contains optional account number, subsequent lines for name and address.", "source": "gs-docs"},
+      {"msg": "mt910", "tag": "72", "sub": "", "name": "Informasi Pengirim ke Penerima", "name_en": "Sender to Receiver Information", "len": "6*35x", "mo": "o", "sample": "/PHONBEN/PLEASE PHONE BENEFICIARY", "desc": "Keterangan atau instruksi khusus dari bank pengirim ke bank penerima.", "desc_en": "Specific instructions or information from the sending bank to the receiving bank.", "rules": "Maksimal 6 baris masing-masing 35 karakter. Gunakan format terstruktur jika diperlukan.", "rules_en": "Max 6 lines of 35 characters each. Use structured format prefixes if required.", "source": "gs-docs"}
     ];
 
     // ── Owner Mode ──────────────────────────────────────────────────────────
@@ -3426,6 +3676,8 @@ JOHN DOE
       if (tabParser) tabParser.classList.toggle('active', tabId === 'parser');
       const tabReconciliation = document.getElementById('tab-reconciliation');
       if (tabReconciliation) tabReconciliation.classList.toggle('active', tabId === 'reconciliation');
+      const tabLinked = document.getElementById('tab-linked-simulator');
+      if (tabLinked) tabLinked.classList.toggle('active', tabId === 'linked-simulator');
 
       // Update views visibility
       const viewHome = document.getElementById('view-home');
@@ -3436,8 +3688,16 @@ JOHN DOE
       if (viewParser) viewParser.style.display = tabId === 'parser' ? 'block' : 'none';
       const viewReconciliation = document.getElementById('view-reconciliation');
       if (viewReconciliation) viewReconciliation.style.display = tabId === 'reconciliation' ? 'block' : 'none';
+      const viewLinked = document.getElementById('view-linked-simulator');
+      if (viewLinked) viewLinked.style.display = tabId === 'linked-simulator' ? 'block' : 'none';
       const viewDetail = document.getElementById('view-detail');
       if (viewDetail) viewDetail.style.display = tabId === 'detail' ? 'block' : 'none';
+
+      if (tabId === 'linked-simulator') {
+        if (typeof initLinkedSimulator === 'function') {
+          initLinkedSimulator();
+        }
+      }
 
       // Update search input visibility and state
       const searchContainer = document.getElementById('searchContainer');
@@ -3579,7 +3839,7 @@ JOHN DOE
         }
       });
       
-      const coreTypes = ['MT940', 'MT942', 'MT950', 'MT103', 'MT101', 'MT104', 'MT102', 'MT564', 'MT202'];
+      const coreTypes = ['MT940', 'MT942', 'MT950', 'MT103', 'MT101', 'MT104', 'MT102', 'MT564', 'MT202', 'MT202COV', 'MT910'];
       coreTypes.forEach(t => msgTypes.add(t));
       
       const sortedTypes = Array.from(msgTypes).sort();
@@ -3604,6 +3864,7 @@ JOHN DOE
           else if (t === 'MT102') desc = currentLang === 'en' ? ' (Multiple Customer Funds Transfer)' : ' (Transfer Dana Nasabah Multi)';
           else if (t === 'MT564') desc = currentLang === 'en' ? ' (Corporate Action Notification)' : ' (Notifikasi Aksi Korporasi)';
           else if (t === 'MT202') desc = currentLang === 'en' ? ' (General Financial Institution Transfer)' : ' (Transfer Antar Lembaga Keuangan)';
+          else if (t === 'MT202COV') desc = currentLang === 'en' ? ' (Cover Payment)' : ' (Transfer Antarbank Koresponden - Cover)';
         }
         
         const option = document.createElement('option');
@@ -3724,6 +3985,32 @@ JOHN DOE
       };
     }
 
+    function parseMT910(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const relatedRef = tags['21'] || '';
+      const settled32A = parseTag32A(tags['32A']);
+      
+      let accountIdentification = tags['25'] || '';
+      let orderingCustomer = parseInstitution(tags['50A'] || tags['50F'] || tags['50K']);
+      let orderingInst = parseInstitution(tags['52A'] || tags['52D']);
+      let intermediary = parseInstitution(tags['56A'] || tags['56D']);
+      const senderToReceiver = tags['72'] || '';
+
+      return {
+        msgType: 'MT910',
+        senderRef,
+        relatedRef,
+        settledAmount: settled32A,
+        accountIdentification,
+        orderingCustomer,
+        orderingInst,
+        intermediary,
+        senderToReceiver,
+        tags
+      };
+    }
+
     function parseMT202(rawText) {
       const tags = parseGeneralTags(rawText);
       const senderRef = tags['20'] || '';
@@ -3752,6 +4039,75 @@ JOHN DOE
         accountWithInst,
         beneficiary,
         senderToReceiver,
+        tags
+      };
+    }
+
+    function parseMT202COV(rawText) {
+      const tags = parseGeneralTags(rawText);
+      const senderRef = tags['20'] || '';
+      const relatedRef = tags['21'] || '';
+      const timeIndication = tags['13C'] || '';
+      const settled32A = parseTag32A(tags['32A']);
+      
+      let orderingInst = parseInstitution(tags['52A'] || tags['52D']);
+      let senderCorr = parseInstitution(tags['53A'] || tags['53B'] || tags['53D']);
+      let receiverCorr = parseInstitution(tags['54A'] || tags['54B'] || tags['54D']);
+      let intermediary = parseInstitution(tags['56A'] || tags['56D']);
+      let accountWithInst = parseInstitution(tags['57A'] || tags['57B'] || tags['57D']);
+      let beneficiary = parseInstitution(tags['58A'] || tags['58D']);
+      const senderToReceiver = tags['72'] || '';
+
+      // Sequence B fields (Underlying customer transaction)
+      let underlyingSender = { name: '', account: '', address: '' };
+      const tag50 = tags['50A'] || tags['50F'] || tags['50K'] || '';
+      if (tag50) {
+        const lines = tag50.split('\n');
+        if (lines[0].startsWith('/')) {
+          underlyingSender.account = lines[0].substring(1);
+          underlyingSender.name = lines.slice(1).join(', ');
+        } else {
+          underlyingSender.name = lines.join(', ');
+        }
+      }
+
+      let underlyingBeneficiary = { name: '', account: '', address: '' };
+      const tag59 = tags['59'] || tags['59A'] || '';
+      if (tag59) {
+        const lines = tag59.split('\n');
+        if (lines[0].startsWith('/')) {
+          underlyingBeneficiary.account = lines[0].substring(1);
+          underlyingBeneficiary.name = lines.slice(1).join(', ');
+        } else {
+          underlyingBeneficiary.name = lines.join(', ');
+        }
+      }
+
+      let underlyingOrderingInst = parseInstitution(tags['52A'] || tags['52D']);
+      let underlyingIntermediary = parseInstitution(tags['56A'] || tags['56D']);
+      let underlyingAccountWithInst = parseInstitution(tags['57A'] || tags['57B'] || tags['57D']);
+      
+      const paymentDetails = tags['70'] || '';
+
+      return {
+        msgType: 'MT202COV',
+        senderRef,
+        relatedRef,
+        timeIndication,
+        settledAmount: settled32A,
+        orderingInst,
+        senderCorr,
+        receiverCorr,
+        intermediary,
+        accountWithInst,
+        beneficiary,
+        senderToReceiver,
+        underlyingSender,
+        underlyingBeneficiary,
+        underlyingOrderingInst,
+        underlyingIntermediary,
+        underlyingAccountWithInst,
+        paymentDetails,
         tags
       };
     }
@@ -4930,9 +5286,297 @@ JOHN DOE
       `;
     }
 
+    function renderMT910Output(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Related Reference' : 'Referensi Terkait'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.relatedRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(valueDate)}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Credited Amount' : 'Jumlah Kredit'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          ${renderInstitutionHtml(currentLang === 'en' ? '👤 Ordering Customer (Tag 50A/F/K)' : '👤 Nasabah Pengirim (Tag 50A/F/K)', statement.orderingCustomer)}
+          ${renderInstitutionHtml(currentLang === 'en' ? '🏦 Ordering Institution (Tag 52A/D)' : '🏦 Lembaga Pengirim (Tag 52A/D)', statement.orderingInst)}
+        </div>
+      `;
+
+      let routeHtml = '';
+      if (statement.accountIdentification || statement.intermediary || statement.senderToReceiver) {
+        routeHtml = `
+          <div class="dashboard-card" style="margin-top: 20px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">⚙️ ${currentLang === 'en' ? 'Transaction Details' : 'Detail Transaksi'}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+              ${statement.accountIdentification ? `
+                <div>
+                  <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase;">${currentLang === 'en' ? 'Account Identification (Tag 25)' : 'Identifikasi Rekening (Tag 25)'}</div>
+                  <div style="font-family: var(--mono); font-size: 13.5px; font-weight: 700; color: var(--ink); margin-top: 2px;">${escapeHtml(statement.accountIdentification)}</div>
+                </div>
+              ` : ''}
+              ${statement.intermediary ? `
+                <div>
+                  <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase;">${currentLang === 'en' ? 'Intermediary Institution (Tag 56A/D)' : 'Lembaga Perantara (Tag 56A/D)'}</div>
+                  <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 2px;">
+                    ${escapeHtml(statement.intermediary.bicOrName)}
+                    ${statement.intermediary.account ? ` <span style="font-size: 11px; color: var(--ink-soft);">(${escapeHtml(statement.intermediary.account)})</span>` : ''}
+                  </div>
+                </div>
+              ` : ''}
+              ${statement.senderToReceiver ? `
+                <div style="grid-column: 1 / -1;">
+                  <div style="font-size: 10px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase;">${currentLang === 'en' ? 'Sender to Receiver Info (Tag 72)' : 'Informasi Pengirim ke Penerima (Tag 72)'}</div>
+                  <pre style="font-family: var(--mono); font-size: 12.5px; color: var(--ink); margin-top: 4px; white-space: pre-wrap; background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--line);">${escapeHtml(statement.senderToReceiver)}</pre>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid var(--credit-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--credit-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT910BusinessExplanation(statement)}</div>
+        </div>
+      `;
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt910');
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg mt910" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">MT 910</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Confirmation of Credit' : 'Konfirmasi Kredit'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
+          ${routeHtml}
+          ${businessInsightHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
+    function getMT910BusinessExplanation(statement) {
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      const acc = statement.accountIdentification || '(tidak teridentifikasi / unidentified)';
+      
+      if (currentLang === 'en') {
+        return `
+          This <strong>MT910 Confirmation of Credit</strong> is sent by the correspondent bank to notify the receiving bank (the account owner) that its account <strong>${escapeHtml(acc)}</strong> has been credited with <strong>${amountStr} ${escapeHtml(currency)}</strong> on <strong>${escapeHtml(valueDate)}</strong>.
+          <br/><br/>
+          <strong>Key flows:</strong>
+          <ul>
+            <li><strong>Source of funds:</strong> The payment was initiated by <strong>${escapeHtml(statement.orderingCustomer ? statement.orderingCustomer.bicOrName : 'Ordering Customer')}</strong>.</li>
+            <li><strong>Related Reference:</strong> This transfer is tied to reference <strong>${escapeHtml(statement.relatedRef || 'N/A')}</strong> (typically pointing back to the cover payment MT202 COV or the original payment instruction MT103).</li>
+            <li><strong>Reconciliation:</strong> This credit confirmation acts as the official notice that the funding for the transaction is now available.</li>
+          </ul>
+        `;
+      } else {
+        return `
+          Pesan <strong>MT910 Konfirmasi Kredit</strong> ini dikirim oleh bank koresponden untuk memberitahukan kepada bank penerima (pemilik rekening) bahwa rekeningnya <strong>${escapeHtml(acc)}</strong> telah dikredit sebesar <strong>${amountStr} ${escapeHtml(currency)}</strong> pada tanggal valuta <strong>${escapeHtml(valueDate)}</strong>.
+          <br/><br/>
+          <strong>Aliran Transaksi:</strong>
+          <ul>
+            <li><strong>Sumber Dana:</strong> Pembayaran ini diinstruksikan oleh nasabah pengirim <strong>${escapeHtml(statement.orderingCustomer ? statement.orderingCustomer.bicOrName : 'Nasabah Pengirim')}</strong>.</li>
+            <li><strong>Referensi Terkait:</strong> Transaksi ini terhubung dengan referensi <strong>${escapeHtml(statement.relatedRef || 'N/A')}</strong> (biasanya merujuk ke pesan cover payment MT202 COV atau instruksi transfer asli MT103).</li>
+            <li><strong>Rekonsiliasi:</strong> Konfirmasi kredit ini berfungsi sebagai bukti resmi bahwa dana untuk transaksi yang dimaksud telah efektif masuk ke rekening koresponden bank penerima.</li>
+          </ul>
+        `;
+      }
+    }
+
+    function getMT202COVBusinessExplanation(statement) {
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      const beneficiary = statement.beneficiary ? (statement.beneficiary.bicOrName + (statement.beneficiary.account ? ` (${statement.beneficiary.account})` : '')) : '—';
+      
+      const underlyingSenderName = statement.underlyingSender ? statement.underlyingSender.name : '';
+      const underlyingBeneficiaryName = statement.underlyingBeneficiary ? statement.underlyingBeneficiary.name : '';
+
+      if (currentLang === 'id') {
+        return `
+          Pesan ini adalah <strong>MT 202 COV (Cover Payment)</strong>, transfer dana antarbank koresponden sebesar <strong>${amountStr} ${currency}</strong> dengan tanggal valuta <strong>${valueDate}</strong> yang ditujukan untuk menutup (cover) pendanaan transaksi nasabah ritel (MT103) secara terpisah.
+          <br/><br/>
+          <strong>Arti Bisnis & Komponen Cover:</strong>
+          <ul>
+            <li><strong>Mekanisme Cover Payment:</strong> Bank pengirim memisahkan jalur instruksi pembayaran nasabah (MT103 langsung ke bank penerima) dari jalur likuiditas/dana riil (MT202 COV melalui bank koresponden).</li>
+            <li><strong>Rekonsiliasi Otomatis (Sequence B):</strong> Sequence B berisi informasi nasabah asal <code>${escapeHtml(underlyingSenderName || '—')}</code> dan penerima akhir <code>${escapeHtml(underlyingBeneficiaryName || '—')}</code>. Bank penerima menggunakan data ini untuk mencocokkan dana cover yang masuk dengan pesan MT103 yang diterima.</li>
+            <li><strong>Lembaga Penerima Manfaat:</strong> Dana cover diselesaikan ke lembaga penerima manfaat (Beneficiary Institution) dengan identitas/BIC <code>${escapeHtml(beneficiary)}</code>.</li>
+          </ul>
+        `;
+      } else {
+        return `
+          This message is an <strong>MT 202 COV (Cover Payment)</strong>, a bank-to-bank funds transfer of <strong>${amountStr} ${currency}</strong> with a value date of <strong>${valueDate}</strong>. It is sent specifically to cover/fund an underlying customer credit transfer (MT103) routed via a separate channel.
+          <br/><br/>
+          <strong>Business Interpretation & Cover Mechanics:</strong>
+          <ul>
+            <li><strong>Cover Payment Method:</strong> The sending bank splits the transaction path. The payment instruction (MT103) goes directly to the beneficiary's bank, while the liquidity/settlement (MT202 COV) is routed through correspondent bank networks.</li>
+            <li><strong>Automated Reconciliation (Sequence B):</strong> Sequence B details the underlying sender <code>${escapeHtml(underlyingSenderName || '—')}</code> and beneficiary <code>${escapeHtml(underlyingBeneficiaryName || '—')}</code>. This prevents the beneficiary bank from releasing funds before cover is received and allows automatic matching.</li>
+            <li><strong>Beneficiary Institution:</strong> The cover funds are credited to the beneficiary financial institution identified by BIC/address <code>${escapeHtml(beneficiary)}</code>.</li>
+          </ul>
+        `;
+      }
+    }
+
+    function renderMT202COVOutput(statement) {
+      const output = document.getElementById('parserOutput');
+      
+      const currency = statement.settledAmount ? statement.settledAmount.currency : 'USD';
+      const amountStr = statement.settledAmount ? formatAmountRaw(statement.settledAmount.amount) : '0.00';
+      const valueDate = statement.settledAmount ? statement.settledAmount.date : '—';
+      
+      const headerHtml = `
+        <div class="dashboard-header-card" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Sender Reference' : 'Referensi Pengirim'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.senderRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Related Reference (MT103 Ref)' : 'Referensi Terkait (Ref MT103)'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(statement.relatedRef || '—')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">${currentLang === 'en' ? 'Value Date' : 'Tanggal Valuta'}</div>
+            <div style="font-size: 20px; font-weight: 800; color: var(--ink);">${escapeHtml(valueDate)}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <div style="font-size: 11px; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">${currentLang === 'en' ? 'Cover Settled Amount' : 'Jumlah Dana Cover'}</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--credit-color); text-align: right;">
+              ${amountStr} ${escapeHtml(currency)}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const cardsHtml = `
+        <div class="dashboard-cards-row" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          ${renderInstitutionHtml(currentLang === 'en' ? '🏦 Ordering Institution (Tag 52A/D)' : '🏦 Lembaga Pengirim (Tag 52A/D)', statement.orderingInst)}
+          ${renderInstitutionHtml(currentLang === 'en' ? '🎯 Beneficiary Institution (Tag 58A/D)' : '🎯 Lembaga Penerima (Tag 58A/D)', statement.beneficiary)}
+        </div>
+      `;
+
+      const underlyingCardsHtml = `
+        <div class="dashboard-card" style="margin-top: 20px; border-left: 4px solid var(--gold);">
+          <div style="font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>🔗</span> ${currentLang === 'en' ? 'Sequence B: Underlying Customer Transfer Details' : 'Sequence B: Detail Transaksi Nasabah Terkait'}
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+            <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1.5px solid var(--line);">
+              <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 4px;">👤 ${currentLang === 'en' ? 'Ordering Customer (50a)' : 'Pengirim Awal (50a)'}</div>
+              ${statement.underlyingSender && statement.underlyingSender.account ? `<div style="font-size: 12.5px; font-weight: 700; color: var(--ink);">Acc #: ${escapeHtml(statement.underlyingSender.account)}</div>` : ''}
+              <div style="font-size: 13.5px; font-weight: 800; color: var(--ink); margin-top: 2px;">${escapeHtml((statement.underlyingSender && statement.underlyingSender.name) || '—')}</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1.5px solid var(--line);">
+              <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 4px;">🎯 ${currentLang === 'en' ? 'Beneficiary Customer (59a)' : 'Penerima Akhir (59a)'}</div>
+              ${statement.underlyingBeneficiary && statement.underlyingBeneficiary.account ? `<div style="font-size: 12.5px; font-weight: 700; color: var(--ink);">Acc #: ${escapeHtml(statement.underlyingBeneficiary.account)}</div>` : ''}
+              <div style="font-size: 13.5px; font-weight: 800; color: var(--ink); margin-top: 2px;">${escapeHtml((statement.underlyingBeneficiary && statement.underlyingBeneficiary.name) || '—')}</div>
+            </div>
+          </div>
+          ${statement.paymentDetails ? `
+            <div style="margin-top: 14px; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px dashed var(--line);">
+              <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 4px;">💬 ${currentLang === 'en' ? 'Payment Details (70)' : 'Detail / Berita Pembayaran (70)'}</div>
+              <div style="font-family: var(--mono); font-size: 13px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.paymentDetails)}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      let routeHtml = '';
+      if (statement.senderCorr || statement.receiverCorr || statement.intermediary || statement.accountWithInst) {
+        routeHtml = `
+          <div class="dashboard-card" style="margin-top: 20px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px;">⚙️ ${currentLang === 'en' ? 'Routing Details' : 'Rute Perjalanan & Koresponden'}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+              ${renderRoutingFieldHtml(currentLang === 'en' ? "Sender's Correspondent (53A)" : 'Koresponden Pengirim (53A)', statement.senderCorr)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? "Receiver's Correspondent (54A)" : 'Koresponden Penerima (54A)', statement.receiverCorr)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? 'Intermediary Institution (56A)' : 'Lembaga Perantara (56A)', statement.intermediary)}
+              ${renderRoutingFieldHtml(currentLang === 'en' ? 'Account With Institution (57A)' : 'Lembaga Pengelola Rekening (57A)', statement.accountWithInst)}
+            </div>
+          </div>
+        `;
+      }
+
+      let infoHtml = '';
+      if (statement.senderToReceiver || statement.timeIndication) {
+        infoHtml = `
+          <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            ${statement.senderToReceiver ? `
+              <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+                <div style="font-weight: 800; color: var(--primary-color); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">💬 ${currentLang === 'en' ? 'Sender to Receiver Info' : 'Info Pengirim ke Penerima (72)'}</div>
+                <div style="font-family: var(--mono); font-size: 13.5px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.senderToReceiver)}</div>
+              </div>
+            ` : ''}
+            ${statement.timeIndication ? `
+              <div style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+                <div style="font-weight: 800; color: var(--primary-color); font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">🕒 ${currentLang === 'en' ? 'Time Indication' : 'Indikasi Waktu (13C)'}</div>
+                <div style="font-family: var(--mono); font-size: 13.5px; color: var(--ink); white-space: pre-wrap;">${escapeHtml(statement.timeIndication)}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      const tagBreakdownHtml = renderParsedTagsTable(statement.tags, 'mt202cov');
+
+      const businessInsightHtml = `
+        <div class="dashboard-info-banner" style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary-color); border-radius: 12px; padding: 20px; margin-top: 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; color: var(--ink);">
+          <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>💡</span> ${currentLang === 'id' ? 'Tinjauan & Arti Bisnis' : 'Executive Business Insights'}
+          </div>
+          <div>${getMT202COVBusinessExplanation(statement)}</div>
+        </div>
+      `;
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard">
+          <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <span class="badge-msg" style="font-size: 13px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">MT 202 COV</span>
+            <span style="font-family: var(--serif); font-size: 18px; font-weight: 800; color: var(--ink);">${currentLang === 'en' ? 'Cover Payment' : 'Transfer Antarbank Koresponden (Cover)'}</span>
+          </div>
+          ${headerHtml}
+          ${cardsHtml}
+          ${underlyingCardsHtml}
+          ${renderPathwayDiagramHtml(statement)}
+          ${routeHtml}
+          ${infoHtml}
+          ${businessInsightHtml}
+          ${tagBreakdownHtml}
+        </div>
+      `;
+    }
+
     /* ── Pathway Diagram Helper Functions ── */
     function renderPathwayDiagramHtml(statement) {
-      if (!statement || (statement.msgType !== 'MT103' && statement.msgType !== 'MT202' && statement.msgType !== 'MT101' && statement.msgType !== 'MT102' && statement.msgType !== 'MT104')) {
+      if (!statement || (statement.msgType !== 'MT103' && statement.msgType !== 'MT202' && statement.msgType !== 'MT202COV' && statement.msgType !== 'MT101' && statement.msgType !== 'MT102' && statement.msgType !== 'MT104' && statement.msgType !== 'MT910')) {
         return '';
       }
 
@@ -5081,7 +5725,7 @@ JOHN DOE
             : 'Nasabah akhir yang berhak menerima kiriman dana.'
         });
 
-      } else if (statement.msgType === 'MT202') {
+      } else if (statement.msgType === 'MT202' || statement.msgType === 'MT202COV') {
         // 1. Ordering Institution (Tag 52)
         if (statement.orderingInst) {
           nodes.push({
@@ -5497,6 +6141,102 @@ JOHN DOE
             ? 'The payer/debtor whose account is debited.'
             : 'Nasabah pembayar yang rekeningnya didebit.'
         });
+      } else if (statement.msgType === 'MT910') {
+        // MT910: Confirmation of Credit — flow: Ordering Customer → Ordering Institution → Intermediary → Correspondent Bank → Account Owner
+
+        // 1. Ordering Customer (Tag 50A/F/K)
+        if (statement.orderingCustomer) {
+          nodes.push({
+            id: '50',
+            tag: tags['50A'] ? '50A' : (tags['50F'] ? '50F' : (tags['50K'] ? '50K' : '50')),
+            roleEn: 'Ordering Customer',
+            roleId: 'Nasabah Pengirim',
+            icon: '👤',
+            name: statement.orderingCustomer.bicOrName || '—',
+            acc: statement.orderingCustomer.account || '',
+            address: statement.orderingCustomer.address || '',
+            details: currentLang === 'en'
+              ? 'The customer who originally ordered the payment that triggered this credit confirmation.'
+              : 'Nasabah yang menginstruksikan pembayaran asal yang memicu konfirmasi kredit ini.'
+          });
+        }
+
+        // 2. Ordering Institution (Tag 52A/D)
+        if (statement.orderingInst) {
+          nodes.push({
+            id: '52',
+            tag: tags['52A'] ? '52A' : '52D',
+            roleEn: 'Ordering Institution',
+            roleId: 'Lembaga Pengirim',
+            icon: '🏦',
+            name: statement.orderingInst.bicOrName || '—',
+            acc: statement.orderingInst.account || '',
+            address: statement.orderingInst.address || '',
+            details: currentLang === 'en'
+              ? 'The financial institution that initiated the funds transfer resulting in this credit.'
+              : 'Lembaga keuangan yang memprakarsai transfer dana sehingga menghasilkan kredit ini.'
+          });
+        }
+
+        // 3. Intermediary Institution (Tag 56A/D)
+        if (statement.intermediary) {
+          nodes.push({
+            id: '56',
+            tag: tags['56A'] ? '56A' : '56D',
+            roleEn: 'Intermediary Institution',
+            roleId: 'Lembaga Perantara',
+            icon: '🏦',
+            name: statement.intermediary.bicOrName || '—',
+            acc: statement.intermediary.account || '',
+            address: statement.intermediary.address || '',
+            details: currentLang === 'en'
+              ? 'An intermediate bank that routed the cover funds before reaching the correspondent.'
+              : 'Bank perantara yang meneruskan dana cover sebelum sampai ke bank koresponden.'
+          });
+        }
+
+        // 4. Correspondent Bank (sender of the MT910 — derived from SWIFT header)
+        {
+          // The MT910 sender is the correspondent bank confirming the credit
+          let corrBic = '';
+          const rawText = document.getElementById('rawInput') ? document.getElementById('rawInput').value : '';
+          const headerMatch = rawText.match(/\{1:F01(\w{8,11})/);
+          if (headerMatch) corrBic = headerMatch[1].replace(/X+$/, '');
+          nodes.push({
+            id: 'corr',
+            tag: 'Header',
+            roleEn: 'Correspondent Bank (Sender)',
+            roleId: 'Bank Koresponden (Pengirim MT910)',
+            icon: '🏛️',
+            name: corrBic || '—',
+            acc: '',
+            address: '',
+            details: currentLang === 'en'
+              ? 'The correspondent bank that sends this MT910 to confirm the credit. This bank holds the nostro account of the receiving bank.'
+              : 'Bank koresponden yang mengirim MT910 ini untuk mengonfirmasi kredit. Bank ini menyimpan rekening nostro bank penerima.'
+          });
+        }
+
+        // 5. Account Owner / Receiving Bank (Tag 25 — the credited account)
+        {
+          let accOwnerBic = '';
+          const rawText = document.getElementById('rawInput') ? document.getElementById('rawInput').value : '';
+          const recvMatch = rawText.match(/\{2:[IO]910(\w{8,11})/);
+          if (recvMatch) accOwnerBic = recvMatch[1].replace(/X+$/, '').replace(/N$/, '');
+          nodes.push({
+            id: '25',
+            tag: '25',
+            roleEn: 'Account Owner (Receiving Bank)',
+            roleId: 'Pemilik Rekening (Bank Penerima)',
+            icon: '🎯',
+            name: accOwnerBic || '—',
+            acc: statement.accountIdentification || '',
+            address: '',
+            details: currentLang === 'en'
+              ? 'The receiving bank whose nostro account has been credited. This bank receives the MT910 as confirmation that funds are available.'
+              : 'Bank penerima yang rekening nostro-nya telah dikredit. Bank ini menerima MT910 sebagai konfirmasi bahwa dana telah masuk.'
+          });
+        }
       }
 
       currentPathwayNodes = nodes;
@@ -6061,7 +6801,11 @@ JOHN DOE
           if (/\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'))) {
             mtType = 'MT564';
           } else if (/\{2:[IO]202/i.test(text) || text.includes('MT202')) {
-            mtType = 'MT202';
+            if (text.includes('/COV/') || text.includes('202COV') || text.includes('202 COV') || text.includes(':59:')) {
+              mtType = 'MT202COV';
+            } else {
+              mtType = 'MT202';
+            }
           } else if (/\{2:[IO]104/i.test(text) || text.includes('MT104')) {
             mtType = 'MT104';
           } else if (/\{2:[IO]102/i.test(text) || text.includes('MT102')) {
@@ -6070,6 +6814,8 @@ JOHN DOE
             mtType = 'MT103';
           } else if (/\{2:[IO]101/i.test(text) || (text.includes(':28D:') && text.includes(':30:')) || text.includes('MT101')) {
             mtType = 'MT101';
+          } else if (/\{2:[IO]910/i.test(text) || text.includes('MT910')) {
+            mtType = 'MT910';
           } else if (/\{2:[IO]942/i.test(text) || text.includes(':34F:')) {
             mtType = 'MT942';
           } else if (/\{2:[IO]950/i.test(text)) {
@@ -6084,8 +6830,12 @@ JOHN DOE
         const statementTypes = ['MT940', 'MT942', 'MT950'];
         if (mtType === 'MT564') {
           activeStatement = parseMT564(text);
+        } else if (mtType === 'MT910') {
+          activeStatement = parseMT910(text);
         } else if (mtType === 'MT202') {
           activeStatement = parseMT202(text);
+        } else if (mtType === 'MT202COV') {
+          activeStatement = parseMT202COV(text);
         } else if (mtType === 'MT104') {
           activeStatement = parseMT104(text);
         } else if (mtType === 'MT102') {
@@ -6118,10 +6868,14 @@ JOHN DOE
       if (!activeStatement) return;
 
       if (activeStatement.msgType === 'MT564') {
-        renderMT564Output(activeStatement);
-      } else if (activeStatement.msgType === 'MT202') {
-        renderMT202Output(activeStatement);
-      } else if (activeStatement.msgType === 'MT103') {
+          renderMT564Output(activeStatement);
+        } else if (activeStatement.msgType === 'MT910') {
+          renderMT910Output(activeStatement);
+        } else if (activeStatement.msgType === 'MT202') {
+          renderMT202Output(activeStatement);
+        } else if (activeStatement.msgType === 'MT202COV') {
+          renderMT202COVOutput(activeStatement);
+        } else if (activeStatement.msgType === 'MT103') {
         renderMT103Output(activeStatement);
       } else if (activeStatement.msgType === 'MT101') {
         renderMT101Output(activeStatement);
@@ -6730,6 +7484,44 @@ BENEFICIARYBIC
 -}`;
         document.getElementById('rawInput').value = sample202;
         document.getElementById('parserTypeSelect').value = 'mt202';
+      } else if (type === 'mt202cov') {
+        const sample202cov = `{1:F01BANKDEFXAXXX0000000000}{2:I202BANKDEFXXXXXN}{4:
+:20:REF202COV12345
+:21:CLIENTREF103
+:32A:230705USD45000,00
+:52A:/11223344
+ORDERINGBANKBIC
+:53A:/22334455
+SENDERCORRBIC
+:57A:/55667788
+RECEIVERBANKBIC
+:58A:/66778899
+BENEFICIARYBANKBIC
+:72:/COV/
+:50K:/1234567890
+PT MAJU MUNDUR SEJAHTERA
+:59:/9876543210
+JOHN DOE
+-}`;
+        document.getElementById('rawInput').value = sample202cov;
+        document.getElementById('parserTypeSelect').value = 'mt202cov';
+      } else if (type === 'mt910') {
+        const sample910 = `{1:F01CITIUS33XXXX0000000000}{2:I910BNIJIDJAXXXXN}{4:
+:20:CR-TX-2026-0042
+:21:COV-TX-2026-0042
+:25:/0011223344
+:32A:260706USD50000,00
+:50K:/1122334455
+PT MAJU MUNDUR SEJAHTERA
+JL. SUDIRMAN NO. 10
+JAKARTA, INDONESIA
+:52A:CITIUS33XXXX
+:56A:BNINIDJA
+:72:/PHONBEN/PLEASE ADVISE BENEFICIARY
+/REC/COVER PAYMENT RECEIVED
+-}`;
+        document.getElementById('rawInput').value = sample910;
+        document.getElementById('parserTypeSelect').value = 'mt910';
       } else {
         const sample = `{1:F01GSCRUS30XXXX3614000002}{2:I940GSCRUS30XXXXN}{4:
 :20:15486025400
@@ -7023,6 +7815,15 @@ BENEFICIARYBIC
         lblChart1Title: "Porsi Kategori Pesan",
         lblChart2Title: "Perbandingan Tipe Tag",
         lblTabReconciliation: "Rekonsiliasi",
+        lblTabLinkedSimulator: "Simulasi Rantai",
+        lblLinkedSimulatorTitle: "Simulator Rantai Transaksi SWIFT",
+        lblLinkedSimulatorDesc: "Simulasikan dan visualisasikan keterkaitan antar pesan SWIFT dalam satu rantai transaksi keuangan secara interaktif.",
+        lblLinkedSelectScenario: "Pilih Skenario:",
+        btnLinkedDemo: "💡 Muat Data Demo",
+        btnLinkedReset: "✕ Reset",
+        lblParamsTitle: "Parameter Transaksi",
+        lblTimelineTitle: "Visualisasi Rantai Pesan",
+        lblInspectorTitle: "Inspektur Tag Relasional",
         lblReconciliationTitle: "Simulator Rekonsiliasi",
         lblReconciliationDesc: "Mencocokkan mutasi transaksi laporan rekening (MT940/942/950) dengan instruksi pembayaran (MT103/MT101) secara otomatis.",
         lblReconStatementLabel: "Pesan Laporan Mentah (MT940/MT942/MT950)",
@@ -7137,6 +7938,15 @@ BENEFICIARYBIC
         lblChart1Title: "Message Category Proportion",
         lblChart2Title: "Tag Type Comparison",
         lblTabReconciliation: "Reconciliation",
+        lblTabLinkedSimulator: "Linked Simulator",
+        lblLinkedSimulatorTitle: "SWIFT Transaction Chain Simulator",
+        lblLinkedSimulatorDesc: "Simulate and visualize connections between SWIFT messages in a financial transaction lifecycle interactively.",
+        lblLinkedSelectScenario: "Select Scenario:",
+        btnLinkedDemo: "💡 Load Demo Data",
+        btnLinkedReset: "✕ Reset",
+        lblParamsTitle: "Transaction Parameters",
+        lblTimelineTitle: "Message Chain Timeline",
+        lblInspectorTitle: "Relational Tag Inspector",
         lblReconciliationTitle: "Reconciliation Simulator",
         lblReconciliationDesc: "Automatically match bank statement transaction entries (MT940/942/950) with payment instructions (MT103/MT101).",
         lblReconStatementLabel: "Raw Statement Messages (MT940/MT942/MT950)",
@@ -7366,6 +8176,30 @@ BENEFICIARYBIC
           category: "Category 2: Financial Institution Transfers",
           title: "General Financial Institution Transfer",
           desc: "Used to execute funds transfers between financial institutions or correspondent banks without involving retail customers."
+        }
+      },
+      mt202cov: {
+        id: {
+          category: "Kategori 2: Transfer Lembaga Keuangan",
+          title: "Cover Payment (MT202 COV)",
+          desc: "Format transaksi antarbank koresponden untuk mendanai instruksi pembayaran nasabah (MT103) yang dikirim secara terpisah."
+        },
+        en: {
+          category: "Category 2: Financial Institution Transfers",
+          title: "Cover Payment (MT202 COV)",
+          desc: "Correspondent bank transfer used to cover/fund a client payment instruction (MT103) sent via a separate channel."
+        }
+      },
+      mt910: {
+        id: {
+          category: "Kategori 9: Manajemen Kas",
+          title: "Konfirmasi Kredit (Confirmation of Credit)",
+          desc: "Dikirimkan oleh bank koresponden kepada pemilik rekening (bank penerima) untuk mengonfirmasi bahwa rekeningnya telah dikredit sejumlah dana."
+        },
+        en: {
+          category: "Category 9: Cash Management",
+          title: "Confirmation of Credit",
+          desc: "Sent by a correspondent bank to the account owner (receiving bank) to confirm that its account has been credited with a specified amount."
         }
       }
     };
@@ -7599,7 +8433,7 @@ BENEFICIARYBIC
       const searchInput = document.getElementById('homeSearchInput');
       const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-      const popularTypes = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt564'];
+      const popularTypes = ['mt940', 'mt942', 'mt950', 'mt910', 'mt103', 'mt101', 'mt564', 'mt202', 'mt202cov'];
       const msgTypesSet = new Set();
       
       if (q) {
@@ -7695,7 +8529,7 @@ BENEFICIARYBIC
     }
 
     function isParserSupported(msg) {
-      const supported = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564', 'mt202'];
+      const supported = ['mt940', 'mt942', 'mt950', 'mt103', 'mt101', 'mt102', 'mt104', 'mt564', 'mt202', 'mt202cov', 'mt910'];
       return supported.includes(msg.toLowerCase());
     }
 
@@ -7921,6 +8755,47 @@ BENEFICIARYBIC
 
       const lblReconDevToolsTitle = document.getElementById('lbl-reconDevToolsTitle');
       if (lblReconDevToolsTitle) lblReconDevToolsTitle.innerHTML = '🛠️ ' + dict.lblReconDevTools;
+
+      const lblTabLinkedSimulator = document.getElementById('lbl-tabLinkedSimulator');
+      if (lblTabLinkedSimulator) lblTabLinkedSimulator.innerText = dict.lblTabLinkedSimulator;
+
+      const lblLinkedSimulatorTitle = document.getElementById('lbl-linkedSimulatorTitle');
+      if (lblLinkedSimulatorTitle) lblLinkedSimulatorTitle.innerText = dict.lblLinkedSimulatorTitle;
+
+      const lblLinkedSimulatorDesc = document.getElementById('lbl-linkedSimulatorDesc');
+      if (lblLinkedSimulatorDesc) lblLinkedSimulatorDesc.innerText = dict.lblLinkedSimulatorDesc;
+
+      const lblLinkedSelectScenario = document.getElementById('lbl-linkedSelectScenario');
+      if (lblLinkedSelectScenario) lblLinkedSelectScenario.innerText = dict.lblLinkedSelectScenario;
+
+      const btnLinkedDemo = document.getElementById('btnLinkedDemo');
+      if (btnLinkedDemo) btnLinkedDemo.innerText = dict.btnLinkedDemo;
+
+      const btnLinkedReset = document.getElementById('btnLinkedReset');
+      if (btnLinkedReset) btnLinkedReset.innerText = dict.btnLinkedReset;
+
+      const lblParamsTitle = document.getElementById('lbl-paramsTitle');
+      if (lblParamsTitle) lblParamsTitle.innerText = dict.lblParamsTitle;
+
+      const lblTimelineTitle = document.getElementById('lbl-timelineTitle');
+      if (lblTimelineTitle) lblTimelineTitle.innerText = dict.lblTimelineTitle;
+
+      const lblInspectorTitle = document.getElementById('lbl-inspectorTitle');
+      if (lblInspectorTitle) lblInspectorTitle.innerText = dict.lblInspectorTitle;
+
+      const optScenCover = document.getElementById('opt-scenCover');
+      if (optScenCover) optScenCover.innerText = currentLang === 'en' ? 
+        "Cover Payment Method (MT101 ➔ MT103 ➔ MT202 COV ➔ MT910 ➔ MT940)" : 
+        "Metode Pembayaran Cover (MT101 ➔ MT103 ➔ MT202 COV ➔ MT910 ➔ MT940)";
+      
+      const optScen940 = document.getElementById('opt-scen940');
+      if (optScen940) optScen940.innerText = currentLang === 'en' ? 
+        "MT940 Statement Lifecycle (Daily Credits/Debits Ledger)" : 
+        "Siklus Hidup Laporan MT940 (Harian Kredit/Debit Ledger)";
+
+      if (typeof updateLinkedMessages === 'function') {
+        updateLinkedMessages();
+      }
 
       if (activeReconResults) {
         renderReconciliationResults();
@@ -8914,6 +9789,827 @@ BOB JOHNSON
       document.getElementById('reconStatementsInput').value = sampleStatement;
       document.getElementById('reconPaymentsInput').value = samplePayments;
       showToast(currentLang === 'en' ? 'Demo data loaded!' : 'Data demo berhasil dimuat!');
+    }
+
+    // =========================================================================
+    // 🔗 LINKED SWIFT TRANSACTION CHAIN SIMULATOR LOGIC
+    // =========================================================================
+    let linkedActiveScenario = 'cover';
+    let linkedActiveStepIndex = 0;
+    let linkedMessagesList = [];
+    let linkedActiveTagHighlight = null;
+
+    let linked940Transactions = [
+      { type: 'credit', amount: 25000, ref: 'INV-ACME-001', trigger: 'MT103', partner: 'ACME CORP' },
+      { type: 'debit', amount: 12000, ref: 'PAY-VEND-112', trigger: 'MT103', partner: 'SUPPLIER XYZ' },
+      { type: 'credit', amount: 45000, ref: 'TR-LIQ-33', trigger: 'MT202', partner: 'BANK CENTRALE' }
+    ];
+
+    const coverInspectorLinks = {
+      mt101: {
+        '20': { text: 'Referensi Transaksi (:20:) ini dirujuk sebagai Tag :21: (Related Reference) pada pesan pembayaran MT103.', text_en: 'This reference (Tag :20:) is referenced as Tag :21: (Related Reference) in the MT103 payment message.', targetMsg: 'mt103', targetTag: '21' },
+        '50H': { text: 'Identitas nasabah pengirim (Ordering Customer) diteruskan menjadi Tag :50K: di MT103.', text_en: 'The sender identity (Ordering Customer) is carried over to Tag :50K: in MT103.', targetMsg: 'mt103', targetTag: '50K' },
+        '59': { text: 'Rekening & nama nasabah penerima diteruskan ke Tag :59: di MT103.', text_en: 'The beneficiary account & name is carried over to Tag :59: in MT103.', targetMsg: 'mt103', targetTag: '59' }
+      },
+      mt103: {
+        '20': { text: 'Referensi MT103 (:20:) dirujuk dalam Cover Payment (MT202 COV Tag :21:) agar bank penerima dapat memetakan cover pendanaan, dan dicatat di statement penerima (MT940 Tag :61:).', text_en: 'The MT103 reference (:20:) is referenced in the Cover Payment (MT202 COV Tag :21:) for bank reconciliation, and recorded in the beneficiary statement (MT940 Tag :61:).', targetMsg: 'mt202cov', targetTag: '21' },
+        '21': { text: 'Merujuk kembali ke referensi permintaan transfer nasabah awal (MT101 Tag :20:).', text_en: 'Refers back to the initial ordering customer request reference (MT101 Tag :20:).', targetMsg: 'mt101', targetTag: '20' },
+        '50K': { text: 'Nama nasabah pengirim yang mencocokkan nasabah peminta transfer asli di MT101.', text_en: 'Ordering customer matches the original requesting client in MT101.', targetMsg: 'mt101', targetTag: '50H' },
+        '59': { text: 'Nama nasabah penerima yang dicocokkan dengan entri mutasi kredit rekening koran di MT940.', text_en: 'Beneficiary name matches the final statement credit record in MT940.', targetMsg: 'mt940', targetTag: '61' }
+      },
+      mt202cov: {
+        '20': { text: 'Referensi pesan cover ini dirujuk oleh bank perantara di MT910 Tag :21: saat mengonfirmasi kredit dana cover.', text_en: 'This cover reference is referenced by the receiving bank in MT910 Tag :21: when confirming receipt of the cover.', targetMsg: 'mt910', targetTag: '21' },
+        '21': { text: 'Merujuk ke pesan MT103 yang dicover. Sangat penting bagi bank penerima untuk mencocokkan dana cover dengan pesan detail MT103.', text_en: 'Points to the underlying MT103 message. Essential for the beneficiary bank to link the cover funds with the MT103 instructions.', targetMsg: 'mt103', targetTag: '20' }
+      },
+      mt910: {
+        '21': { text: 'Merujuk ke ID pesan cover MT202 COV yang menginisiasi pengiriman dana cover.', text_en: 'Refers to the MT202 COV message ID that initiated the cover funds transfer.', targetMsg: 'mt202cov', targetTag: '20' }
+      },
+      mt940: {
+        '61': { text: 'Baris transaksi kredit ini berisi referensi (sub-field 7) yang merujuk langsung ke MT103 Tag :20:.', text_en: 'This transaction credit line contains the reference (subfield 7) which points back to MT103 Tag :20:.', targetMsg: 'mt103', targetTag: '20' }
+      }
+    };
+
+    function initLinkedSimulator() {
+      // Initialize inputs if list is empty
+      if (linkedMessagesList.length === 0) {
+        resetLinkedSimulator();
+      }
+    }
+
+    function changeLinkedScenario() {
+      linkedActiveScenario = document.getElementById('linkedScenarioSelect').value;
+      linkedActiveStepIndex = 0;
+      linkedActiveTagHighlight = null;
+
+      document.getElementById('linked-form-cover').style.display = linkedActiveScenario === 'cover' ? 'flex' : 'none';
+      document.getElementById('linked-form-mt940').style.display = linkedActiveScenario === 'mt940_lifecycle' ? 'flex' : 'none';
+
+      if (linkedActiveScenario === 'mt940_lifecycle') {
+        render940TxInputs();
+      }
+      updateLinkedMessages();
+    }
+
+    function addLinked940Tx(e) {
+      if (e) e.preventDefault();
+      const idx = linked940Transactions.length + 1;
+      linked940Transactions.push({
+        type: idx % 2 === 1 ? 'credit' : 'debit',
+        amount: 15000,
+        ref: 'TX-' + Math.floor(Math.random() * 90000 + 10000),
+        trigger: 'MT103',
+        partner: 'PARTNER_' + idx
+      });
+      render940TxInputs();
+      updateLinkedMessages();
+    }
+
+    function removeLinked940Tx(index) {
+      linked940Transactions.splice(index, 1);
+      render940TxInputs();
+      updateLinkedMessages();
+    }
+
+    function updateLinkedTxField(index, field, value) {
+      if (field === 'amount') {
+        linked940Transactions[index][field] = parseFloat(value) || 0;
+      } else {
+        linked940Transactions[index][field] = value;
+      }
+      updateLinkedMessages();
+    }
+
+    function render940TxInputs() {
+      const container = document.getElementById('link-940-tx-container');
+      if (!container) return;
+
+      container.innerHTML = '';
+      linked940Transactions.forEach((tx, idx) => {
+        const div = document.createElement('div');
+        div.style.background = 'var(--paper)';
+        div.style.border = '1px solid var(--line)';
+        div.style.borderRadius = '8px';
+        div.style.padding = '12px';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.gap = '8px';
+        div.style.position = 'relative';
+
+        div.innerHTML = `
+          <button onclick="removeLinked940Tx(${idx})" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: #ef4444; font-weight: bold; cursor: pointer; font-size: 14px;" title="Remove">✕</button>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <label style="font-size: 9px; font-weight: 700; color: var(--ink-soft);">TIPE / TYPE</label>
+              <select onchange="updateLinkedTxField(${idx}, 'type', this.value)" style="padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; background: var(--panel); color: var(--ink);">
+                <option value="credit" ${tx.type === 'credit' ? 'selected' : ''}>CREDIT (+)</option>
+                <option value="debit" ${tx.type === 'debit' ? 'selected' : ''}>DEBIT (-)</option>
+              </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <label style="font-size: 9px; font-weight: 700; color: var(--ink-soft);">TRIGGER MSG</label>
+              <select onchange="updateLinkedTxField(${idx}, 'trigger', this.value)" style="padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; background: var(--panel); color: var(--ink);">
+                <option value="MT103" ${tx.trigger === 'MT103' ? 'selected' : ''}>MT103</option>
+                <option value="MT202" ${tx.trigger === 'MT202' ? 'selected' : ''}>MT202</option>
+                <option value="MT202COV" ${tx.trigger === 'MT202COV' ? 'selected' : ''}>MT202 COV</option>
+                <option value="FEE" ${tx.trigger === 'FEE' ? 'selected' : ''}>Fee / Interest</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <label style="font-size: 9px; font-weight: 700; color: var(--ink-soft);">AMOUNT</label>
+              <input type="number" value="${tx.amount}" oninput="updateLinkedTxField(${idx}, 'amount', this.value)" style="padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; background: var(--panel); color: var(--ink);">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <label style="font-size: 9px; font-weight: 700; color: var(--ink-soft);">REFERENCE</label>
+              <input type="text" value="${tx.ref}" oninput="updateLinkedTxField(${idx}, 'ref', this.value)" style="padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; background: var(--panel); color: var(--ink); font-family: var(--mono);">
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <label style="font-size: 9px; font-weight: 700; color: var(--ink-soft);">PARTNER / NARRATIVE</label>
+            <input type="text" value="${tx.partner}" oninput="updateLinkedTxField(${idx}, 'partner', this.value)" style="padding: 4px; border: 1px solid var(--line); border-radius: 4px; font-size: 11px; background: var(--panel); color: var(--ink);">
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function generateCoverChain(params) {
+      const { sender, senderBank, corrA, corrB, receiverBank, beneficiary, currency, amount, ref } = params;
+      const valueDate = '260706'; // YYMMDD
+      const amountFormatted = amount.toFixed(2).replace('.', ',');
+
+      const mt101Raw = `{1:F01${senderBank}XXXX0000000000}{2:I101${receiverBank}XXXXN}{4:\n` +
+        `:20:REQ-${ref}\n` +
+        `:28D:1/1\n` +
+        `:30:${valueDate}\n` +
+        `:32B:${currency}${amountFormatted}\n` +
+        `:50H:/1122334455\n` +
+        `${sender.toUpperCase()}\n` +
+        `:57A:${receiverBank}\n` +
+        `:59:/9988776655\n` +
+        `${beneficiary.toUpperCase()}\n` +
+        `:70:INVOICE PAYMENT FOR SERVICES\n` +
+        `-}`;
+
+      const mt103Raw = `{1:F01${senderBank}XXXX0000000000}{2:I103${receiverBank}XXXXN}{4:\n` +
+        `:20:${ref}\n` +
+        `:21:REQ-${ref}\n` +
+        `:23B:CRED\n` +
+        `:32A:${valueDate}${currency}${amountFormatted}\n` +
+        `:50K:/1122334455\n` +
+        `${sender.toUpperCase()}\n` +
+        `:57A:${receiverBank}\n` +
+        `:59:/9988776655\n` +
+        `${beneficiary.toUpperCase()}\n` +
+        `:70:INVOICE PAYMENT FOR SERVICES\n` +
+        `:71A:SHA\n` +
+        `-}`;
+
+      const mt202covRaw = `{1:F01${senderBank}XXXX0000000000}{2:I202${corrA}XXXXN}{4:\n` +
+        `:20:COV-${ref}\n` +
+        `:21:${ref}\n` +
+        `:32A:${valueDate}${currency}${amountFormatted}\n` +
+        `:52A:${senderBank}\n` +
+        `:56A:${corrB}\n` +
+        `:57A:${receiverBank}\n` +
+        `-}`;
+
+      const mt910Raw = `{1:F01${corrB}XXXX0000000000}{2:I910${receiverBank}XXXXN}{4:\n` +
+        `:20:CR-${ref}\n` +
+        `:21:COV-${ref}\n` +
+        `:25:/ACC-CORR-REC\n` +
+        `:32A:${valueDate}${currency}${amountFormatted}\n` +
+        `:52A:${corrB}\n` +
+        `-}`;
+
+      const mt940Raw = `{1:F01${receiverBank}XXXX0000000000}{2:I940${beneficiary.replace(/\s+/g, '').substring(0, 8).toUpperCase()}N}{4:\n` +
+        `:20:STAT-${valueDate}\n` +
+        `:25:/9988776655\n` +
+        `:28C:150/1\n` +
+        `:60F:C${valueDate}${currency}100000,00\n` +
+        `:61:${valueDate}0706C${amountFormatted}NTRF//${ref}\n` +
+        `:86:DBNM/${sender.toUpperCase()}/REMI/INVOICE PAYMENT FOR SERVICES\n` +
+        `:62F:C${valueDate}${currency}${(100000 + amount).toFixed(2).replace('.', ',')}\n` +
+        `-}`;
+
+      return [
+        { id: 'mt101', name: '1. MT101 Request', type: 'MT101', raw: mt101Raw, desc: 'Instruksi pembayaran awal dari nasabah pengirim ke bank pengirim.', desc_en: 'Initial payment instruction from ordering customer to ordering bank.' },
+        { id: 'mt103', name: '2. MT103 Payment', type: 'MT103', raw: mt103Raw, desc: 'Pesan pembayaran detail yang dikirim ke bank penerima.', desc_en: 'Detailed payment message sent to beneficiary bank.' },
+        { id: 'mt202cov', name: '3. MT202 COV Cover', type: 'MT202 COV', raw: mt202covRaw, desc: 'Pesan transfer likuiditas antarbank koresponden untuk mendanai MT103.', desc_en: 'Correspondent bank transfer to cover the MT103 instruction.' },
+        { id: 'mt910', name: '4. MT910 Advice', type: 'MT910', raw: mt910Raw, desc: 'Konfirmasi kredit dana cover yang diterima bank penerima dari korespondennya.', desc_en: 'Confirmation of credit for cover funds received by beneficiary bank from correspondent.' },
+        { id: 'mt940', name: '5. MT940 Statement', type: 'MT940', raw: mt940Raw, desc: 'Laporan rekening koran akhir hari yang dikirim ke nasabah penerima.', desc_en: 'End-of-day bank statement sent to beneficiary customer.' }
+      ];
+    }
+
+    function generateMT940LifecycleChain(acc, currency, openBal, txList) {
+      const valueDate = '260706';
+      const dateStr = '2026-07-06';
+      let currentBalance = parseFloat(openBal);
+      const steps = [];
+
+      const openFormatted = currentBalance.toFixed(2).replace('.', ',');
+      const openRaw = `{1:F01BANKNY99AXXX0000000000}{2:I940${acc}N}{4:\n` +
+        `:20:OPENING-STATE\n` +
+        `:25:/${acc}\n` +
+        `:60F:C${valueDate}${currency}${openFormatted}\n` +
+        `-}`;
+
+      steps.push({
+        id: 'open_bal',
+        name: 'Opening Balance',
+        type: 'MT940',
+        raw: openRaw,
+        desc: `Saldo awal rekening koran untuk nomor rekening ${acc} adalah ${currency} ${openFormatted}.`,
+        desc_en: `The opening balance for account ${acc} is ${currency} ${openFormatted}.`
+      });
+
+      const statementLines = [];
+      txList.forEach((tx, idx) => {
+        const isCredit = tx.type === 'credit';
+        const sign = isCredit ? 'C' : 'D';
+        const amountVal = parseFloat(tx.amount) || 0;
+        if (isCredit) {
+          currentBalance += amountVal;
+        } else {
+          currentBalance -= amountVal;
+        }
+        const txAmountFormatted = amountVal.toFixed(2).replace('.', ',');
+
+        let triggerRaw = '';
+        let triggerDesc = '';
+        let triggerDescEn = '';
+
+        if (tx.trigger === 'MT103') {
+          if (isCredit) {
+            triggerRaw = `{1:F01SENDERBKXXX0000000000}{2:I103BANKNY99AXXXN}{4:\n` +
+              `:20:${tx.ref}\n` +
+              `:23B:CRED\n` +
+              `:32A:${valueDate}${currency}${txAmountFormatted}\n` +
+              `:50K:/ACCSENDER\n` +
+              `${tx.partner.toUpperCase()}\n` +
+              `:59:/${acc}\n` +
+              `OWNER OF ${acc}\n` +
+              `:70:BUSINESS PAYMENT\n` +
+              `-}`;
+            triggerDesc = `Pesan MT103 masuk dari ${tx.partner} sebesar ${currency} ${txAmountFormatted}. Bank mengkredit rekening Anda.`;
+            triggerDescEn = `Incoming MT103 payment of ${currency} ${txAmountFormatted} from ${tx.partner}. Your bank credits your account.`;
+          } else {
+            triggerRaw = `{1:F01BANKNY99AXXX0000000000}{2:I103RCVRBKXXXXN}{4:\n` +
+              `:20:${tx.ref}\n` +
+              `:23B:CRED\n` +
+              `:32A:${valueDate}${currency}${txAmountFormatted}\n` +
+              `:50K:/${acc}\n` +
+              `OWNER OF ${acc}\n` +
+              `:59:/ACCRECIPIENT\n` +
+              `${tx.partner.toUpperCase()}\n` +
+              `:70:VENDOR OUTFLOW\n` +
+              `-}`;
+            triggerDesc = `Pesan MT103 keluar ke ${tx.partner} sebesar ${currency} ${txAmountFormatted}. Bank mendebit rekening Anda untuk memproses pembayaran ini.`;
+            triggerDescEn = `Outgoing MT103 payment of ${currency} ${txAmountFormatted} to ${tx.partner}. Bank debits your account to process this payment.`;
+          }
+        } else if (tx.trigger === 'MT202') {
+          triggerRaw = `{1:F01SENDERBKXXX0000000000}{2:I202BANKNY99AXXXN}{4:\n` +
+            `:20:${tx.ref}\n` +
+            `:21:COV-${tx.ref}\n` +
+            `:32A:${valueDate}${currency}${txAmountFormatted}\n` +
+            `:52A:SENDERBKXXX\n` +
+            `:58A:BANKNY99AXXX\n` +
+            `-}`;
+          triggerDesc = `Pesan transfer dana antarbank MT202 masuk dari ${tx.partner} sebesar ${currency} ${txAmountFormatted} untuk penambahan likuiditas (treasury).`;
+          triggerDescEn = `Incoming MT202 bank-to-bank transfer of ${currency} ${txAmountFormatted} from ${tx.partner} for treasury liquidity funding.`;
+        } else if (tx.trigger === 'MT202COV') {
+          triggerRaw = `{1:F01SENDERBKXXX0000000000}{2:I202BANKNY99AXXXN}{4:\n` +
+            `:20:${tx.ref}\n` +
+            `:21:COV-${tx.ref}\n` +
+            `:32A:${valueDate}${currency}${txAmountFormatted}\n` +
+            `:52A:SENDERBKXXX\n` +
+            `:58A:BANKNY99AXXX\n` +
+            `:72:/COV/\n` +
+            `:50K:/${acc}\n` +
+            `OWNER OF ${acc}\n` +
+            `:59:/ACCRECIPIENT\n` +
+            `${tx.partner.toUpperCase()}\n` +
+            `-}`;
+          triggerDesc = `Pesan MT202 COV (Cover Payment) masuk dari ${tx.partner} sebesar ${currency} ${txAmountFormatted} untuk menutup transaksi nasabah secara terpisah.`;
+          triggerDescEn = `Incoming MT202 COV (Cover Payment) of ${currency} ${txAmountFormatted} from ${tx.partner} to fund a separate customer transfer.`;
+        } else {
+          triggerRaw = `[BANK INTERNAL ADJUSTMENT]\n` +
+            `TRANSACTION ID: ${tx.ref}\n` +
+            `ACCOUNT: ${acc}\n` +
+            `POSTING DATE: ${dateStr}\n` +
+            `AMOUNT: ${isCredit ? '+' : '-'}${currency} ${txAmountFormatted}\n` +
+            `DESCRIPTION: ${tx.partner.toUpperCase()} CHARGE`;
+          triggerDesc = `Potongan biaya administrasi bank atau bunga sebesar ${currency} ${txAmountFormatted} dibukukan langsung oleh bank.`;
+          triggerDescEn = `Direct booking of bank charge / admin fee / interest of ${currency} ${txAmountFormatted} by the bank.`;
+        }
+
+        steps.push({
+          id: `tx_${idx}`,
+          name: `Tx ${idx + 1} (${tx.trigger})`,
+          type: tx.trigger,
+          raw: triggerRaw,
+          desc: triggerDesc,
+          desc_en: triggerDescEn,
+          txDetails: {
+            sign: isCredit ? '+' : '-',
+            amount: amountVal,
+            ref: tx.ref,
+            partner: tx.partner,
+            trigger: tx.trigger
+          }
+        });
+
+        statementLines.push(`:61:${valueDate}0706${sign}${txAmountFormatted}NTRF//${tx.ref}\n` +
+          `:86:${isCredit ? 'DBNM' : 'CRNM'}/${tx.partner.toUpperCase()}/REMI/TRANS-${tx.ref}`);
+      });
+
+      const closeFormatted = currentBalance.toFixed(2).replace('.', ',');
+      const closeRaw = `{1:F01BANKNY99AXXX0000000000}{2:I940${acc}N}{4:\n` +
+        `:20:CLOSING-STATE\n` +
+        `:25:/${acc}\n` +
+        `:62F:C${valueDate}${currency}${closeFormatted}\n` +
+        `-}`;
+
+      steps.push({
+        id: 'close_bal',
+        name: 'Closing Balance',
+        type: 'MT940',
+        raw: closeRaw,
+        desc: `Saldo akhir rekening koran dihitung dari saldo awal + kredit - debit = ${currency} ${closeFormatted}.`,
+        desc_en: `Closing balance calculated as opening balance + credits - debits = ${currency} ${closeFormatted}.`
+      });
+
+      const mt940Full = `{1:F01BANKNY99AXXX0000000000}{2:I940${acc}N}{4:\n` +
+        `:20:STAT-${valueDate}\n` +
+        `:25:/${acc}\n` +
+        `:28C:120/1\n` +
+        `:60F:C${valueDate}${currency}${openBal.toFixed(2).replace('.', ',')}\n` +
+        statementLines.join('\n') + '\n' +
+        `:62F:C${valueDate}${currency}${closeFormatted}\n` +
+        `-}`;
+
+      steps.push({
+        id: 'full_mt940',
+        name: 'Full MT940 Statement',
+        type: 'MT940',
+        raw: mt940Full,
+        desc: `Pesan MT940 lengkap yang memuat ringkasan saldo dan seluruh transaksi harian.`,
+        desc_en: `The complete MT940 message incorporating opening balance, daily transactions, and closing balance.`
+      });
+
+      return steps;
+    }
+
+    function updateLinkedStory() {
+      const container = document.getElementById('linked-story-text');
+      if (!container) return;
+
+      const titleLabel = document.getElementById('lbl-storyTitle');
+      if (titleLabel) {
+        titleLabel.innerHTML = `📖 ` + (currentLang === 'en' ? 'Scenario Story Illustration' : 'Ilustrasi Cerita Skenario');
+      }
+
+      if (linkedActiveScenario === 'cover') {
+        const sender = document.getElementById('link-cov-sender').value || 'JOHN DOE CORP';
+        const senderBank = document.getElementById('link-cov-sender-bank').value || 'BICEJKT1AXXX';
+        const corrA = document.getElementById('link-cov-corr-a').value || 'CORRJPJT1AXXX';
+        const corrB = document.getElementById('link-cov-corr-b').value || 'CORRUS33AXXX';
+        const receiverBank = document.getElementById('link-cov-receiver-bank').value || 'BICNY99AXXX';
+        const beneficiary = document.getElementById('link-cov-beneficiary').value || 'ALICE SMITH LTD';
+        const currency = document.getElementById('link-cov-currency').value || 'USD';
+        const amount = parseFloat(document.getElementById('link-cov-amount').value) || 0;
+
+        const amountFormatted = amount.toLocaleString(currentLang === 'en' ? 'en-US' : 'id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        if (currentLang === 'en') {
+          container.innerHTML = `
+            Ordering customer <strong>${sender}</strong> at <strong>${senderBank}</strong> wants to transfer <strong>${currency} ${amountFormatted}</strong> to beneficiary <strong>${beneficiary}</strong> at <strong>${receiverBank}</strong>.<br>
+            Since these two banks do not have a direct correspondent relationship, they use the <strong>Cover Payment Method</strong> to route the transfer:
+            <ol style="margin: 8px 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+              <li><strong>Information Path (MT103):</strong> Sent directly to the beneficiary's bank to pass customer instructions (No actual funds move here).</li>
+              <li><strong>Liquidity Path (MT202 COV):</strong> The sender bank routes funds via Correspondent A (<strong>${corrA}</strong>) and Correspondent B (<strong>${corrB}</strong>) to <em>cover</em> the beneficiary bank.</li>
+              <li><strong>Settlement:</strong> Beneficiary bank receives credit notification (<strong>MT910</strong>), reconciles the cover reference with the MT103, and issues the daily account statement (<strong>MT940</strong>) to the customer.</li>
+            </ol>
+          `;
+        } else {
+          container.innerHTML = `
+            Nasabah <strong>${sender}</strong> di Bank Pengirim (<strong>${senderBank}</strong>) ingin mengirim uang sebesar <strong>${currency} ${amountFormatted}</strong> kepada penerima <strong>${beneficiary}</strong> di Bank Penerima (<strong>${receiverBank}</strong>).<br>
+            Karena kedua bank tidak memiliki hubungan koresponden langsung, mereka menggunakan <strong>Metode Pembayaran Cover</strong>:
+            <ol style="margin: 8px 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+              <li><strong>Jalur Informasi (MT103):</strong> Instruksi pembayaran lengkap dikirim langsung ke bank penerima nasabah (tidak ada perpindahan dana langsung di jalur ini).</li>
+              <li><strong>Jalur Likuiditas (MT202 COV):</strong> Bank pengirim menyalurkan dana cover melalui Bank Koresponden A (<strong>${corrA}</strong>) dan Bank Koresponden B (<strong>${corrB}</strong>) untuk menjamin dana di bank penerima.</li>
+              <li><strong>Penyelesaian:</strong> Bank penerima menerima notifikasi kredit (<strong>MT910</strong>) dari korespondennya, mencocokkan dana cover dengan MT103, lalu menerbitkan laporan rekening koran harian (<strong>MT940</strong>) untuk nasabah.</li>
+            </ol>
+          `;
+        }
+      } else {
+        const acc = document.getElementById('link-940-acc').value || 'ACC888888';
+        const currency = document.getElementById('link-940-currency').value || 'USD';
+        const openBal = parseFloat(document.getElementById('link-940-open-bal').value) || 0;
+
+        let totalCredit = 0;
+        let totalDebit = 0;
+        let currentBalance = openBal;
+        
+        linked940Transactions.forEach(tx => {
+          const val = parseFloat(tx.amount) || 0;
+          if (tx.type === 'credit') {
+            totalCredit += val;
+            currentBalance += val;
+          } else {
+            totalDebit += val;
+            currentBalance -= val;
+          }
+        });
+
+        const openFormatted = openBal.toLocaleString(currentLang === 'en' ? 'en-US' : 'id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const closeFormatted = currentBalance.toLocaleString(currentLang === 'en' ? 'en-US' : 'id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const creditFormatted = totalCredit.toLocaleString(currentLang === 'en' ? 'en-US' : 'id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const debitFormatted = totalDebit.toLocaleString(currentLang === 'en' ? 'en-US' : 'id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        if (currentLang === 'en') {
+          container.innerHTML = `
+            Daily transaction ledger simulation for customer account <strong>${acc}</strong>.<br>
+            <ol style="margin: 8px 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+              <li><strong>Opening Balance (:60F):</strong> The account starts the day with an opening balance of <strong>${currency} ${openFormatted}</strong>.</li>
+              <li><strong>Daily Activity (:61):</strong> A total of <strong>${linked940Transactions.length} transactions</strong> are posted (Total Credits: <strong>${currency} ${creditFormatted}</strong>, Total Debits: <strong>${currency} ${debitFormatted}</strong>), triggered by MT103 payments, MT202 transfers, or direct fees.</li>
+              <li><strong>Closing Balance (:62F):</strong> Calculated as Opening Balance + Credits - Debits, resulting in a final closing balance of <strong>${currency} ${closeFormatted}</strong>.</li>
+              <li><strong>Package & Send:</strong> All details are compiled into a single end-of-day <strong>MT940 Statement</strong> sent to the account owner.</li>
+            </ol>
+          `;
+        } else {
+          container.innerHTML = `
+            Simulasi pembukuan transaksi harian pada nomor rekening nasabah <strong>${acc}</strong>.<br>
+            <ol style="margin: 8px 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+              <li><strong>Saldo Awal (:60F):</strong> Rekening koran dimulai pagi hari dengan saldo pembuka sebesar <strong>${currency} ${openFormatted}</strong>.</li>
+              <li><strong>Mutasi Harian (:61):</strong> Terjadi total <strong>${linked940Transactions.length} transaksi</strong> sepanjang hari (Total Kredit: <strong>${currency} ${creditFormatted}</strong>, Total Debit: <strong>${currency} ${debitFormatted}</strong>) yang dipicu oleh transfer MT103, MT202, atau biaya administrasi bank.</li>
+              <li><strong>Saldo Akhir (:62F):</strong> Dihitung berdasarkan Saldo Awal + Kredit - Debit, menghasilkan saldo penutupan akhir hari sebesar <strong>${currency} ${closeFormatted}</strong>.</li>
+              <li><strong>Pengiriman:</strong> Seluruh mutasi dibundel ke dalam satu dokumen laporan harian <strong>MT940 Statement</strong> untuk dikirimkan ke pemilik rekening.</li>
+            </ol>
+          `;
+        }
+      }
+    }
+
+    function updateLinkedMessages() {
+      // Remember the active step ID
+      const activeStepId = linkedMessagesList[linkedActiveStepIndex] ? linkedMessagesList[linkedActiveStepIndex].id : null;
+
+      if (linkedActiveScenario === 'cover') {
+        const sender = document.getElementById('link-cov-sender').value || 'JOHN DOE CORP';
+        const senderBank = document.getElementById('link-cov-sender-bank').value || 'BICEJKT1AXXX';
+        const corrA = document.getElementById('link-cov-corr-a').value || 'CORRJPJT1AXXX';
+        const corrB = document.getElementById('link-cov-corr-b').value || 'CORRUS33AXXX';
+        const receiverBank = document.getElementById('link-cov-receiver-bank').value || 'BICNY99AXXX';
+        const beneficiary = document.getElementById('link-cov-beneficiary').value || 'ALICE SMITH LTD';
+        const currency = document.getElementById('link-cov-currency').value || 'USD';
+        const amount = parseFloat(document.getElementById('link-cov-amount').value) || 0;
+        const ref = document.getElementById('link-cov-ref').value || 'TX-2026-9901';
+
+        linkedMessagesList = generateCoverChain({
+          sender, senderBank, corrA, corrB, receiverBank, beneficiary, currency, amount, ref
+        });
+      } else {
+        const acc = document.getElementById('link-940-acc').value || 'ACC888888';
+        const currency = document.getElementById('link-940-currency').value || 'USD';
+        const openBal = parseFloat(document.getElementById('link-940-open-bal').value) || 0;
+
+        linkedMessagesList = generateMT940LifecycleChain(acc, currency, openBal, linked940Transactions);
+      }
+
+      // Restore active index based on ID if possible
+      if (activeStepId) {
+        const newIdx = linkedMessagesList.findIndex(m => m.id === activeStepId);
+        if (newIdx !== -1) {
+          linkedActiveStepIndex = newIdx;
+        } else {
+          if (linkedActiveStepIndex >= linkedMessagesList.length) {
+            linkedActiveStepIndex = Math.max(0, linkedMessagesList.length - 1);
+          }
+        }
+      } else {
+        if (linkedActiveStepIndex >= linkedMessagesList.length) {
+          linkedActiveStepIndex = 0;
+        }
+      }
+
+      updateLinkedStory();
+      renderLinkedTimeline();
+      renderLinkedActiveMessage();
+    }
+
+    function renderLinkedTimeline() {
+      const container = document.getElementById('linked-timeline-container');
+      if (!container) return;
+
+      container.innerHTML = '';
+      linkedMessagesList.forEach((msg, idx) => {
+        if (idx > 0) {
+          const arrow = document.createElement('span');
+          arrow.className = 'timeline-arrow';
+          arrow.innerText = '➔';
+          container.appendChild(arrow);
+        }
+
+        const node = document.createElement('div');
+        node.className = `timeline-node ${idx === linkedActiveStepIndex ? 'active' : ''}`;
+        node.onclick = () => {
+          linkedActiveStepIndex = idx;
+          linkedActiveTagHighlight = null;
+          renderLinkedTimeline();
+          renderLinkedActiveMessage();
+        };
+
+        node.innerHTML = `
+          <span style="font-size: 9px; font-weight: 500; opacity: 0.85;">STEP ${idx + 1}</span>
+          <span>${msg.name}</span>
+        `;
+        container.appendChild(node);
+      });
+    }
+
+    function resolveTagName(msgType, tag) {
+      const cleanMsg = msgType.toLowerCase().split(' ')[0];
+      const spec = DATA.find(d => d.msg.toLowerCase() === cleanMsg && d.tag.toUpperCase() === tag.toUpperCase() && d.sub === '');
+      if (spec) {
+        return currentLang === 'en' ? (spec.name_en || spec.name) : spec.name;
+      }
+      const fallbacks = {
+        '20': { id: 'Referensi Transaksi', en: 'Transaction Reference' },
+        '21': { id: 'Referensi Terkait', en: 'Related Reference' },
+        '25': { id: 'Identifikasi Rekening', en: 'Account Identification' },
+        '28C': { id: 'Nomor Laporan', en: 'Statement Number' },
+        '30': { id: 'Tanggal Instruksi', en: 'Value Date' },
+        '32A': { id: 'Tanggal, Mata Uang, & Nominal', en: 'Value Date, Currency, & Amount' },
+        '32B': { id: 'Mata Uang & Nominal', en: 'Currency & Amount' },
+        '50H': { id: 'Nasabah Pengirim', en: 'Ordering Customer' },
+        '50K': { id: 'Nasabah Pengirim', en: 'Ordering Customer' },
+        '52A': { id: 'Bank Pengirim', en: 'Ordering Institution' },
+        '56A': { id: 'Bank Perantara', en: 'Intermediary Institution' },
+        '57A': { id: 'Bank Penerima', en: 'Account With Institution' },
+        '58A': { id: 'Institusi Penerima', en: 'Beneficiary Institution' },
+        '59': { id: 'Nasabah Penerima', en: 'Beneficiary Customer' },
+        '60F': { id: 'Saldo Awal', en: 'Opening Balance' },
+        '61': { id: 'Baris Transaksi Rekening', en: 'Statement Line' },
+        '86': { id: 'Informasi Tambahan / Narasi', en: 'Information to Account Owner' },
+        '62F': { id: 'Saldo Akhir', en: 'Closing Balance' }
+      };
+      if (fallbacks[tag]) {
+        return currentLang === 'en' ? fallbacks[tag].en : fallbacks[tag].id;
+      }
+      return `Tag ${tag}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderLinkedActiveMessage() {
+      const msg = linkedMessagesList[linkedActiveStepIndex];
+      const rawContainer = document.getElementById('linkedRawPre');
+      const inspectorContainer = document.getElementById('linkedInspectorContent');
+      if (!msg || !rawContainer || !inspectorContainer) return;
+
+      // 1. Render Raw SWIFT with line-by-line spans for tags
+      const lines = msg.raw.split('\n');
+      const rawHtml = lines.map(line => {
+        const tagMatch = line.match(/^:([0-9]{2}[a-zA-Z]?):/);
+        if (tagMatch) {
+          const tag = tagMatch[1];
+          const isHighlighted = linkedActiveTagHighlight === tag;
+          return `<div class="swift-tag-interactive ${isHighlighted ? 'highlight-linked' : ''}" onclick="clickLinkedTag('${tag}')" style="cursor: pointer; padding: 2px 6px; border-radius: 4px; border: 1.5px solid ${isHighlighted ? '#f59e0b' : 'transparent'}; margin-bottom: 2px;">${escapeHtml(line)}</div>`;
+        }
+        return `<div style="padding: 2px 6px; color: var(--ink-soft);">${escapeHtml(line)}</div>`;
+      }).join('');
+      rawContainer.innerHTML = rawHtml;
+
+      // 2. Parse block 4 tags for structured breakdown
+      const block4Match = msg.raw.match(/\{4:\s*([\s\S]*?)\s*-\}/);
+      const block4 = block4Match ? block4Match[1] : msg.raw;
+      const block4Lines = block4.split('\n');
+      const parsedTags = [];
+      let currentTag = '';
+      let currentVal = '';
+
+      function flush() {
+        if (currentTag) {
+          parsedTags.push({ tag: currentTag, val: currentVal.trim() });
+        }
+        currentTag = '';
+        currentVal = '';
+      }
+
+      for (let line of block4Lines) {
+        line = line.trim();
+        if (!line) continue;
+        const match = line.match(/^:([0-9]{2}[a-zA-Z]?):(.*)$/);
+        if (match) {
+          flush();
+          currentTag = match[1];
+          currentVal = match[2];
+        } else {
+          if (currentTag) {
+            currentVal += '\n' + line;
+          }
+        }
+      }
+      flush();
+
+      // 3. Render Inspector Panel
+      let inspectorHtml = `
+        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+          <h4 style="margin: 0 0 6px 0; font-family: var(--serif); font-size: 15px; color: var(--ink);">${msg.name}</h4>
+          <p style="margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.4;">${currentLang === 'en' ? msg.desc_en : msg.desc}</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
+          <div style="display: flex; background: var(--panel); border-bottom: 1.5px solid var(--line); padding: 8px 12px; font-weight: bold; font-size: 11px; color: var(--ink-soft);">
+            <div style="width: 50px;">TAG</div>
+            <div style="flex: 1;">FIELD NAME & VALUE</div>
+          </div>
+      `;
+
+      parsedTags.forEach(tagObj => {
+        const isHighlighted = linkedActiveTagHighlight === tagObj.tag;
+        let linkSectionHtml = '';
+
+        // Check for scenario relation mappings
+        if (linkedActiveScenario === 'cover') {
+          const linksForMsg = coverInspectorLinks[msg.id];
+          if (linksForMsg && linksForMsg[tagObj.tag]) {
+            const linkObj = linksForMsg[tagObj.tag];
+            linkSectionHtml = `
+              <div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
+                <span style="color: var(--ink); font-weight: 600;">🔗 Linkage:</span> ${currentLang === 'en' ? linkObj.text_en : linkObj.text}
+                <br>
+                <button class="btn btn-ghost" onclick="jumpToLinkedMsg('${linkObj.targetMsg}', '${linkObj.targetTag}')" style="margin-top: 6px; padding: 4px 8px; font-size: 11px; border-color: #f59e0b; color: #f59e0b; background: transparent; cursor: pointer;">
+                  ${currentLang === 'en' ? 'Go to ' : 'Buka '} ${linkObj.targetMsg.toUpperCase()} (Tag :${linkObj.targetTag}:) ➔
+                </button>
+              </div>
+            `;
+          }
+        } else if (linkedActiveScenario === 'mt940_lifecycle') {
+          // If in full statement, link Tag 61 back to trigger message
+          if (msg.id === 'full_mt940' && tagObj.tag === '61') {
+            const refMatch = tagObj.val.match(/\/\/([A-Za-z0-9-]+)/);
+            if (refMatch) {
+              const ref = refMatch[1];
+              const txIdx = linked940Transactions.findIndex(t => t.ref === ref);
+              if (txIdx !== -1) {
+                const tx = linked940Transactions[txIdx];
+                linkSectionHtml = `
+                  <div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
+                    <span style="color: var(--ink); font-weight: 600;">🔗 Origin:</span> ${currentLang === 'en' ? `Generated from source payment ${tx.trigger} of ${tx.partner}` : `Dibuat dari pesan sumber ${tx.trigger} milik ${tx.partner}`}
+                    <br>
+                    <button class="btn btn-ghost" onclick="jumpToMT940TxNode(${txIdx}, '20')" style="margin-top: 6px; padding: 4px 8px; font-size: 11px; border-color: #f59e0b; color: #f59e0b; background: transparent; cursor: pointer;">
+                      ${currentLang === 'en' ? 'View Source Msg' : 'Buka Pesan Sumber'} (${tx.trigger}) ➔
+                    </button>
+                  </div>
+                `;
+              }
+            }
+          } else if (msg.id.startsWith('tx_') && tagObj.tag === '20') {
+            // Trigger messages point forward to the statement Tag 61
+            linkSectionHtml = `
+              <div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">
+                <span style="color: var(--ink); font-weight: 600;">🔗 Destination:</span> ${currentLang === 'en' ? 'Reported in final MT940 Statement (Tag 61)' : 'Dilaporkan dalam MT940 Statement akhir (Tag 61)'}
+                <br>
+                <button class="btn btn-ghost" onclick="jumpToFullMT940('61')" style="margin-top: 6px; padding: 4px 8px; font-size: 11px; border-color: #f59e0b; color: #f59e0b; background: transparent; cursor: pointer;">
+                  ${currentLang === 'en' ? 'View in MT940' : 'Lihat di MT940'} (Tag :61:) ➔
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        inspectorHtml += `
+          <div id="inspector-tag-row-${tagObj.tag}" style="border-bottom: 1px solid var(--line); padding: 12px; font-size: 13px; background: ${isHighlighted ? 'rgba(245, 158, 11, 0.08)' : 'transparent'}; transition: background 0.15s;">
+            <div style="display: flex; align-items: start; gap: 8px;">
+              <div style="width: 40px; font-weight: bold; color: var(--primary-color); font-family: var(--mono);">${tagObj.tag}</div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-weight: 700; color: var(--ink); font-size: 12px;">${resolveTagName(msg.type, tagObj.tag)}</span>
+                <span style="font-family: var(--mono); color: var(--ink-soft); font-size: 12px; white-space: pre-wrap; word-break: break-all;">${escapeHtml(tagObj.val)}</span>
+              </div>
+            </div>
+            ${linkSectionHtml}
+          </div>
+        `;
+      });
+
+      inspectorHtml += `</div>`;
+      inspectorContainer.innerHTML = inspectorHtml;
+
+      // Smooth scroll the highlighted tag row into view
+      if (linkedActiveTagHighlight) {
+        setTimeout(() => {
+          const row = document.getElementById(`inspector-tag-row-${linkedActiveTagHighlight}`);
+          if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 100);
+      }
+    }
+
+    function clickLinkedTag(tag) {
+      linkedActiveTagHighlight = tag;
+      renderLinkedActiveMessage();
+    }
+
+    function jumpToLinkedMsg(targetMsgId, targetTag) {
+      const targetIdx = linkedMessagesList.findIndex(m => m.id === targetMsgId);
+      if (targetIdx !== -1) {
+        linkedActiveStepIndex = targetIdx;
+        linkedActiveTagHighlight = targetTag;
+        renderLinkedTimeline();
+        renderLinkedActiveMessage();
+        showToast(currentLang === 'en' ? `Switched to ${targetMsgId.toUpperCase()} - Highlighted Tag :${targetTag}:` : `Pindah ke ${targetMsgId.toUpperCase()} - Menyorot Tag :${targetTag}:`);
+      }
+    }
+
+    function jumpToMT940TxNode(txIdx, targetTag) {
+      const targetIdx = linkedMessagesList.findIndex(m => m.id === 'tx_' + txIdx);
+      if (targetIdx !== -1) {
+        linkedActiveStepIndex = targetIdx;
+        linkedActiveTagHighlight = targetTag;
+        renderLinkedTimeline();
+        renderLinkedActiveMessage();
+        showToast(currentLang === 'en' ? `Viewing source transaction step ${txIdx + 1}` : `Melihat langkah transaksi sumber ${txIdx + 1}`);
+      }
+    }
+
+    function jumpToFullMT940(targetTag) {
+      const targetIdx = linkedMessagesList.findIndex(m => m.id === 'full_mt940');
+      if (targetIdx !== -1) {
+        linkedActiveStepIndex = targetIdx;
+        linkedActiveTagHighlight = targetTag;
+        renderLinkedTimeline();
+        renderLinkedActiveMessage();
+        showToast(currentLang === 'en' ? `Viewing MT940 statement - Highlighted Tag :${targetTag}:` : `Melihat laporan MT940 - Menyorot Tag :${targetTag}:`);
+      }
+    }
+
+    function copyLinkedActiveRaw() {
+      const msg = linkedMessagesList[linkedActiveStepIndex];
+      if (!msg) return;
+      navigator.clipboard.writeText(msg.raw).then(() => {
+        showToast(currentLang === 'en' ? 'Message copied to clipboard!' : 'Pesan berhasil disalin ke clipboard!');
+      });
+    }
+
+    function loadLinkedDemoData() {
+      if (linkedActiveScenario === 'cover') {
+        document.getElementById('link-cov-sender').value = 'MEGACORP INDUSTRIES';
+        document.getElementById('link-cov-sender-bank').value = 'MEGABKIDJXXX';
+        document.getElementById('link-cov-corr-a').value = 'CITIUS33XXXX';
+        document.getElementById('link-cov-corr-b').value = 'CHASEUS33XXX';
+        document.getElementById('link-cov-receiver-bank').value = 'HSBCHKHXXXX';
+        document.getElementById('link-cov-beneficiary').value = 'GLOBAL TRADE LTD';
+        document.getElementById('link-cov-currency').value = 'EUR';
+        document.getElementById('link-cov-amount').value = '175000';
+        document.getElementById('link-cov-ref').value = 'DEMO-COV-8877';
+      } else {
+        document.getElementById('link-940-acc').value = 'ACC999111';
+        document.getElementById('link-940-currency').value = 'EUR';
+        document.getElementById('link-940-open-bal').value = '250000';
+
+        linked940Transactions = [
+          { type: 'credit', amount: 80000, ref: 'PAY-SALES-99', trigger: 'MT103', partner: 'ALIBABA GROUP' },
+          { type: 'debit', amount: 45000, ref: 'WIRE-SUPPLIER', trigger: 'MT103', partner: 'MUNICH STEEL GMBH' },
+          { type: 'credit', amount: 150000, ref: 'TREASURY-FUND', trigger: 'MT202', partner: 'DEUTSCHE BANK' },
+          { type: 'debit', amount: 250, ref: 'MONTHLY-FEE', trigger: 'FEE', partner: 'COMMERZBANK AG' }
+        ];
+        render940TxInputs();
+      }
+      updateLinkedMessages();
+      showToast(currentLang === 'en' ? 'Demo parameters loaded!' : 'Parameter demo berhasil dimuat!');
+    }
+
+    function resetLinkedSimulator() {
+      if (linkedActiveScenario === 'cover') {
+        document.getElementById('link-cov-sender').value = 'JOHN DOE CORP';
+        document.getElementById('link-cov-sender-bank').value = 'BICEJKT1AXXX';
+        document.getElementById('link-cov-corr-a').value = 'CORRJPJT1AXXX';
+        document.getElementById('link-cov-corr-b').value = 'CORRUS33AXXX';
+        document.getElementById('link-cov-receiver-bank').value = 'BICNY99AXXX';
+        document.getElementById('link-cov-beneficiary').value = 'ALICE SMITH LTD';
+        document.getElementById('link-cov-currency').value = 'USD';
+        document.getElementById('link-cov-amount').value = '50000';
+        document.getElementById('link-cov-ref').value = 'TX-2026-9901';
+      } else {
+        document.getElementById('link-940-acc').value = 'ACC888888';
+        document.getElementById('link-940-currency').value = 'USD';
+        document.getElementById('link-940-open-bal').value = '100000';
+
+        linked940Transactions = [
+          { type: 'credit', amount: 25000, ref: 'INV-ACME-001', trigger: 'MT103', partner: 'ACME CORP' },
+          { type: 'debit', amount: 12000, ref: 'PAY-VEND-112', trigger: 'MT103', partner: 'SUPPLIER XYZ' },
+          { type: 'credit', amount: 45000, ref: 'TR-LIQ-33', trigger: 'MT202', partner: 'BANK CENTRALE' }
+        ];
+        render940TxInputs();
+      }
+      linkedActiveStepIndex = 0;
+      linkedActiveTagHighlight = null;
+      updateLinkedMessages();
     }
 
     loadData().then(() => {
