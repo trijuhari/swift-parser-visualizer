@@ -1713,15 +1713,57 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    @media(max-width: 800px) {
-      .wrap {
-        padding: 16px 16px 0;
+    /* ── Responsive Navbar & Actions ── */
+    @media (max-width: 1350px) {
+      .nav-btn span,
+      #darkBtn .btn-text,
+      #langBtn .btn-text {
+        display: none !important;
       }
-      .top-nav {
-        padding: 0 16px;
+      .nav-btn, .icon-btn {
+        padding: 0 !important;
+        justify-content: center !important;
+        width: 38px !important;
+        height: 38px !important;
+        flex: 0 0 38px !important;
+        box-sizing: border-box !important;
+      }
+      .nav-actions {
+        gap: 6px !important;
       }
       .search-container {
-        margin: 0 10px;
+        max-width: 450px;
+        margin: 0 12px;
+      }
+    }
+
+    @media (max-width: 850px) {
+      .top-nav {
+        flex-wrap: wrap !important;
+        height: auto !important;
+        min-height: auto !important;
+        padding: 10px 16px !important;
+        gap: 10px !important;
+      }
+      .logo {
+        order: 1 !important;
+      }
+      .nav-actions {
+        order: 2 !important;
+        flex: 1 !important;
+        justify-content: flex-end !important;
+      }
+      .search-container {
+        order: 3 !important;
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+        margin: 4px 0 0 0 !important;
+      }
+    }
+
+    @media (max-width: 800px) {
+      .wrap {
+        padding: 16px 16px 0;
       }
       .home-hero {
         padding: 32px 20px;
@@ -1735,6 +1777,24 @@
       }
       .detail-panel {
         padding: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .logo-text {
+        display: none !important;
+      }
+      .top-nav {
+        padding: 8px 12px !important;
+        gap: 8px !important;
+      }
+      .nav-actions {
+        gap: 4px !important;
+      }
+      .nav-btn, .icon-btn {
+        width: 34px !important;
+        height: 34px !important;
+        flex: 0 0 34px !important;
       }
     }
 
@@ -1847,7 +1907,7 @@
       </a>
     </div>
     
-    <div class="search-container" id="searchContainer" style="display: flex; gap: 8px; flex: 1 1 400px; max-width: 600px; margin: 0 20px;">
+    <div class="search-container" id="searchContainer" style="display: none;">
       <select id="searchColumn" class="search-select">
         <option value="all" id="opt-colAll">Semua Kolom</option>
         <option value="msg" id="opt-colMsg">Pesan</option>
@@ -1858,7 +1918,7 @@
         <option value="sample" id="opt-colSample">Contoh</option>
         <option value="desc" id="opt-colDesc">Keterangan</option>
       </select>
-      <div class="search-box" style="flex: 1; margin: 0;">
+      <div class="search-box">
         <input type="text" id="searchInput"
           placeholder="Cari tag, nama field, atau kata kunci… misal: 61, saldo, kredit, BIC">
       </div>
@@ -1872,8 +1932,8 @@
       <button class="nav-btn" id="tab-reconciliation" onclick="switchTab('reconciliation')" title="Reconciliation Simulator">🔄 <span id="lbl-tabReconciliation">Rekonsiliasi</span></button>
       <button class="nav-btn" id="tab-linked-simulator" onclick="switchTab('linked-simulator')" title="Linked Simulator">🔗 <span id="lbl-tabLinkedSimulator">Simulasi Rantai</span></button>
       <button class="nav-btn" id="tab-intelligence" onclick="switchTab('intelligence')" title="SWIFT Intelligence Hub">🛡️ <span id="lbl-tabIntelligence">Hub Intelijen</span></button>
-      <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 ID</button>
-      <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙 Dark Mode</button>
+      <button class="icon-btn" id="langBtn" onclick="toggleLang()" title="Ganti Bahasa / Switch Language">🌐 <span class="btn-text">ID</span></button>
+      <button class="icon-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙 <span class="btn-text">Dark Mode</span></button>
     </div>
   </div>
 
@@ -4055,10 +4115,28 @@ JOHN DOE
     /* ── Edit / Delete row (duplikasi lama sudah dihapus, pakai fungsi di atas) ── */
 
     /* ── Dark mode ── */
+    function updateDarkBtn() {
+      const darkBtn = document.getElementById('darkBtn');
+      if (!darkBtn) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = isDark ? '☀' : '🌙';
+      let text = '';
+      if (typeof currentLang !== 'undefined') {
+        if (currentLang === 'id') {
+          text = isDark ? 'Mode Terang' : 'Mode Gelap';
+        } else {
+          text = isDark ? 'Light Mode' : 'Dark Mode';
+        }
+      } else {
+        text = isDark ? 'Light Mode' : 'Dark Mode';
+      }
+      darkBtn.innerHTML = `${icon} <span class="btn-text">${text}</span>`;
+    }
+
     function toggleDark() {
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('swift_dark', isDark ? '1' : '');
-      document.getElementById('darkBtn').textContent = isDark ? '☀ Light Mode' : '🌙 Dark Mode';
+      updateDarkBtn();
       
       if (typeof renderHomeCharts === 'function') {
         renderHomeCharts();
@@ -4082,7 +4160,6 @@ JOHN DOE
     }
     if (localStorage.getItem('swift_dark')) {
       document.documentElement.classList.add('dark');
-      document.getElementById('darkBtn').textContent = '☀ Light Mode';
     }
 
     /* ── Export CSV ── */
@@ -9243,8 +9320,7 @@ JAKARTA, INDONESIA
       const exportBtn = document.getElementById('exportBtn');
       if (exportBtn) exportBtn.innerHTML = dict.export;
       
-      const darkBtn = document.getElementById('darkBtn');
-      if (darkBtn) darkBtn.innerHTML = dict.dark;
+      updateDarkBtn();
       
       const searchInput = document.getElementById('searchInput');
       if (searchInput) {
@@ -9484,7 +9560,11 @@ JAKARTA, INDONESIA
       document.getElementById('lbl-footer').innerText = dict.lblFooter;
       document.getElementById('lbl-footer2').innerText = dict.lblFooter2;
       
-      document.getElementById('langBtn').innerText = currentLang === 'id' ? '🌐 ID' : '🌐 EN';
+      const langBtn = document.getElementById('langBtn');
+      if (langBtn) {
+        const langText = currentLang === 'id' ? 'ID' : 'EN';
+        langBtn.innerHTML = `🌐 <span class="btn-text">${langText}</span>`;
+      }
       
       const dsInfo = document.getElementById('dataSourceInfo');
       if (dsInfo.innerText.includes('Data lokal') || dsInfo.innerText.includes('Local data') || dsInfo.innerText.includes('Offline')) {
