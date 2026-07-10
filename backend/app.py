@@ -1,11 +1,33 @@
 import os
 import sqlite3
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, send_from_directory
+try:
+    from flask_cors import CORS
+except ImportError:
+    CORS = None
 
 app = Flask(__name__)
-# Enable CORS for all routes to support requests from the frontend
-CORS(app)
+# Enable CORS for all routes to support requests from the frontend if available
+if CORS:
+    CORS(app)
+
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+@app.route('/')
+def index():
+    return send_from_directory(PARENT_DIR, 'index.html')
+
+@app.route('/home.html')
+def serve_home():
+    return send_from_directory(PARENT_DIR, 'home.html')
+
+@app.route('/admin.html')
+def serve_admin():
+    return send_from_directory(PARENT_DIR, 'admin.html')
+
+@app.route('/swift-data.json')
+def serve_swift_data():
+    return send_from_directory(PARENT_DIR, 'swift-data.json')
 
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
