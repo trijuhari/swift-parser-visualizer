@@ -19,6 +19,7 @@
       --accent: #0f766e; /* Premium Teal/Pine */
       --accent-soft: #f0fdfa;
       --accent-hover: #0d9488;
+      --primary-color: var(--accent);
       --gold: #b45309; /* Warm Gold/Amber */
       --gold-soft: #fef3c7;
       --mono: "JetBrains Mono", "Fira Code", monospace;
@@ -1522,6 +1523,39 @@
       line-height: 1.6;
     }
 
+    /* Parser Tabbed Visualizer styling */
+    .parser-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .parser-tabs button {
+      border: 1.5px solid var(--line);
+      background: var(--panel);
+      color: var(--ink-soft);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .parser-tabs button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .parser-tabs button.active {
+      border-color: var(--accent) !important;
+      color: #ffffff !important;
+      background: var(--accent) !important;
+      box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+
     /* Reconciliation Simulator styling */
     .recon-tabs button {
       border: 1.5px solid var(--line);
@@ -2181,6 +2215,7 @@
             <span style="font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em;" id="lbl-parserSelectLabel">Parser:</span>
             <select id="parserTypeSelect" onchange="handleParserTypeChange()" style="background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; font-family: var(--sans); cursor: pointer; outline: none; transition: border-color .12s;">
               <option value="auto">Auto-Detect</option>
+              <option value="mt2mx">MT-to-MX (ISO 20022 Translation)</option>
               <option value="mt940">MT 940 (Account Statement)</option>
               <option value="mt942">MT 942 (Interim Transaction Report)</option>
               <option value="mt950">MT 950 (Statement Message)</option>
@@ -2188,6 +2223,9 @@
               <option value="mt101">MT 101 (Request for Transfer)</option>
               <option value="mt102">MT 102 (Multiple Customer Funds Transfer)</option>
               <option value="mt104">MT 104 (Direct Debit / Request for Debit Transfer)</option>
+              <option value="mt202">MT 202 (General Financial Institution Transfer)</option>
+              <option value="mt202cov">MT 202COV (FI Transfer Cover Message)</option>
+              <option value="mt910">MT 910 (Confirmation of Credit)</option>
               <option value="mt564">MT 564 (Corporate Action Notification)</option>
             </select>
           </div>
@@ -5631,6 +5669,101 @@ JOHN DOE
       return found;
     }
 
+    function validateTagSyntax(msgType, tag, value) {
+      if (!value) return null;
+      const info = findTagInfo(msgType, tag);
+      if (!info) return null;
+      const lenRule = info.len || '';
+      if (!lenRule) return null;
+
+      const valLines = value.split('\n').map(l => l.trim()).filter(l => l !== '');
+      if (valLines.length === 0) return null;
+      const singleVal = valLines.join(' ');
+      const tagUpper = tag.toUpperCase();
+
+      // 1. Date Format Verification (YYMMDD format validation, e.g. tags 32A, 30, 98A, etc.)
+      if ((tagUpper === '32A' || tagUpper === '30' || tagUpper === '30F' || tagUpper === '98A') && lenRule.includes('6!n')) {
+        const dateMatch = singleVal.match(/^[0-9]{6}/) || singleVal.match(/[0-9]{6}/);
+        if (!dateMatch) {
+          return {
+            valid: false,
+            error: currentLang === 'en' ? 'Expected 6-digit date format (YYMMDD).' : 'Format tanggal harus 6 digit (YYMMDD).'
+          };
+        }
+        const dateStr = dateMatch[0];
+        const yy = parseInt(dateStr.substring(0, 2), 10);
+        const mm = parseInt(dateStr.substring(2, 4), 10);
+        const dd = parseInt(dateStr.substring(4, 6), 10);
+        if (mm < 1 || mm > 12 || dd < 1 || dd > 31) {
+          return {
+            valid: false,
+            error: currentLang === 'en' ? `Invalid date values in ${dateStr}.` : `Nilai tanggal tidak valid pada ${dateStr}.`
+          };
+        }
+      }
+
+      // 2. Format rules parser
+      const regexToken = /(\d+)(!)?([nacxdy])/g;
+      let match;
+      let expectedParts = [];
+      while ((match = regexToken.exec(lenRule)) !== null) {
+        expectedParts.push({
+          length: parseInt(match[1], 10),
+          exact: !!match[2],
+          charType: match[3]
+        });
+      }
+
+      if (expectedParts.length === 1) {
+        const rule = expectedParts[0];
+        const len = singleVal.length;
+
+        if (rule.exact && len !== rule.length) {
+          return {
+            valid: false,
+            error: currentLang === 'en' 
+              ? `Length must be exactly ${rule.length} characters (current: ${len}).` 
+              : `Panjang karakter harus tepat ${rule.length} (saat ini: ${len}).`
+          };
+        }
+        if (!rule.exact && len > rule.length) {
+          return {
+            valid: false,
+            error: currentLang === 'en' 
+              ? `Length exceeds maximum of ${rule.length} characters (current: ${len}).` 
+              : `Panjang karakter melebihi batas maksimal ${rule.length} (saat ini: ${len}).`
+          };
+        }
+
+        let charsetRegex;
+        let charsetDesc;
+        if (rule.charType === 'n') {
+          charsetRegex = /^[0-9]+$/;
+          charsetDesc = currentLang === 'en' ? 'numbers (0-9) only' : 'hanya angka (0-9)';
+        } else if (rule.charType === 'a') {
+          charsetRegex = /^[a-zA-Z]+$/;
+          charsetDesc = currentLang === 'en' ? 'letters (a-z) only' : 'hanya huruf (a-z)';
+        } else if (rule.charType === 'c') {
+          charsetRegex = /^[0-9a-zA-Z]+$/;
+          charsetDesc = currentLang === 'en' ? 'alphanumeric characters only' : 'hanya huruf dan angka (alfanumerik)';
+        } else if (rule.charType === 'x') {
+          charsetRegex = /^[a-zA-Z0-9/\-?:().,\'+ ]+$/;
+          charsetDesc = currentLang === 'en' ? 'valid SWIFT characters only' : 'hanya karakter SWIFT yang valid';
+        }
+
+        if (charsetRegex && !charsetRegex.test(singleVal)) {
+          return {
+            valid: false,
+            error: currentLang === 'en' 
+              ? `Invalid character set: ${charsetDesc} allowed.` 
+              : `Karakter tidak valid: ${charsetDesc} yang diperbolehkan.`
+          };
+        }
+      }
+
+      return { valid: true };
+    }
+
     function renderSubfieldsHtml(key, val) {
       const keyClean = key.toUpperCase();
       
@@ -5738,6 +5871,7 @@ JOHN DOE
     function renderParsedTagsTable(tags, msgType) {
       let rowsHtml = '';
       const keys = Object.keys(tags).sort();
+      const warnings = [];
       
       keys.forEach(key => {
         const val = tags[key];
@@ -5749,14 +5883,29 @@ JOHN DOE
         const tagRules = info ? (currentLang === 'en' && info.rules_en ? info.rules_en : info.rules) : '';
         const subfieldsHtml = renderSubfieldsHtml(key, valStr);
         
+        const validation = validateTagSyntax(msgType, key, valStr);
+        let validationHtml = '';
+        let rowStyle = 'border-bottom: 1px solid var(--line); transition: background 0.2s;';
+        
+        if (validation && !validation.valid) {
+          warnings.push({ tag: key, error: validation.error });
+          rowStyle = 'border-bottom: 1px solid var(--line); background: rgba(239, 68, 68, 0.03); transition: background 0.2s;';
+          validationHtml = `
+            <div class="validation-warning" style="font-size: 11px; color: #ef4444; font-weight: 700; margin-top: 6px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; display: inline-block;">
+              ⚠️ ${escapeHtml(validation.error)}
+            </div>
+          `;
+        }
+        
         rowsHtml += `
-          <tr style="border-bottom: 1px solid var(--line);">
+          <tr style="${rowStyle}">
             <td style="font-family: var(--mono); font-weight: 700; color: var(--primary-color); padding: 12px 16px; white-space: nowrap; vertical-align: top;">:${key}:</td>
             <td style="padding: 12px 16px; vertical-align: top;">
               <div style="font-weight: 700; color: var(--ink); margin-bottom: 4px;">${escapeHtml(tagName)}</div>
               <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.4;">${escapeHtml(tagDesc)}</div>
               ${tagRules ? `<div style="font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 4px; border: 1px dashed var(--line); padding: 4px 8px; border-radius: 4px; display: inline-block;">⚡ ${escapeHtml(tagRules)}</div>` : ''}
               ${subfieldsHtml}
+              ${validationHtml}
             </td>
             <td style="font-family: var(--mono); font-size: 13px; color: var(--ink); padding: 12px 16px; white-space: pre-wrap; vertical-align: top; max-width: 300px; overflow-x: auto;">${escapeHtml(valStr)}</td>
           </tr>
@@ -5764,8 +5913,24 @@ JOHN DOE
       });
 
       const dict = i18n[currentLang];
+      let bannerHtml = '';
+      if (warnings.length > 0) {
+        bannerHtml = `
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #ef4444; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+            <span>⚠️</span> ${currentLang === 'en' ? `SWIFT Format Verification: ${warnings.length} syntax mismatch warning(s) found.` : `Verifikasi Format SWIFT: Ditemukan ${warnings.length} peringatan ketidaksesuaian sintaksis.`}
+          </div>
+        `;
+      } else {
+        bannerHtml = `
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #10b981; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+            <span>✅</span> ${currentLang === 'en' ? 'Format Verification: All tags conform to SWIFT specifications.' : 'Verifikasi Format: Semua tag sesuai dengan spesifikasi SWIFT.'}
+          </div>
+        `;
+      }
+
       return `
-        <div style="margin-top: 24px;">
+        <div class="tag-breakdown-container" style="margin-top: 24px;">
+          ${bannerHtml}
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Tag Breakdown' : 'Rincian Tag SWIFT - Blok 4'}</h3>
             <button class="btn btn-ghost" onclick="exportTagsToCsv()" style="padding: 6px 12px; font-size: 12.5px; border-color: var(--line); font-weight: 700; color: var(--ink);">
@@ -7500,7 +7665,7 @@ JOHN DOE
         let mtType = 'MT940';
         const selectedParser = document.getElementById('parserTypeSelect').value;
 
-        if (selectedParser === 'auto') {
+        if (selectedParser === 'auto' || selectedParser === 'mt2mx') {
           if (/\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'))) {
             mtType = 'MT564';
           } else if (/\{2:[IO]202/i.test(text) || text.includes('MT202')) {
@@ -7558,6 +7723,9 @@ JOHN DOE
           };
         }
         renderParsedOutput();
+        if (selectedParser === 'mt2mx') {
+          switchParserTab('mx');
+        }
       } catch (e) {
         console.error(e);
         const errMsg = currentLang === 'en' ? 'Error parsing message. Please check the format.' : 'Gagal melakukan parsing pesan. Silakan periksa kembali format pesan.';
@@ -7751,7 +7919,6 @@ JOHN DOE
             </div>
           `;
 
-          // Build Tag Breakdown for MT940/942/950
           const tagBreakdownHtml = renderStatementTagsTable(statement.tags, statement.msgType.toLowerCase());
 
           output.innerHTML = `
@@ -7767,7 +7934,422 @@ JOHN DOE
         }
       }
 
+      // Remove the tag breakdown table container from the visual dashboard tab to avoid redundancy
+      const breakdownEl = output.querySelector('.tag-breakdown-container');
+      if (breakdownEl) {
+        breakdownEl.remove();
+      }
+
+      // Now capture default generated dashboard view
+      const visualDashboardHtml = output.innerHTML;
+
+      // Extract or generate tag breakdown table
+      let tagsHtml = '';
+      const statementTypes = ['MT940', 'MT942', 'MT950'];
+      if (statementTypes.includes(activeStatement.msgType)) {
+        tagsHtml = renderStatementTagsTable(activeStatement.tags, activeStatement.msgType.toLowerCase());
+      } else {
+        tagsHtml = renderParsedTagsTable(activeStatement.tags, activeStatement.msgType.toLowerCase());
+      }
+
+      // Generate ISO 20022 XML (MX) Translation
+      const xmlPayload = generateISO20022XML(activeStatement.msgType, activeStatement);
+
+      // Build Tabbed Container HTML
+      const tabTitle1 = currentLang === 'en' ? '📊 Visual Dashboard' : '📊 Dasbor Visual';
+      const tabTitle2 = currentLang === 'en' ? '📝 Raw MT Tag Breakdown' : '📝 Rincian Tag Raw MT';
+      const tabTitle3 = currentLang === 'en' ? '🌐 ISO 20022 XML (MX) Translation' : '🌐 Terjemahan ISO 20022 XML (MX)';
+
+      output.innerHTML = `
+        <div class="parser-tab-container" style="margin-top: 10px;">
+          <!-- Tab Navigation -->
+          <div class="parser-tabs">
+            <button class="parser-tab-btn active" onclick="switchParserTab('visual')" id="btn-tab-visual">
+              ${tabTitle1}
+            </button>
+            <button class="parser-tab-btn" onclick="switchParserTab('tags')" id="btn-tab-tags">
+              ${tabTitle2}
+            </button>
+            <button class="parser-tab-btn" onclick="switchParserTab('mx')" id="btn-tab-mx">
+              ${tabTitle3}
+            </button>
+          </div>
+
+          <!-- Tab Contents -->
+          <div id="parser-tab-content-visual" class="parser-tab-content" style="display: block;">
+            ${visualDashboardHtml}
+          </div>
+
+          <div id="parser-tab-content-tags" class="parser-tab-content" style="display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow);">
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Raw Tag Details' : 'Rincian Tag Raw - SWIFT Blok 4'}</h3>
+            </div>
+            ${tagsHtml}
+          </div>
+
+          <div id="parser-tab-content-mx" class="parser-tab-content" style="display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow);">
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'ISO 20022 XML Translation (MX)' : 'Terjemahan ISO 20022 XML (MX)'}</h3>
+                <div style="font-size: 12px; color: var(--ink-soft); margin-top: 4px;">
+                  ${currentLang === 'en' ? 'Real-time simulated conversion from legacy SWIFT MT to XML schema.' : 'Simulasi konversi real-time dari legacy SWIFT MT ke skema XML.'}
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <span class="badge-msg" id="mx-schema-badge" style="font-size: 11px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                  ${getMXSchemaName(activeStatement.msgType)}
+                </span>
+                <button class="btn btn-ghost" onclick="copyXmlPayload()" style="padding: 6px 12px; font-size: 12.5px; font-weight: 700; border-color: var(--line);">
+                  📋 ${currentLang === 'en' ? 'Copy XML' : 'Salin XML'}
+                </button>
+              </div>
+            </div>
+            
+            <div style="position: relative; border-radius: 8px; overflow: hidden; background: #0f172a; border: 1px solid #1e293b;">
+              <pre style="margin: 0; padding: 18px; font-family: var(--mono); font-size: 12.5px; color: #38bdf8; overflow-x: auto; max-height: 520px; line-height: 1.5; text-align: left; direction: ltr;"><code id="xml-content-code">${escapeHtml(xmlPayload)}</code></pre>
+            </div>
+          </div>
+        </div>
+      `;
+
       injectGlobalParserAddons();
+    }
+
+    function switchParserTab(tabId) {
+      document.querySelectorAll('.parser-tab-content').forEach(el => {
+        el.style.display = 'none';
+      });
+      const targetContent = document.getElementById(`parser-tab-content-${tabId}`);
+      if (targetContent) targetContent.style.display = 'block';
+
+      document.querySelectorAll('.parser-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active');
+      }
+    }
+
+    function copyXmlPayload() {
+      const code = document.getElementById('xml-content-code');
+      if (!code) return;
+      navigator.clipboard.writeText(code.innerText).then(() => {
+        showToast(currentLang === 'en' ? '✓ XML copied to clipboard!' : '✓ XML berhasil disalin ke clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy XML: ', err);
+      });
+    }
+
+    function getMXSchemaName(mtType) {
+      const type = mtType.toUpperCase();
+      if (type === 'MT103') return 'pacs.008.001.08';
+      if (type === 'MT940' || type === 'MT950') return 'camt.053.001.08';
+      if (type === 'MT942') return 'camt.052.001.08';
+      if (type === 'MT202' || type === 'MT202COV') return 'pacs.009.001.08';
+      if (type === 'MT910') return 'camt.054.001.08';
+      if (type === 'MT101') return 'pain.001.001.08';
+      if (type === 'MT102') return 'pacs.008.001.08';
+      if (type === 'MT104') return 'pain.008.001.08';
+      return 'iso.20022.generic';
+    }
+
+    function escapeXml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe.replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+          default: return c;
+        }
+      });
+    }
+
+    function reformatValDate(valDateStr) {
+      if (!valDateStr) return '';
+      const clean = valDateStr.replace(/\//g, '').trim();
+      if (clean.length === 6) {
+        const yy = clean.substring(0, 2);
+        const mm = clean.substring(2, 4);
+        const dd = clean.substring(4, 6);
+        const year = parseInt(yy) < 70 ? '20' + yy : '19' + yy;
+        return `${year}-${mm}-${dd}`;
+      }
+      return valDateStr;
+    }
+
+    function parseMTtoMX(statement) {
+      if (!statement) return '';
+      return generateISO20022XML(statement.msgType, statement);
+    }
+
+    function generateISO20022XML(mtType, stmt) {
+      const type = (mtType || '').toUpperCase();
+      const now = new Date();
+      const creDtTm = now.toISOString();
+      const msgId = stmt.senderRef || (stmt.tags && stmt.tags['20']) || ('MSG' + Math.floor(Math.random() * 1000000000));
+      
+      if (type === 'MT103') {
+        const ccy = stmt.settledAmount ? stmt.settledAmount.currency : 'USD';
+        const amt = stmt.settledAmount ? stmt.settledAmount.amount : 0.00;
+        const valDate = stmt.settledAmount && stmt.settledAmount.date 
+          ? reformatValDate(stmt.settledAmount.date) 
+          : now.toISOString().slice(0, 10);
+        
+        const dbtrNm = stmt.sender ? stmt.sender.name : 'Unknown Debtor';
+        const dbtrAcct = stmt.sender ? stmt.sender.account : '';
+        const cdtrNm = stmt.beneficiary ? stmt.beneficiary.name : 'Unknown Creditor';
+        const cdtrAcct = stmt.beneficiary ? stmt.beneficiary.account : '';
+        const chrgBr = stmt.charges || 'SHA';
+        
+        let dbtrBic = 'DEUTDEDDXXX';
+        let cdtrBic = 'CITIUS33XXX';
+        
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>${escapeXml(msgId)}</MsgId>
+      <CreDtTm>${creDtTm}</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf>
+        <SttlmMtd>CLRG</SttlmMtd>
+        <ClrSys>
+          <Prtry>TARGET2</Prtry>
+        </ClrSys>
+      </SttlmInf>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <EndToEndId>${escapeXml(msgId)}</EndToEndId>
+        <UETR>${escapeXml(stmt.tags && stmt.tags['121'] || '—')}</UETR>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="${escapeXml(ccy)}">${amt.toFixed(2)}</IntrBkSttlmAmt>
+      <IntrBkSttlmDt>${escapeXml(valDate)}</IntrBkSttlmDt>
+      <ChrgBr>${escapeXml(chrgBr)}</ChrgBr>
+      <Dbtr>
+        <Nm>${escapeXml(dbtrNm)}</Nm>
+      </Dbtr>
+      <DbtrAcct>
+        <Id>
+          <Othr>
+            <Id>${escapeXml(dbtrAcct)}</Id>
+          </Othr>
+        </Id>
+      </DbtrAcct>
+      <DbtrAgt>
+        <FinInstnId>
+          <BICFI>${escapeXml(dbtrBic)}</BICFI>
+        </FinInstnId>
+      </DbtrAgt>
+      <CdtrAgt>
+        <FinInstnId>
+          <BICFI>${escapeXml(cdtrBic)}</BICFI>
+        </FinInstnId>
+      </CdtrAgt>
+      <Cdtr>
+        <Nm>${escapeXml(cdtrNm)}</Nm>
+      </Cdtr>
+      <CdtrAcct>
+        <Id>
+          <Othr>
+            <Id>${escapeXml(cdtrAcct)}</Id>
+          </Othr>
+        </Id>
+      </CdtrAcct>
+      <RmtInf>
+        <Ustrd>${escapeXml(stmt.remittanceInfo || 'INVOICE PAYMENT')}</Ustrd>
+      </RmtInf>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
+</Document>`;
+      }
+      
+      if (type === 'MT940' || type === 'MT950' || type === 'MT942') {
+        const isReport = type === 'MT942';
+        const schema = isReport ? 'camt.052.001.08' : 'camt.053.001.08';
+        const rootTag = isReport ? 'BkToCstmrAcctRpt' : 'BkToCstmrStmt';
+        const blockTag = isReport ? 'Rpt' : 'Stmt';
+        
+        const acctId = stmt.account || '—';
+        const stmtNum = stmt.statementNum || '1';
+        const seqNum = stmt.sequenceNum || '1';
+        
+        const opnBalAmt = stmt.openingBalance ? stmt.openingBalance.amount : 0.00;
+        const opnBalSign = stmt.openingBalance && stmt.openingBalance.sign === '-' ? 'DBIT' : 'CRDT';
+        const opnBalCcy = stmt.openingBalance ? stmt.openingBalance.currency : 'USD';
+        const opnBalDate = stmt.openingBalance && stmt.openingBalance.date 
+          ? reformatValDate(stmt.openingBalance.date) 
+          : now.toISOString().slice(0, 10);
+          
+        const clsBalAmt = stmt.closingBalance ? stmt.closingBalance.amount : 0.00;
+        const clsBalSign = stmt.closingBalance && stmt.closingBalance.sign === '-' ? 'DBIT' : 'CRDT';
+        const clsBalCcy = stmt.closingBalance ? stmt.closingBalance.currency : 'USD';
+        const clsBalDate = stmt.closingBalance && stmt.closingBalance.date 
+          ? reformatValDate(stmt.closingBalance.date) 
+          : now.toISOString().slice(0, 10);
+        
+        let entriesXml = '';
+        if (stmt.transactions && stmt.transactions.length > 0) {
+          stmt.transactions.forEach((tx, idx) => {
+            const entryAmt = tx.amount || 0.00;
+            const entrySign = tx.sign === '+' ? 'CRDT' : 'DBIT';
+            const entryValDate = tx.valueDate ? reformatValDate(tx.valueDate) : now.toISOString().slice(0, 10);
+            const entryRef = tx.customerRef || 'NONREF';
+            const details = tx.details86 ? (tx.details86.REMI || tx.details86.RAW || 'STATEMENT ENTRY') : 'STATEMENT ENTRY';
+            const counterparty = tx.details86 ? (tx.details86.CRNM || tx.details86.DBNM || '') : '';
+            
+            entriesXml += `      <Ntry>
+        <NtryRef>NTRY${idx + 1}</NtryRef>
+        <Amt Ccy="${escapeXml(opnBalCcy)}">${entryAmt.toFixed(2)}</Amt>
+        <CdtDbtInd>${entrySign}</CdtDbtInd>
+        <Status>BOOK</Status>
+        <BookgDt>
+          <Dt>${escapeXml(entryValDate)}</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>${escapeXml(entryValDate)}</Dt>
+        </ValDt>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>${escapeXml(entryRef)}</EndToEndId>
+            </Refs>
+            ${counterparty ? `
+            <RltdPties>
+              <Cdtr>
+                <Nm>${escapeXml(counterparty)}</Nm>
+              </Cdtr>
+            </RltdPties>` : ''}
+            <RmtInf>
+              <Ustrd>${escapeXml(details)}</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>\n`;
+          });
+        }
+
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:${schema}"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <${rootTag}>
+    <GrpHdr>
+      <MsgId>${escapeXml(msgId)}</MsgId>
+      <CreDtTm>${creDtTm}</CreDtTm>
+    </GrpHdr>
+    <${blockTag}>
+      <Id>${escapeXml(stmtNum)}/${escapeXml(seqNum)}</Id>
+      <CreDtTm>${creDtTm}</CreDtTm>
+      <Acct>
+        <Id>
+          <Othr>
+            <Id>${escapeXml(acctId)}</Id>
+          </Othr>
+        </Id>
+      </Acct>
+      <Bal>
+        <Tp>
+          <CdOrPrTry>
+            <Cd>OPBD</Cd>
+          </CdOrPrTry>
+        </Tp>
+        <Amt Ccy="${escapeXml(opnBalCcy)}">${opnBalAmt.toFixed(2)}</Amt>
+        <CdtDbtInd>${opnBalSign}</CdtDbtInd>
+        <Dt>
+          <Dt>${escapeXml(opnBalDate)}</Dt>
+        </Dt>
+      </Bal>
+${entriesXml}      <Bal>
+        <Tp>
+          <CdOrPrTry>
+            <Cd>CLBD</Cd>
+          </CdOrPrTry>
+        </Tp>
+        <Amt Ccy="${escapeXml(clsBalCcy)}">${clsBalAmt.toFixed(2)}</Amt>
+        <CdtDbtInd>${clsBalSign}</CdtDbtInd>
+        <Dt>
+          <Dt>${escapeXml(clsBalDate)}</Dt>
+        </Dt>
+      </Bal>
+    </${blockTag}>
+  </${rootTag}>
+</Document>`;
+      }
+
+      if (type === 'MT202' || type === 'MT202COV') {
+        const ccy = stmt.settledAmount ? stmt.settledAmount.currency : 'USD';
+        const amt = stmt.settledAmount ? stmt.settledAmount.amount : 0.00;
+        const valDate = stmt.settledAmount && stmt.settledAmount.date 
+          ? reformatValDate(stmt.settledAmount.date) 
+          : now.toISOString().slice(0, 10);
+        
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.009.001.08"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <FICreditTrf>
+    <GrpHdr>
+      <MsgId>${escapeXml(msgId)}</MsgId>
+      <CreDtTm>${creDtTm}</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf>
+        <SttlmMtd>CLRG</SttlmMtd>
+      </SttlmInf>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <EndToEndId>${escapeXml(msgId)}</EndToEndId>
+        <UETR>${escapeXml(stmt.tags && stmt.tags['121'] || '—')}</UETR>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="${escapeXml(ccy)}">${amt.toFixed(2)}</IntrBkSttlmAmt>
+      <IntrBkSttlmDt>${escapeXml(valDate)}</IntrBkSttlmDt>
+      <DbtrAgt>
+        <FinInstnId>
+          <BICFI>${escapeXml(stmt.tags && stmt.tags['52A'] || 'DEUTDEDDXXX')}</BICFI>
+        </FinInstnId>
+      </DbtrAgt>
+      <CdtrAgt>
+        <FinInstnId>
+          <BICFI>${escapeXml(stmt.tags && stmt.tags['57A'] || 'CITIUS33XXX')}</BICFI>
+        </FinInstnId>
+      </CdtrAgt>
+      <Cdtr>
+        <FinInstnId>
+          <BICFI>${escapeXml(stmt.tags && stmt.tags['58A'] || 'BARCGB2LXXX')}</BICFI>
+        </FinInstnId>
+      </Cdtr>
+    </CdtTrfTxInf>
+  </FICreditTrf>
+</Document>`;
+      }
+
+      let tagElements = '';
+      if (stmt.tags) {
+        Object.keys(stmt.tags).forEach(tag => {
+          const val = stmt.tags[tag];
+          if (typeof val === 'string') {
+            tagElements += `      <Tag_${tag}>${escapeXml(val.replace(/\n/g, ' '))}</Tag_${tag}>\n`;
+          }
+        });
+      }
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:iso.20022.generic"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <GenericMessage>
+    <GrpHdr>
+      <MsgId>${escapeXml(msgId)}</MsgId>
+      <CreDtTm>${creDtTm}</CreDtTm>
+      <OriginalType>${escapeXml(type)}</OriginalType>
+    </GrpHdr>
+    <Payload>
+${tagElements}    </Payload>
+  </GenericMessage>
+</Document>`;
     }
 
     function showTransactionDetail(idx) {
@@ -8000,7 +8582,12 @@ JOHN DOE
     function handleParserTypeChange() {
       const select = document.getElementById('parserTypeSelect');
       if (select && select.value !== 'auto') {
-        loadSampleData(select.value);
+        if (select.value === 'mt2mx') {
+          loadSampleData('mt103');
+          document.getElementById('parserTypeSelect').value = 'mt2mx';
+        } else {
+          loadSampleData(select.value);
+        }
       }
     }
 
@@ -10281,7 +10868,7 @@ JAKARTA, INDONESIA
           <div style="font-weight: 800; color: var(--primary-color); font-size: 15px; display: flex; align-items: center; gap: 8px;">
             <span>💡</span> ${currentLang === 'id' ? 'Ringkasan Eksekutif Rekonsiliasi' : 'Reconciliation Executive Summary'}
           </div>
-          <button class="btn btn-primary" onclick="exportReconToCsv()" style="padding: 6px 12px; font-size: 12.5px; font-weight: 700; background: var(--primary-color); color: #fff; border: none; border-radius: 6px; cursor: pointer; transition: opacity .15s;">
+          <button class="btn btn-primary" onclick="exportReconToCsv()" style="padding: 6px 12px; font-size: 12.5px; font-weight: 700; border-radius: 6px;">
             ${dict.btnExportRecon}
           </button>
         </div>

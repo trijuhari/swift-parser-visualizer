@@ -1965,6 +1965,16 @@
   <!-- ── JavaScript Code ── -->
   <script>
     const OWNER_PASS = 'swift2024';
+    async function authFetch(url, options = {}) {
+      const token = sessionStorage.getItem('swift_owner_token');
+      if (token) {
+        if (!options.headers) {
+          options.headers = {};
+        }
+        options.headers['Authorization'] = 'Bearer ' + token;
+      }
+      return fetch(url, options);
+    }
     const API_URL = 'http://localhost:8766/api/tags';
     
     let DATA = [];
@@ -2316,30 +2326,58 @@
       applyTheme();
     });
 
-    function submitLogin() {
+    async function submitLogin() {
       const pass = document.getElementById('ownerPasswordInput').value;
       const errorMsg = document.getElementById('loginErrorMsg');
       
-      if (pass === OWNER_PASS) {
-        sessionStorage.setItem('swift_owner', '1');
-        errorMsg.style.display = 'none';
-        
-        // Dynamic transition effect
-        const overlay = document.getElementById('login-overlay');
-        overlay.classList.add('fade-out');
-        
-        setTimeout(() => {
-          overlay.style.display = 'none';
-          document.getElementById('appContainer').style.display = 'flex';
-          initCMS();
-        }, 300);
-      } else {
-        errorMsg.style.display = 'block';
+      try {
+        const res = await fetch('http://localhost:8766/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password: pass })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          sessionStorage.setItem('swift_owner_token', data.token);
+          sessionStorage.setItem('swift_owner', '1');
+          errorMsg.style.display = 'none';
+          
+          const overlay = document.getElementById('login-overlay');
+          overlay.classList.add('fade-out');
+          
+          setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('appContainer').style.display = 'flex';
+            initCMS();
+          }, 300);
+        } else {
+          errorMsg.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('Backend auth offline, falling back to local.', err);
+        if (pass === OWNER_PASS) {
+          sessionStorage.setItem('swift_owner', '1');
+          errorMsg.style.display = 'none';
+          
+          const overlay = document.getElementById('login-overlay');
+          overlay.classList.add('fade-out');
+          
+          setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('appContainer').style.display = 'flex';
+            initCMS();
+          }, 300);
+        } else {
+          errorMsg.style.display = 'block';
+        }
       }
     }
 
     function logoutOwner() {
       sessionStorage.removeItem('swift_owner');
+      sessionStorage.removeItem('swift_owner_token');
       window.location.reload();
     }
 
@@ -2673,7 +2711,7 @@
 
     async function loadData() {
       try {
-        const res = await fetch(API_URL);
+        const res = await authFetch(API_URL);
         if (!res.ok) throw new Error('API fetch failed');
         const dbData = await res.json();
         DATA = dbData;
@@ -2690,7 +2728,7 @@
         
         try {
           const bust = '?v=' + Date.now();
-          const res = await fetch('swift-data.json' + bust);
+          const res = await authFetch('swift-data.json' + bust);
           if (!res.ok) throw new Error('fetch failed');
           const gs = await res.json();
           window._systemData = gs;
@@ -3428,7 +3466,7 @@
 
       if (isApiConnected) {
         try {
-          const res = await fetch(API_URL, {
+          const res = await authFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(row)
@@ -3483,7 +3521,7 @@
               is_active: 0,
               source: 'manual'
             };
-            const res = await fetch(API_URL, {
+            const res = await authFetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(row)
@@ -3491,7 +3529,7 @@
             if (!res.ok) throw new Error('API deactivate failed');
           } else {
             // Revert custom message type / delete custom override
-            const res = await fetch(`${API_URL}/${msg}/MSG_NAME/`, {
+            const res = await authFetch(`${API_URL}/${msg}/MSG_NAME/`, {
               method: 'DELETE'
             });
             if (!res.ok) throw new Error('API delete failed');
@@ -3670,7 +3708,7 @@
 
       if (isApiConnected) {
         try {
-          const res = await fetch(API_URL, {
+          const res = await authFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(row)
@@ -3731,7 +3769,7 @@
               is_active: 0,
               source: 'manual'
             };
-            const res = await fetch(API_URL, {
+            const res = await authFetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(row)
@@ -3739,7 +3777,7 @@
             if (!res.ok) throw new Error('API deactivate failed');
           } else {
             // Delete custom category
-            const res = await fetch(`${API_URL}/category/${key}/`, {
+            const res = await authFetch(`${API_URL}/category/${key}/`, {
               method: 'DELETE'
             });
             if (!res.ok) throw new Error('API delete failed');
@@ -3960,7 +3998,7 @@
       if (isApiConnected) {
         const performSave = async () => {
           try {
-            const res = await fetch(API_URL, {
+            const res = await authFetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(row)
@@ -3980,7 +4018,7 @@
           if (eMsg !== msg || eTag !== tag || eSub !== sub) {
             // Delete old key first to prevent duplicates when renaming msg/tag/sub keys
             try {
-              await fetch(`${API_URL}/${eMsg}/${eTag}/${eSub}`, { method: 'DELETE' });
+              await authFetch(`${API_URL}/${eMsg}/${eTag}/${eSub}`, { method: 'DELETE' });
               await performSave();
             } catch (err) {
               console.error('Delete old row failed', err);
@@ -4123,7 +4161,7 @@
       if (confirm(currentLang === 'en' ? `Delete subfield ${sub} of tag :${tag}:?` : `Hapus subfield ${sub} dari tag :${tag}:?`)) {
         if (isApiConnected) {
           try {
-            const res = await fetch(`${API_URL}/${msg}/${tag}/${sub}`, { method: 'DELETE' });
+            const res = await authFetch(`${API_URL}/${msg}/${tag}/${sub}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('API delete failed');
             showToast(currentLang === 'id' ? '🗑️ Sub-field berhasil dihapus.' : '🗑️ Sub-field successfully deleted.');
             await loadData();
@@ -4160,7 +4198,7 @@
 
       if (isApiConnected) {
         try {
-          const res = await fetch(`${API_URL}/${msg}/${tag}/${sub || ''}`, { method: 'DELETE' });
+          const res = await authFetch(`${API_URL}/${msg}/${tag}/${sub || ''}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('API delete failed');
           showToast(currentLang === 'id' ? '🗑️ Baris berhasil dihapus dari Database.' : '🗑️ Row successfully deleted from Database.');
           selectedRows.delete(`${msg}|${tag}|${sub}`);
@@ -4290,7 +4328,7 @@
 
       if (isApiConnected) {
         try {
-          const res = await fetch(`${API_URL}/delete-multiple`, {
+          const res = await authFetch(`${API_URL}/delete-multiple`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(itemsWithSubfields)
@@ -4450,7 +4488,7 @@
 
       if (isApiConnected) {
         try {
-          const res = await fetch(`${API_URL}/import`, {
+          const res = await authFetch(`${API_URL}/import`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(itemsToImport)
@@ -4500,7 +4538,7 @@
     // ── Settings Page Operations ──
     async function testConnection() {
       try {
-        const res = await fetch(API_URL);
+        const res = await authFetch(API_URL);
         if (res.ok) {
           showToast(currentLang === 'id' ? '✓ Koneksi backend database aktif & responsif!' : '✓ Backend database connection active & responsive!');
         } else {
@@ -4549,7 +4587,7 @@
 
     async function loadComplianceRulesList() {
       try {
-        const res = await fetch('http://localhost:8766/api/compliance/rules');
+        const res = await authFetch('http://localhost:8766/api/compliance/rules');
         if (!res.ok) throw new Error('Failed to fetch compliance rules');
         COMPLIANCE_RULES = await res.json();
       } catch (e) {
@@ -4693,7 +4731,7 @@
       if (id) payload.id = parseInt(id);
 
       try {
-        const res = await fetch('http://localhost:8766/api/compliance/rules', {
+        const res = await authFetch('http://localhost:8766/api/compliance/rules', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -4714,7 +4752,7 @@
       if (!conf) return;
 
       try {
-        const res = await fetch(`http://localhost:8766/api/compliance/rules/${id}`, {
+        const res = await authFetch(`http://localhost:8766/api/compliance/rules/${id}`, {
           method: 'DELETE'
         });
 

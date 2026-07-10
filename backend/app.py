@@ -7,12 +7,68 @@ app = Flask(__name__)
 # Enable CORS for all routes to support requests from the frontend
 CORS(app)
 
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
+from functools import wraps
+
 DB_PATH = os.path.join(os.path.dirname(__file__), 'swift.db')
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def init_security_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS swift_admin_settings (
+        key VARCHAR(50) PRIMARY KEY,
+        value TEXT
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS swift_admin_tokens (
+        token VARCHAR(100) PRIMARY KEY,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("SELECT value FROM swift_admin_settings WHERE key = 'admin_password_hash'")
+    row = cursor.fetchone()
+    if not row:
+        hashed = generate_password_hash('swift2024')
+        cursor.execute("INSERT INTO swift_admin_settings (key, value) VALUES ('admin_password_hash', ?)", (hashed,))
+    conn.commit()
+    conn.close()
+
+# Initialize tables
+try:
+    init_security_db()
+except Exception as e:
+    print("Security DB Initialization Error:", e)
+
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Unauthorized: Missing Authorization header"}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT token FROM swift_admin_tokens WHERE token = ?", (token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({"error": "Unauthorized: Invalid or expired token"}), 401
+            
+        return f(*args, **kwargs)
+    return decorated
 
 @app.route('/api/tags', methods=['GET'])
 def get_tags():
@@ -39,6 +95,7 @@ def get_tags():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/tags', methods=['POST'])
+@require_admin
 def save_tag():
     try:
         data = request.json
@@ -116,6 +173,7 @@ def save_tag():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/tags/import', methods=['POST'])
+@require_admin
 def import_tags():
     try:
         items = request.json
@@ -189,6 +247,7 @@ def import_tags():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/tags/delete-multiple', methods=['POST', 'OPTIONS'])
+@require_admin
 def delete_multiple_tags():
     if request.method == 'OPTIONS':
         return jsonify({"status": "success"}), 200
@@ -230,6 +289,7 @@ def delete_multiple_tags():
 @app.route('/api/tags/<msg>/<tag>', defaults={'sub': ''}, methods=['DELETE', 'OPTIONS'])
 @app.route('/api/tags/<msg>/<tag>/', defaults={'sub': ''}, methods=['DELETE', 'OPTIONS'])
 @app.route('/api/tags/<msg>/<tag>/<sub>', methods=['DELETE', 'OPTIONS'])
+@require_admin
 def delete_tag(msg, tag, sub):
     if request.method == 'OPTIONS':
         return jsonify({"status": "success"}), 200
@@ -269,10 +329,27 @@ def login():
         if not data or 'password' not in data:
             return jsonify({"error": "Password is required"}), 400
             
-        # Hardcoded password check matching client-side expectation
-        if data['password'] == 'swift2024':
-            return jsonify({"status": "success", "token": "swift-owner-authorized-token"}), 200
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM swift_admin_settings WHERE key = 'admin_password_hash'")
+        row = cursor.fetchone()
+        
+        if not row:
+            hashed = generate_password_hash('swift2024')
+            cursor.execute("INSERT OR REPLACE INTO swift_admin_settings (key, value) VALUES ('admin_password_hash', ?)", (hashed,))
+            conn.commit()
+            password_hash = hashed
         else:
+            password_hash = row['value']
+            
+        if check_password_hash(password_hash, data['password']):
+            token = secrets.token_hex(32)
+            cursor.execute("INSERT INTO swift_admin_tokens (token) VALUES (?)", (token,))
+            conn.commit()
+            conn.close()
+            return jsonify({"status": "success", "token": token}), 200
+        else:
+            conn.close()
             return jsonify({"error": "Invalid password"}), 401
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -296,6 +373,7 @@ def get_compliance_rules():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/compliance/rules', methods=['POST'])
+@require_admin
 def save_compliance_rule():
     try:
         data = request.json
@@ -344,6 +422,7 @@ def save_compliance_rule():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/compliance/rules/<int:rule_id>', methods=['DELETE'])
+@require_admin
 def delete_compliance_rule(rule_id):
     try:
         conn = get_db_connection()
