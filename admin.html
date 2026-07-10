@@ -1975,7 +1975,12 @@
       }
       return fetch(url, options);
     }
-    const API_URL = 'http://localhost:8766/api/tags';
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:8766/api/tags' 
+      : '/api/tags';
+    const RULES_API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:8766/api/compliance/rules' 
+      : '/api/compliance/rules';
     
     let DATA = [];
     let CUSTOM = JSON.parse(localStorage.getItem('swift_custom') || '[]');
@@ -4587,7 +4592,7 @@
 
     async function loadComplianceRulesList() {
       try {
-        const res = await authFetch('http://localhost:8766/api/compliance/rules');
+        const res = await authFetch(RULES_API_URL);
         if (!res.ok) throw new Error('Failed to fetch compliance rules');
         COMPLIANCE_RULES = await res.json();
       } catch (e) {
@@ -4731,7 +4736,7 @@
       if (id) payload.id = parseInt(id);
 
       try {
-        const res = await authFetch('http://localhost:8766/api/compliance/rules', {
+        const res = await authFetch(RULES_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -4752,7 +4757,7 @@
       if (!conf) return;
 
       try {
-        const res = await authFetch(`http://localhost:8766/api/compliance/rules/${id}`, {
+        const res = await authFetch(`${RULES_API_URL}/${id}`, {
           method: 'DELETE'
         });
 

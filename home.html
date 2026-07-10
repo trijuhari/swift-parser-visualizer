@@ -3227,7 +3227,9 @@ JOHN DOE
   <script>
     let DATA = [];
     let CUSTOM = JSON.parse(localStorage.getItem('swift_custom') || '[]');
-    const API_URL = 'http://localhost:8766/api/tags';
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+      ? 'http://localhost:8766/api/tags' 
+      : '/api/tags';
     let isApiConnected = false;
 
     async function loadData() {
