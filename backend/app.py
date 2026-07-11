@@ -29,6 +29,20 @@ def serve_admin():
 def serve_swift_data():
     return send_from_directory(PARENT_DIR, 'swift-data.json')
 
+@app.route('/robots.txt')
+def serve_robots():
+    return send_from_directory(PARENT_DIR, 'robots.txt')
+
+@app.route('/sitemap.xml')
+def serve_sitemap():
+    return send_from_directory(PARENT_DIR, 'sitemap.xml')
+
+@app.route('/<path:filename>')
+def serve_verification_files(filename):
+    if filename.startswith('google') and filename.endswith('.html'):
+        return send_from_directory(PARENT_DIR, filename)
+    return "Not Found", 404
+
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 from functools import wraps
