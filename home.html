@@ -5094,6 +5094,8 @@ JOHN DOE
     }
 
     let activeStatement = null;
+    let activeStatements = [];
+    let activeStatementIndex = -1;
     let currentPathwayNodes = [];
 
     function parseMT940State(rawText) {
@@ -7655,88 +7657,901 @@ JOHN DOE
       `;
     }
 
+    function splitSwiftMessages(text) {
+      const regex = /\{1:[^]*?-\}/g;
+      const matches = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push(match[0].trim());
+      }
+      if (matches.length === 0 && text.trim().length > 0) {
+        return text.split(/\n\s*\n/).map(b => b.trim()).filter(b => b.length > 0);
+      }
+      return matches;
+    }
+
+    function getBadgeGradientForType(type) {
+      const t = (type || '').toUpperCase();
+      if (t === 'MT940' || t === 'MT942' || t === 'MT950') {
+        return 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+      }
+      if (t === 'MT103') {
+        return 'linear-gradient(135deg, #10b981 0%, #047857 100%)';
+      }
+      if (t === 'MT101') {
+        return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+      }
+      if (t === 'MT102') {
+        return 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+      }
+      if (t === 'MT104') {
+        return 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)';
+      }
+      if (t === 'MT202' || t === 'MT202COV') {
+        return 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)';
+      }
+      if (t === 'MT910') {
+        return 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)';
+      }
+      if (t === 'MT564') {
+        return 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)';
+      }
+      return 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
+    }
+
+    function getRefTextForStatement(stmt) {
+      if (!stmt) return '—';
+      if (stmt.account) {
+        return `Acc: ${stmt.account}`;
+      }
+      if (stmt.tags && stmt.tags['20']) {
+        return `Ref: ${stmt.tags['20']}`;
+      }
+      if (stmt.senderRef) {
+        return `Ref: ${stmt.senderRef}`;
+      }
+      return '—';
+    }
+
     function parseSwift() {
       const text = document.getElementById('rawInput').value.trim();
-      const output = document.getElementById('parserOutput');
       
       if (!text) {
-        const emptyMsg = currentLang === 'en' ? 'Please paste a Swift message first.' : 'Silakan paste pesan Swift terlebih dahulu.';
-        output.innerHTML = `<div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;"><span class="big">∅</span>${emptyMsg}</div>`;
+        const output = document.getElementById('parserOutput') || document.getElementById('parserOutputOriginal');
+        if (output) {
+          const emptyMsg = currentLang === 'en' ? 'Please paste a Swift message first.' : 'Silakan paste pesan Swift terlebih dahulu.';
+          output.innerHTML = `<div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;"><span class="big">∅</span>${emptyMsg}</div>`;
+        }
         activeStatement = null;
+        activeStatements = [];
+        activeStatementIndex = -1;
         return;
       }
 
-      try {
-        let mtType = 'MT940';
-        const selectedParser = document.getElementById('parserTypeSelect').value;
+      // Restoring original container if it was swapped
+      const original = document.getElementById('parserOutputOriginal');
+      if (original) {
+        original.id = 'parserOutput';
+      }
+      
+      const rawMessages = splitSwiftMessages(text);
+      activeStatements = [];
+      
+      if (rawMessages.length === 0) {
+        const output = document.getElementById('parserOutput');
+        const emptyMsg = currentLang === 'en' ? 'No valid Swift messages found.' : 'Tidak ditemukan pesan Swift yang valid.';
+        output.innerHTML = `<div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;"><span class="big">∅</span>${emptyMsg}</div>`;
+        activeStatement = null;
+        activeStatementIndex = -1;
+        return;
+      }
 
-        if (selectedParser === 'auto' || selectedParser === 'mt2mx') {
-          if (/\{2:[IO]564/i.test(text) || text.includes(':22F::CAEV') || text.includes(':23G:NEWM') || (text.includes(':16R:GENL') && text.includes(':16R:USECU'))) {
-            mtType = 'MT564';
-          } else if (/\{2:[IO]202/i.test(text) || text.includes('MT202')) {
-            if (text.includes('/COV/') || text.includes('202COV') || text.includes('202 COV') || text.includes(':59:')) {
-              mtType = 'MT202COV';
-            } else {
-              mtType = 'MT202';
+      rawMessages.forEach((rawMsg, index) => {
+        try {
+          let detectedType = 'MT940';
+          const block2Match = rawMsg.match(/\{2:[IO](\d{3})/i);
+          if (block2Match) {
+            const typeNum = block2Match[1];
+            detectedType = 'MT' + typeNum;
+            // Differentiate MT202 and MT202COV
+            if (detectedType === 'MT202') {
+              if (rawMsg.includes('/COV/') || rawMsg.includes('202COV') || rawMsg.includes('202 COV') || rawMsg.includes(':59:')) {
+                detectedType = 'MT202COV';
+              }
             }
-          } else if (/\{2:[IO]104/i.test(text) || text.includes('MT104')) {
-            mtType = 'MT104';
-          } else if (/\{2:[IO]102/i.test(text) || text.includes('MT102')) {
-            mtType = 'MT102';
-          } else if (/\{2:[IO]103/i.test(text) || text.includes(':23B:') || (text.includes(':32A:') && text.includes(':59:')) || (text.includes(':50K:') && text.includes(':59:')) || text.includes('MT103')) {
-            mtType = 'MT103';
-          } else if (/\{2:[IO]101/i.test(text) || (text.includes(':28D:') && text.includes(':30:')) || text.includes('MT101')) {
-            mtType = 'MT101';
-          } else if (/\{2:[IO]910/i.test(text) || text.includes('MT910')) {
-            mtType = 'MT910';
-          } else if (/\{2:[IO]942/i.test(text) || text.includes(':34F:')) {
-            mtType = 'MT942';
-          } else if (/\{2:[IO]950/i.test(text)) {
-            mtType = 'MT950';
-          } else if (/\{2:[IO]940/i.test(text)) {
-            mtType = 'MT940';
+          } else {
+            // Fallback heuristics if Block 2 is missing
+            if (/\{2:[IO]564/i.test(rawMsg) || rawMsg.includes(':22F::CAEV') || rawMsg.includes(':23G:NEWM') || (rawMsg.includes(':16R:GENL') && rawMsg.includes(':16R:USECU'))) {
+              detectedType = 'MT564';
+            } else if (/\{2:[IO]202/i.test(rawMsg) || rawMsg.includes('MT202')) {
+              if (rawMsg.includes('/COV/') || rawMsg.includes('202COV') || rawMsg.includes('202 COV') || rawMsg.includes(':59:')) {
+                detectedType = 'MT202COV';
+              } else {
+                detectedType = 'MT202';
+              }
+            } else if (/\{2:[IO]104/i.test(rawMsg) || rawMsg.includes('MT104')) {
+              detectedType = 'MT104';
+            } else if (/\{2:[IO]102/i.test(rawMsg) || rawMsg.includes('MT102')) {
+              detectedType = 'MT102';
+            } else if (/\{2:[IO]103/i.test(rawMsg) || rawMsg.includes(':23B:') || (rawMsg.includes(':32A:') && rawMsg.includes(':59:')) || (rawMsg.includes(':50K:') && rawMsg.includes(':59:')) || rawMsg.includes('MT103')) {
+              detectedType = 'MT103';
+            } else if (/\{2:[IO]101/i.test(rawMsg) || (rawMsg.includes(':28D:') && rawMsg.includes(':30:')) || rawMsg.includes('MT101')) {
+              detectedType = 'MT101';
+            } else if (/\{2:[IO]910/i.test(rawMsg) || rawMsg.includes('MT910')) {
+              detectedType = 'MT910';
+            } else if (/\{2:[IO]942/i.test(rawMsg) || rawMsg.includes(':34F:')) {
+              detectedType = 'MT942';
+            } else if (/\{2:[IO]950/i.test(rawMsg)) {
+              detectedType = 'MT950';
+            } else if (/\{2:[IO]940/i.test(rawMsg)) {
+              detectedType = 'MT940';
+            }
           }
+
+          const selectedParser = document.getElementById('parserTypeSelect').value;
+          const isAuto = (selectedParser === 'auto' || selectedParser === 'mt2mx');
+          
+          let isMismatch = false;
+          let mtType = detectedType;
+
+          if (!isAuto) {
+            const normalizedSelected = selectedParser.toUpperCase();
+            if (normalizedSelected !== detectedType) {
+              // Allow MT940, MT942, MT950 under 'MT940' selection since they share same engine
+              const isStatementSelection = (normalizedSelected === 'MT940' && ['MT940', 'MT942', 'MT950'].includes(detectedType));
+              if (!isStatementSelection) {
+                isMismatch = true;
+                mtType = normalizedSelected;
+              }
+            }
+          }
+
+          if (isMismatch) {
+            activeStatements.push({
+              raw: rawMsg,
+              parsed: null,
+              error: null,
+              msgType: detectedType,
+              isMismatch: true,
+              expectedType: selectedParser.toUpperCase(),
+              index: index + 1
+            });
+          } else {
+            const statementTypes = ['MT940', 'MT942', 'MT950'];
+            let parsedObj = null;
+            if (mtType === 'MT564') {
+              parsedObj = parseMT564(rawMsg);
+            } else if (mtType === 'MT910') {
+              parsedObj = parseMT910(rawMsg);
+            } else if (mtType === 'MT202') {
+              parsedObj = parseMT202(rawMsg);
+            } else if (mtType === 'MT202COV') {
+              parsedObj = parseMT202COV(rawMsg);
+            } else if (mtType === 'MT104') {
+              parsedObj = parseMT104(rawMsg);
+            } else if (mtType === 'MT102') {
+              parsedObj = parseMT102(rawMsg);
+            } else if (mtType === 'MT103') {
+              parsedObj = parseMT103(rawMsg);
+            } else if (mtType === 'MT101') {
+              parsedObj = parseMT101(rawMsg);
+            } else if (statementTypes.includes(mtType)) {
+              parsedObj = parseMT940State(rawMsg);
+              parsedObj.msgType = mtType;
+            } else {
+              parsedObj = {
+                msgType: mtType,
+                tags: parseGeneralTags(rawMsg)
+              };
+            }
+
+            activeStatements.push({
+              raw: rawMsg,
+              parsed: parsedObj,
+              error: null,
+              msgType: mtType,
+              isMismatch: false,
+              index: index + 1
+            });
+          }
+        } catch (err) {
+          console.error(`Error parsing message at index ${index}:`, err);
+          activeStatements.push({
+            raw: rawMsg,
+            parsed: null,
+            error: err.message || err,
+            msgType: 'UNKNOWN',
+            isMismatch: false,
+            index: index + 1
+          });
+        }
+      });
+
+      if (activeStatements.length === 1) {
+        if (activeStatements[0].error) {
+          const output = document.getElementById('parserOutput');
+          const errMsg = currentLang === 'en' ? 'Error parsing message. Please check the format.' : 'Gagal melakukan parsing pesan. Silakan periksa kembali format pesan.';
+          output.innerHTML = `<div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;"><span class="big">⚠️</span>${errMsg}<br><small style="color:var(--debit-color);">${escapeHtml(activeStatements[0].error)}</small></div>`;
+          activeStatement = null;
+          activeStatementIndex = -1;
+        } else if (activeStatements[0].isMismatch) {
+          const output = document.getElementById('parserOutput');
+          const item = activeStatements[0];
+          const msg = currentLang === 'en' 
+            ? `This message is auto-detected as <strong>${item.msgType}</strong>, but you selected the <strong>${item.expectedType}</strong> parser.` 
+            : `Pesan ini terdeteksi sebagai <strong>${item.msgType}</strong>, namun Anda memilih parser <strong>${item.expectedType}</strong>.`;
+          output.innerHTML = `
+            <div class="mismatch-container" style="padding: 40px 20px; background: var(--panel); border: 1.5px dashed var(--line); border-radius: 12px; text-align: center; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+              <span style="font-size: 48px; margin-bottom: 16px;">⚠️</span>
+              <h3 style="margin: 0 0 8px 0; color: var(--ink); font-family: var(--serif); font-size: 20px;">${currentLang === 'en' ? 'Parser Mismatch' : 'Parser Tidak Sesuai'}</h3>
+              <p style="color: var(--ink-soft); margin-bottom: 24px; max-width: 500px; font-size: 14px;">${msg}</p>
+              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="setParserAndReParse('auto')" style="font-weight: bold;">
+                  ${currentLang === 'en' ? 'Switch to Auto Detect' : 'Ganti ke Auto Detect'}
+                </button>
+                <button class="btn btn-ghost" onclick="setParserAndReParse('${item.msgType.toLowerCase()}')" style="border: 1px solid var(--line); font-weight: bold; padding: 8px 16px;">
+                  ${currentLang === 'en' ? `Use ${item.msgType} Parser` : `Gunakan Parser ${item.msgType}`}
+                </button>
+              </div>
+            </div>
+          `;
+          activeStatement = null;
+          activeStatementIndex = -1;
         } else {
-          mtType = selectedParser.toUpperCase();
+          activeStatementIndex = 0;
+          activeStatement = activeStatements[0].parsed;
+          renderParsedOutput();
+          
+          const selectedParser = document.getElementById('parserTypeSelect').value;
+          if (selectedParser === 'mt2mx') {
+            switchParserTab('mx');
+          }
+        }
+      } else {
+        activeStatementIndex = -1;
+        activeStatement = null;
+        renderBatchView();
+      }
+    }
+
+    function renderBatchView() {
+      const container = document.getElementById('parserOutput');
+      if (container) {
+        container.id = 'parserOutputOriginal';
+        
+        container.innerHTML = `
+          <div class="batch-layout" style="display: flex; gap: 24px; min-height: 500px; flex-wrap: wrap; margin-top: 10px; position: relative;">
+            <!-- Show Sidebar Button (hidden by default) -->
+            <button id="batch-sidebar-show-btn" onclick="toggleBatchSidebar()" style="display: none; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; cursor: pointer; box-shadow: var(--card-shadow); transition: all 0.2s ease; margin-top: 10px;" title="${currentLang === 'en' ? 'Show Navigation' : 'Tampilkan Navigasi'}">
+              ▶
+            </button>
+            <!-- Sidebar -->
+            <div class="batch-sidebar" style="flex: 0 0 280px; width: 280px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; box-sizing: border-box; box-shadow: var(--card-shadow); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: left center;">
+              <h4 style="margin-top: 0; margin-bottom: 16px; font-family: var(--serif); font-size: 15px; color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 10px;">
+                <span style="display: flex; align-items: center; gap: 8px;">📦 <span id="lbl-batchNavTitle">${currentLang === 'en' ? 'Batch Navigation' : 'Navigasi Batch'}</span></span>
+                <button onclick="toggleBatchSidebar()" class="btn-sidebar-toggle" style="background: transparent; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; border-radius: 4px;" title="${currentLang === 'en' ? 'Hide Navigation' : 'Sembunyikan Navigasi'}">
+                  ◀
+                </button>
+              </h4>
+              <div id="batchSidebarList" style="display: flex; flex-direction: column; gap: 8px; max-height: 600px; overflow-y: auto; padding-right: 4px;"></div>
+            </div>
+            <!-- Active Content -->
+            <div id="parserOutput" style="flex: 1; min-width: 300px;"></div>
+          </div>
+        `;
+      }
+
+      const sidebarList = document.getElementById('batchSidebarList');
+      if (sidebarList) {
+        let sidebarHtml = `
+          <div class="batch-sidebar-item active" id="batch-item--1" onclick="selectStatement(-1)" style="display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-weight: 700; color: var(--ink); border: 1px dashed var(--line);">
+            <span style="font-size: 16px;">📊</span>
+            <span>${currentLang === 'en' ? 'Batch Summary' : 'Ringkasan Batch'}</span>
+          </div>
+        `;
+
+        activeStatements.forEach((item, idx) => {
+          const isError = !!item.error;
+          const statusIcon = item.isMismatch ? '⚠️' : (isError ? '❌' : '✅');
+          const badgeBg = item.isMismatch
+            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+            : (isError ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : getBadgeGradientForType(item.msgType));
+          const refText = item.isMismatch
+            ? (currentLang === 'en' ? 'Parser mismatch' : 'Parser tidak sesuai')
+            : (isError ? (currentLang === 'en' ? 'Failed to parse' : 'Gagal memproses') : getRefTextForStatement(item.parsed));
+
+          sidebarHtml += `
+            <div class="batch-sidebar-item" id="batch-item-${idx}" onclick="selectStatement(${idx})" style="display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--line); background: var(--paper);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="badge-msg" style="font-size: 10px; font-weight: 800; color: #fff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; background: ${badgeBg};">
+                  ${item.msgType}
+                </span>
+                <span style="font-size: 12px;">${statusIcon}</span>
+              </div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 4px;">
+                #${idx + 1}: ${currentLang === 'en' ? 'Message' : 'Pesan'}
+              </div>
+              <div style="font-size: 11px; color: var(--ink-soft); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${escapeHtml(refText)}">
+                ${escapeHtml(refText)}
+              </div>
+            </div>
+          `;
+        });
+        sidebarList.innerHTML = sidebarHtml;
+      }
+
+      if (!document.getElementById('batch-styles')) {
+        const style = document.createElement('style');
+        style.id = 'batch-styles';
+        style.innerHTML = `
+          .batch-sidebar-item:hover {
+            border-color: var(--primary-color) !important;
+            background: rgba(59, 130, 246, 0.03) !important;
+          }
+          .batch-sidebar-item.active {
+            border-color: var(--primary-color) !important;
+            background: rgba(59, 130, 246, 0.08) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+          }
+          .btn-sidebar-toggle:hover {
+            background: rgba(59, 130, 246, 0.1) !important;
+            color: var(--primary-color) !important;
+          }
+          .batch-sidebar.collapsed {
+            flex: 0 0 0px !important;
+            width: 0px !important;
+            padding: 0px !important;
+            margin: 0px !important;
+            border: none !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+            transform: scaleX(0);
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      renderBatchSummaryContent();
+    }
+
+    function toggleBatchSidebar() {
+      const sidebar = document.querySelector('.batch-sidebar');
+      const showBtn = document.getElementById('batch-sidebar-show-btn');
+      if (sidebar && showBtn) {
+        sidebar.classList.toggle('collapsed');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        showBtn.style.display = isCollapsed ? 'flex' : 'none';
+      }
+    }
+
+    function selectStatement(index) {
+      activeStatementIndex = index;
+      
+      const sidebarItems = document.querySelectorAll('.batch-sidebar-item');
+      sidebarItems.forEach(item => {
+        item.classList.remove('active');
+      });
+      const currentItem = document.getElementById(`batch-item-${index}`);
+      if (currentItem) {
+        currentItem.classList.add('active');
+      }
+
+      if (index === -1) {
+        activeStatement = null;
+        renderBatchSummaryContent();
+      } else {
+        const item = activeStatements[index];
+        if (item.isMismatch) {
+          activeStatement = null;
+          const output = document.getElementById('parserOutput');
+          const msg = currentLang === 'en' 
+            ? `This message is auto-detected as <strong>${item.msgType}</strong>, but you selected the <strong>${item.expectedType}</strong> parser.` 
+            : `Pesan ini terdeteksi sebagai <strong>${item.msgType}</strong>, namun Anda memilih parser <strong>${item.expectedType}</strong>.`;
+          
+          const selectHasOption = Array.from(document.getElementById('parserTypeSelect').options).some(opt => opt.value === item.msgType.toLowerCase());
+          const actionBtn = selectHasOption 
+            ? `<button class="btn btn-ghost" onclick="setParserAndReParse('${item.msgType.toLowerCase()}')" style="border: 1px solid var(--line); font-weight: bold; padding: 8px 16px;">
+                 ${currentLang === 'en' ? `Use ${item.msgType} Parser` : `Gunakan Parser ${item.msgType}`}
+               </button>`
+            : '';
+
+          output.innerHTML = `
+            <div class="mismatch-container" style="padding: 40px 20px; background: var(--panel); border: 1.5px dashed var(--line); border-radius: 12px; text-align: center; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+              <span style="font-size: 48px; margin-bottom: 16px;">⚠️</span>
+              <h3 style="margin: 0 0 8px 0; color: var(--ink); font-family: var(--serif); font-size: 20px;">${currentLang === 'en' ? 'Parser Mismatch' : 'Parser Tidak Sesuai'}</h3>
+              <p style="color: var(--ink-soft); margin-bottom: 24px; max-width: 500px; font-size: 14px;">${msg}</p>
+              <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="setParserAndReParse('auto')" style="font-weight: bold;">
+                  ${currentLang === 'en' ? 'Switch to Auto Detect' : 'Ganti ke Auto Detect'}
+                </button>
+                ${actionBtn}
+              </div>
+            </div>
+          `;
+        } else if (item.error) {
+          activeStatement = null;
+          const output = document.getElementById('parserOutput');
+          const errMsg = currentLang === 'en' ? 'Error parsing this message.' : 'Gagal melakukan parsing pesan ini.';
+          output.innerHTML = `
+            <div style="padding: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+              <span style="font-size: 48px; margin-bottom: 16px;">⚠️</span>
+              <h3 style="margin: 0 0 8px 0; color: var(--ink);">${errMsg}</h3>
+              <p style="color: var(--debit-color); font-family: var(--mono); font-size: 13px; max-width: 90%; word-break: break-all; background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.1);">${escapeHtml(item.error)}</p>
+            </div>
+          `;
+        } else {
+          activeStatement = item.parsed;
+          renderParsedOutput();
+        }
+      }
+    }
+
+    function setParserAndReParse(parserVal) {
+      document.getElementById('parserTypeSelect').value = parserVal;
+      parseSwift();
+    }
+
+    function renderBatchSummaryContent() {
+      const output = document.getElementById('parserOutput');
+      if (!output) return;
+
+      const totalMsg = activeStatements.length;
+      const successMsg = activeStatements.filter(s => !s.error && !s.isMismatch).length;
+      const errorMsg = activeStatements.filter(s => s.error).length;
+      const mismatchMsg = activeStatements.filter(s => s.isMismatch).length;
+      
+      let totalTransactions = 0;
+      activeStatements.forEach(item => {
+        if (item.parsed && item.parsed.transactions) {
+          totalTransactions += item.parsed.transactions.length;
+        }
+      });
+
+      let tableRows = '';
+      activeStatements.forEach((item, idx) => {
+        const isError = !!item.error;
+        let statusHtml = '';
+        if (item.isMismatch) {
+          statusHtml = `<span style="color: #f59e0b; font-weight: 700;">⚠️ Mismatch</span>`;
+        } else if (isError) {
+          statusHtml = `<span style="color: var(--debit-color); font-weight: 700;">❌ Error</span>`;
+        } else {
+          statusHtml = `<span style="color: var(--credit-color); font-weight: 700;">✅ Parsed</span>`;
+        }
+        
+        let ref = '—';
+        let account = '—';
+        let amountInfo = '—';
+
+        if (!isError && !item.isMismatch && item.parsed) {
+          const stmt = item.parsed;
+          ref = stmt.senderRef || (stmt.tags ? stmt.tags['20'] : '') || '—';
+          account = stmt.account || '—';
+          
+          if (stmt.closingBalance) {
+            amountInfo = `${stmt.closingBalance.sign === '+' ? '+' : '-'}${formatAmountRaw(stmt.closingBalance.amount)} ${stmt.closingBalance.currency}`;
+          } else if (stmt.amount) {
+            amountInfo = `${formatAmountRaw(stmt.amount.amount)} ${stmt.amount.currency}`;
+          } else if (stmt.settledAmount) {
+            amountInfo = `${formatAmountRaw(stmt.settledAmount.amount)} ${stmt.settledAmount.currency}`;
+          }
+        } else if (item.isMismatch) {
+          ref = `<span style="color:#f59e0b; font-size:11px; font-family:var(--mono);">${currentLang === 'en' ? 'Parser Mismatch' : 'Parser tidak sesuai'}</span>`;
+        } else if (isError) {
+          ref = `<span style="color:var(--debit-color); font-size:11px; font-family:var(--mono);">${escapeHtml(item.error.slice(0, 40))}...</span>`;
         }
 
-        const statementTypes = ['MT940', 'MT942', 'MT950'];
-        if (mtType === 'MT564') {
-          activeStatement = parseMT564(text);
-        } else if (mtType === 'MT910') {
-          activeStatement = parseMT910(text);
-        } else if (mtType === 'MT202') {
-          activeStatement = parseMT202(text);
-        } else if (mtType === 'MT202COV') {
-          activeStatement = parseMT202COV(text);
-        } else if (mtType === 'MT104') {
-          activeStatement = parseMT104(text);
-        } else if (mtType === 'MT102') {
-          activeStatement = parseMT102(text);
-        } else if (mtType === 'MT103') {
-          activeStatement = parseMT103(text);
-        } else if (mtType === 'MT101') {
-          activeStatement = parseMT101(text);
-        } else if (statementTypes.includes(mtType)) {
-          activeStatement = parseMT940State(text);
-          activeStatement.msgType = mtType;
-        } else {
-          // Dynamic Generic Parser
-          activeStatement = {
-            msgType: mtType,
-            tags: parseGeneralTags(text)
+        tableRows += `
+          <tr onclick="selectStatement(${idx})" style="cursor: pointer; transition: background 0.1s;">
+            <td style="font-weight: 700; color: var(--ink-soft);">#${idx + 1}</td>
+            <td>
+              <span class="badge-msg" style="font-size: 10px; font-weight: 800; color: #fff; padding: 2px 6px; border-radius: 4px; background: ${item.isMismatch ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : (isError ? 'var(--debit-color)' : getBadgeGradientForType(item.msgType))};">
+                ${item.msgType}
+              </span>
+            </td>
+            <td style="font-family: var(--mono); font-size: 12.5px;">${escapeHtml(ref)}</td>
+            <td style="font-family: var(--mono); font-size: 12.5px;">${escapeHtml(account)}</td>
+            <td style="font-weight: 700;">${amountInfo}</td>
+            <td>${statusHtml}</td>
+            <td style="text-align: right;">
+              <button class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-color: var(--line); color: var(--primary-color);">
+                ${currentLang === 'en' ? 'View' : 'Lihat'} &rarr;
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      output.innerHTML = `
+        <div class="visualizer-dashboard" style="margin-top: 0;">
+          <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h2 style="font-family: var(--serif); font-size: 22px; font-weight: 800; color: var(--ink); margin: 0 0 4px 0;">
+                📊 ${currentLang === 'en' ? 'Batch Processing Report' : 'Laporan Pemrosesan Batch'}
+              </h2>
+              <p style="color: var(--ink-soft); font-size: 13.5px; margin: 0;">
+                ${currentLang === 'en' ? 'Overview of parsed messages and aggregated financial data.' : 'Tinjauan pesan ter-parse dan agregasi data finansial.'}
+              </p>
+            </div>
+            <div>
+              <button class="btn btn-primary" onclick="exportAllBatchTransactionsToCsv()" style="font-size: 13px; font-weight: 700; padding: 8px 16px;">
+                📥 ${currentLang === 'en' ? 'Export Combined CSV' : 'Ekspor CSV Gabungan'}
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="dashboard-cards-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="dashboard-card" style="padding: 16px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">
+                ${currentLang === 'en' ? 'Total Messages' : 'Total Pesan'}
+              </div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--ink);">${totalMsg}</div>
+            </div>
+            <div class="dashboard-card" style="padding: 16px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">
+                ${currentLang === 'en' ? 'Successfully Parsed' : 'Berhasil Diproses'}
+              </div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--credit-color);">${successMsg}</div>
+            </div>
+            <div class="dashboard-card" style="padding: 16px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">
+                ${currentLang === 'en' ? 'Mismatched / Skipped' : 'Format Tidak Sesuai'}
+              </div>
+              <div style="font-size: 28px; font-weight: 800; color: ${mismatchMsg > 0 ? '#f59e0b' : 'var(--ink-soft)'};">${mismatchMsg}</div>
+            </div>
+            <div class="dashboard-card" style="padding: 16px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">
+                ${currentLang === 'en' ? 'Failed' : 'Gagal'}
+              </div>
+              <div style="font-size: 28px; font-weight: 800; color: ${errorMsg > 0 ? 'var(--debit-color)' : 'var(--ink-soft)'};">${errorMsg}</div>
+            </div>
+            <div class="dashboard-card" style="padding: 16px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;">
+                ${currentLang === 'en' ? 'Total Transactions' : 'Total Mutasi Transaksi'}
+              </div>
+              <div style="font-size: 28px; font-weight: 800; color: var(--gold);">${totalTransactions}</div>
+            </div>
+          </div>
+
+          <!-- Batch Table -->
+          <div class="transactions-table-card" style="padding: 20px;">
+            <h4 style="margin: 0 0 16px 0; font-family: var(--serif); font-size: 16px; color: var(--ink);">
+              ${currentLang === 'en' ? 'Message List' : 'Daftar Pesan'}
+            </h4>
+            <div class="table-wrap">
+              <div class="table-card">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr>
+                      <th style="width: 50px;">#</th>
+                      <th style="width: 90px;">${currentLang === 'en' ? 'Type' : 'Tipe'}</th>
+                      <th>Ref/Tag 20</th>
+                      <th>Account</th>
+                      <th>Balance / Amount</th>
+                      <th>Status</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function exportAllBatchTransactionsToCsv() {
+      if (!activeStatements || activeStatements.length === 0) return;
+      
+      const headers = currentLang === 'en'
+        ? ["Account", "Statement", "Period", "Opening Balance", "Closing Balance", "Credits", "Debits", "Value Date", "Entry Date", "Credit/Debit", "Amount", "Currency", "Transaction Type", "Customer Reference", "Bank Reference", "Narrative"]
+        : ["Rekening", "Laporan", "Periode", "Saldo Awal", "Saldo Akhir", "Kredit", "Debit", "Tanggal Valuta", "Tanggal Entri", "Kredit/Debit", "Nominal", "Mata Uang", "Tipe Transaksi", "Referensi Nasabah", "Referensi Bank", "Narasi/Keterangan"];
+      
+      const rows = [];
+      activeStatements.forEach(item => {
+        const stmt = item.parsed;
+        if (!stmt || !stmt.transactions) return;
+        
+        const currency = (stmt.closingBalance ? stmt.closingBalance.currency : '') || (stmt.openingBalance ? stmt.openingBalance.currency : '') || 'USD';
+        const account = stmt.account || '';
+        const statementNum = (stmt.statementNum || '') + (stmt.sequenceNum ? '/' + stmt.sequenceNum : '');
+        const period = (stmt.openingBalance ? stmt.openingBalance.date : '') + ' -> ' + (stmt.closingBalance ? stmt.closingBalance.date : '');
+        
+        const openingBal = stmt.openingBalance ? (stmt.openingBalance.sign === '+' ? '+' : '-') + ' ' + formatAmountRaw(stmt.openingBalance.amount) + ' ' + currency : '';
+        const closingBal = stmt.closingBalance ? (stmt.closingBalance.sign === '+' ? '+' : '-') + ' ' + formatAmountRaw(stmt.closingBalance.amount) + ' ' + currency : '';
+        
+        let totalCredits = 0;
+        let totalDebits = 0;
+        stmt.transactions.forEach(t => {
+          if (t.sign === '+') totalCredits += t.amount;
+          else totalDebits += t.amount;
+        });
+        const creditsStr = '+ ' + formatAmountRaw(totalCredits) + ' ' + currency;
+        const debitsStr = '- ' + formatAmountRaw(totalDebits) + ' ' + currency;
+
+        stmt.transactions.forEach(t => {
+          rows.push([
+            account,
+            statementNum,
+            period,
+            openingBal,
+            closingBal,
+            creditsStr,
+            debitsStr,
+            t.valueDate || '',
+            t.entryDate || '',
+            t.sign === '+' ? 'C' : 'D',
+            t.amount,
+            currency,
+            t.typeCode || '',
+            t.customerRef || '',
+            t.bankRef || '',
+            t.narrativeText || ''
+          ]);
+        });
+      });
+      
+      if (rows.length === 0) {
+        showToast(currentLang === 'en' ? 'No transactions found in this batch to export.' : 'Tidak ada transaksi dalam batch ini untuk diekspor.');
+        return;
+      }
+      
+      const filename = `SWIFT_Batch_Transactions_${new Date().toISOString().slice(0,10)}.csv`;
+      downloadCsv(headers, rows, filename);
+      showToast(currentLang === 'en' ? '✓ Batch Transactions exported to CSV!' : '✓ Transaksi Batch berhasil diekspor ke CSV!');
+    }
+
+    function parseEnvelopeBlocks(raw) {
+      const blocks = {
+        block1: { raw: '', parsed: null },
+        block2: { raw: '', parsed: null },
+        block3: { raw: '', parsed: null },
+        block4: { raw: '' },
+        block5: { raw: '', parsed: null }
+      };
+
+      if (!raw) return blocks;
+
+      // Block 1
+      const b1Match = raw.match(/\{1:([^\}]+)\}/);
+      if (b1Match) {
+        const content = b1Match[1];
+        blocks.block1.raw = `{1:${content}}`;
+        if (content.length >= 25) {
+          blocks.block1.parsed = {
+            appId: content.substring(0, 1),
+            serviceId: content.substring(1, 3),
+            ltAddress: content.substring(3, 15),
+            sessionNum: content.substring(15, 19),
+            seqNum: content.substring(19, 25)
           };
         }
-        renderParsedOutput();
-        if (selectedParser === 'mt2mx') {
-          switchParserTab('mx');
-        }
-      } catch (e) {
-        console.error(e);
-        const errMsg = currentLang === 'en' ? 'Error parsing message. Please check the format.' : 'Gagal melakukan parsing pesan. Silakan periksa kembali format pesan.';
-        output.innerHTML = `<div class="empty-state" style="background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 60px 20px;"><span class="big">⚠️</span>${errMsg}</div>`;
-        activeStatement = null;
       }
+
+      // Block 2
+      const b2Match = raw.match(/\{2:([^\}]+)\}/);
+      if (b2Match) {
+        const content = b2Match[1];
+        blocks.block2.raw = `{2:${content}}`;
+        blocks.block2.parsed = {
+          direction: content.substring(0, 1), // I or O
+          msgType: content.substring(1, 4),
+          ltAddress: content.substring(4, 16),
+          priority: content.length > 16 ? content.substring(16, 17) : ''
+        };
+      }
+
+      // Block 3
+      const b3Match = raw.match(/\{3:([^\}]+)\}/);
+      if (b3Match) {
+        blocks.block3.raw = `{3:${b3Match[1]}}`;
+        const murMatch = b3Match[1].match(/108:([^}]+)/);
+        const uetrMatch = b3Match[1].match(/121:([^}]+)/);
+        blocks.block3.parsed = {
+          mur: murMatch ? murMatch[1] : null,
+          uetr: uetrMatch ? uetrMatch[1] : null
+        };
+      }
+
+      // Block 4
+      const b4Match = raw.match(/\{4:([\s\S]*?)\}/);
+      if (b4Match) {
+        blocks.block4.raw = `{4:${b4Match[1]}}`;
+      }
+
+      // Block 5
+      const b5Match = raw.match(/\{5:([^\}]+)\}/);
+      if (b5Match) {
+        blocks.block5.raw = `{5:${b5Match[1]}}`;
+        const macMatch = b5Match[1].match(/MAC:([^}]+)/);
+        const chkMatch = b5Match[1].match(/CHK:([^}]+)/);
+        blocks.block5.parsed = {
+          mac: macMatch ? macMatch[1] : null,
+          chk: chkMatch ? chkMatch[1] : null
+        };
+      }
+
+      return blocks;
+    }
+
+    function renderEnvelopeTabContent(rawMsg) {
+      const blocks = parseEnvelopeBlocks(rawMsg);
+      const isEn = currentLang === 'en';
+
+      let html = `
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div style="margin-bottom: 10px;">
+            <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${isEn ? 'SWIFT Envelope Structure (Blocks 1-5)' : 'Struktur Amplop SWIFT (Blok 1-5)'}</h3>
+            <p style="color: var(--ink-soft); font-size: 13.5px; margin: 4px 0 0 0;">
+              ${isEn ? 'SWIFT messages are packed into standard block envelopes. Below is the parsed breakdown.' : 'Pesan SWIFT dikemas dalam blok amplop standar. Berikut adalah rincian hasil parse.'}
+            </p>
+          </div>
+      `;
+
+      // Block 1
+      if (blocks.block1.raw) {
+        let parsedDetails = '';
+        if (blocks.block1.parsed) {
+          const p = blocks.block1.parsed;
+          const appText = p.appId === 'F' ? (isEn ? 'Financial (F)' : 'Keuangan (F)') : p.appId;
+          const serviceText = p.serviceId === '01' ? (isEn ? 'GP/Fin (01)' : 'Umum/Fin (01)') : p.serviceId;
+          parsedDetails = `
+            <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px; background: rgba(59, 130, 246, 0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--line);">
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Application ID' : 'ID Aplikasi'}:</strong> <code style="color: var(--primary-color); font-weight: 700;">${escapeHtml(appText)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Service ID' : 'ID Layanan'}:</strong> <code style="color: var(--primary-color); font-weight: 700;">${escapeHtml(serviceText)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'LT Address' : 'Alamat LT (BIC)'}:</strong> <code style="color: var(--gold); font-weight: 700;">${escapeHtml(p.ltAddress)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Session Number' : 'Nomor Sesi'}:</strong> <code>${escapeHtml(p.sessionNum)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Sequence Number' : 'Nomor Urut'}:</strong> <code>${escapeHtml(p.seqNum)}</code></div>
+            </div>
+          `;
+        }
+        html += `
+          <div class="dashboard-card" style="padding: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <strong style="font-family: var(--serif); font-size: 14.5px; color: var(--ink);">📦 Block 1: Basic Header Block</strong>
+              <span class="badge-msg" style="background: var(--primary-color); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">{1}</span>
+            </div>
+            <div style="font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px;">
+              ${isEn ? 'Contains core sender details, transmission session info, and sequence numbers.' : 'Berisi informasi dasar pengirim, nomor sesi transmisi, dan nomor urut pesan.'}
+            </div>
+            <pre style="margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-x: auto;">${escapeHtml(blocks.block1.raw)}</pre>
+            ${parsedDetails}
+          </div>
+        `;
+      }
+
+      // Block 2
+      if (blocks.block2.raw) {
+        let parsedDetails = '';
+        if (blocks.block2.parsed) {
+          const p = blocks.block2.parsed;
+          const dirText = p.direction === 'I' 
+            ? (isEn ? 'Input (Sent to SWIFT)' : 'Masuk (Dikirim ke SWIFT)') 
+            : (isEn ? 'Output (Received from SWIFT)' : 'Keluar (Diterima dari SWIFT)');
+          const priorityText = p.priority === 'N' ? (isEn ? 'Normal (N)' : 'Normal (N)') : p.priority;
+          parsedDetails = `
+            <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px; background: rgba(16, 185, 129, 0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--line);">
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Message Direction' : 'Arah Pesan'}:</strong> <code style="color: var(--credit-color); font-weight: 700;">${escapeHtml(dirText)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Message Type' : 'Tipe Pesan'}:</strong> <code style="color: var(--credit-color); font-weight: 700;">MT ${escapeHtml(p.msgType)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Destination BIC' : 'BIC Tujuan'}:</strong> <code style="color: var(--gold); font-weight: 700;">${escapeHtml(p.ltAddress)}</code></div>
+              <div><strong style="color: var(--ink-soft);">${isEn ? 'Message Priority' : 'Prioritas Pesan'}:</strong> <code>${escapeHtml(priorityText)}</code></div>
+            </div>
+          `;
+        }
+        html += `
+          <div class="dashboard-card" style="padding: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <strong style="font-family: var(--serif); font-size: 14.5px; color: var(--ink);">✉️ Block 2: Application Header Block</strong>
+              <span class="badge-msg" style="background: var(--credit-color); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">{2}</span>
+            </div>
+            <div style="font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px;">
+              ${isEn ? 'Specifies the message type (e.g. I940), destination address, priority, and routing indicators.' : 'Menentukan tipe pesan (misal: I940), alamat tujuan, prioritas, dan indikator perutean.'}
+            </div>
+            <pre style="margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-x: auto;">${escapeHtml(blocks.block2.raw)}</pre>
+            ${parsedDetails}
+          </div>
+        `;
+      }
+
+      // Block 3
+      let block3Content = '';
+      if (blocks.block3.raw) {
+        let parsedDetails = '';
+        if (blocks.block3.parsed && (blocks.block3.parsed.mur || blocks.block3.parsed.uetr)) {
+          const p = blocks.block3.parsed;
+          parsedDetails = `
+            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; background: rgba(245, 158, 11, 0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--line);">
+              ${p.mur ? `<div><strong style="color: var(--ink-soft);">MUR (Message User Ref):</strong> <code style="color: var(--gold); font-weight: 700;">${escapeHtml(p.mur)}</code></div>` : ''}
+              ${p.uetr ? `<div><strong style="color: var(--ink-soft);">UETR (End-to-End Ref UUID):</strong> <code style="color: var(--primary-color); font-weight: 700;">${escapeHtml(p.uetr)}</code></div>` : ''}
+            </div>
+          `;
+        }
+        block3Content = `
+          <div style="font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px;">
+            ${isEn ? 'Optional user header block containing routing, tracking references (UETR), and message copy settings.' : 'Blok header pengguna opsional berisi perutean, referensi pelacakan (UETR), dan pengaturan salinan pesan.'}
+          </div>
+          <pre style="margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-x: auto;">${escapeHtml(blocks.block3.raw)}</pre>
+          ${parsedDetails}
+        `;
+      } else {
+        block3Content = `
+          <div style="font-size: 12.5px; color: var(--ink-soft); text-align: center; padding: 20px; border: 1.5px dashed var(--line); border-radius: 8px; background: rgba(0,0,0,0.01);">
+            💡 ${isEn ? 'Block 3 is not present in this message.' : 'Blok 3 tidak digunakan dalam pesan ini.'}
+          </div>
+        `;
+      }
+      html += `
+        <div class="dashboard-card" style="padding: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <strong style="font-family: var(--serif); font-size: 14.5px; color: var(--ink);">🏷️ Block 3: User Header Block (Optional)</strong>
+            <span class="badge-msg" style="background: #f59e0b; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">{3}</span>
+          </div>
+          ${block3Content}
+        </div>
+      `;
+
+      // Block 4
+      if (blocks.block4.raw) {
+        html += `
+          <div class="dashboard-card" style="padding: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <strong style="font-family: var(--serif); font-size: 14.5px; color: var(--ink);">📝 Block 4: Text Block (Payload)</strong>
+              <span class="badge-msg" style="background: #6b7280; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">{4}</span>
+            </div>
+            <div style="font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px;">
+              ${isEn ? 'This is the main body containing business data tags, transactions, and balances.' : 'Ini adalah badan utama yang berisi tag data bisnis, transaksi, dan saldo.'}
+            </div>
+            <div style="position: relative; max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px;">
+              <pre style="margin: 0; padding: 12px; background: var(--panel); font-family: var(--mono); font-size: 12px; color: var(--ink); line-height: 1.4; text-align: left;">${escapeHtml(blocks.block4.raw)}</pre>
+            </div>
+          </div>
+        `;
+      }
+
+      // Block 5
+      let block5Content = '';
+      if (blocks.block5.raw) {
+        let parsedDetails = '';
+        if (blocks.block5.parsed && (blocks.block5.parsed.mac || blocks.block5.parsed.chk)) {
+          const p = blocks.block5.parsed;
+          parsedDetails = `
+            <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px; background: rgba(107, 114, 128, 0.03); padding: 12px; border-radius: 6px; border: 1px solid var(--line);">
+              ${p.mac ? `<div><strong style="color: var(--ink-soft);">MAC (Message Auth Code):</strong> <code>${escapeHtml(p.mac)}</code></div>` : ''}
+              ${p.chk ? `<div><strong style="color: var(--ink-soft);">CHK (Checksum):</strong> <code>${escapeHtml(p.chk)}</code></div>` : ''}
+            </div>
+          `;
+        }
+        block5Content = `
+          <div style="font-size: 12.5px; color: var(--ink-soft); margin-bottom: 8px;">
+            ${isEn ? 'Contains message trailers for security checksums, message authentication codes (MAC), and processing codes.' : 'Berisi trailer pesan untuk checksum keamanan, kode autentikasi pesan (MAC), dan kode pemrosesan.'}
+          </div>
+          <pre style="margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-x: auto;">${escapeHtml(blocks.block5.raw)}</pre>
+          ${parsedDetails}
+        `;
+      } else {
+        block5Content = `
+          <div style="font-size: 12.5px; color: var(--ink-soft); text-align: center; padding: 20px; border: 1.5px dashed var(--line); border-radius: 8px; background: rgba(0,0,0,0.01);">
+            💡 ${isEn ? 'Block 5 is not present in this message.' : 'Blok 5 tidak ditemukan dalam pesan ini.'}
+          </div>
+        `;
+      }
+      html += `
+        <div class="dashboard-card" style="padding: 16px; border: 1px solid var(--line); background: var(--paper); box-shadow: none;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <strong style="font-family: var(--serif); font-size: 14.5px; color: var(--ink);">🔒 Block 5: Trailer Block (Optional)</strong>
+            <span class="badge-msg" style="background: #374151; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">{5}</span>
+          </div>
+          ${block5Content}
+        </div>
+      `;
+
+      html += `</div>`;
+      return html;
     }
 
     function renderParsedOutput() {
@@ -7964,6 +8779,12 @@ JOHN DOE
       const tabTitle1 = currentLang === 'en' ? '📊 Visual Dashboard' : '📊 Dasbor Visual';
       const tabTitle2 = currentLang === 'en' ? '📝 Raw MT Tag Breakdown' : '📝 Rincian Tag Raw MT';
       const tabTitle3 = currentLang === 'en' ? '🌐 ISO 20022 XML (MX) Translation' : '🌐 Terjemahan ISO 20022 XML (MX)';
+      const tabTitle4 = currentLang === 'en' ? '✉️ SWIFT Envelope Blocks' : '✉️ Blok Amplop SWIFT';
+
+      // Find appropriate raw message text
+      const currentStatementIdx = activeStatementIndex === -1 ? 0 : activeStatementIndex;
+      const currentRawText = activeStatements[currentStatementIdx] ? activeStatements[currentStatementIdx].raw : '';
+      const envelopeHtml = renderEnvelopeTabContent(currentRawText);
 
       output.innerHTML = `
         <div class="parser-tab-container" style="margin-top: 10px;">
@@ -7974,6 +8795,9 @@ JOHN DOE
             </button>
             <button class="parser-tab-btn" onclick="switchParserTab('tags')" id="btn-tab-tags">
               ${tabTitle2}
+            </button>
+            <button class="parser-tab-btn" onclick="switchParserTab('envelope')" id="btn-tab-envelope">
+              ${tabTitle4}
             </button>
             <button class="parser-tab-btn" onclick="switchParserTab('mx')" id="btn-tab-mx">
               ${tabTitle3}
@@ -7990,6 +8814,10 @@ JOHN DOE
               <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'SWIFT Block 4 - Raw Tag Details' : 'Rincian Tag Raw - SWIFT Blok 4'}</h3>
             </div>
             ${tagsHtml}
+          </div>
+
+          <div id="parser-tab-content-envelope" class="parser-tab-content" style="display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow);">
+            ${envelopeHtml}
           </div>
 
           <div id="parser-tab-content-mx" class="parser-tab-content" style="display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow);">
@@ -8856,6 +9684,10 @@ JAKARTA, INDONESIA
     }
 
     function clearParser() {
+      const original = document.getElementById('parserOutputOriginal');
+      if (original) {
+        original.id = 'parserOutput';
+      }
       document.getElementById('rawInput').value = '';
       document.getElementById('parserTypeSelect').value = 'auto';
       document.getElementById('parserOutput').innerHTML = `
@@ -8865,6 +9697,8 @@ JAKARTA, INDONESIA
         </div>
       `;
       activeStatement = null;
+      activeStatements = [];
+      activeStatementIndex = -1;
     }
 
     function anonymizeInput() {
@@ -9992,8 +10826,16 @@ JAKARTA, INDONESIA
       // Switch to Home tab
       switchTab('home');
 
+      // Restore original parser container ID if swapped
+      const original = document.getElementById('parserOutputOriginal');
+      if (original) {
+        original.id = 'parserOutput';
+      }
+
       // Clear parser state
       activeStatement = null;
+      activeStatements = [];
+      activeStatementIndex = -1;
       const parserOutput = document.getElementById('parserOutput');
       if (parserOutput) {
         const guide = currentLang === 'id'
