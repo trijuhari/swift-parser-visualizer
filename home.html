@@ -2139,7 +2139,7 @@
         </p>
         <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
           <div style="flex: 1; min-width: 280px; position: relative;">
-            <input type="text" id="sandboxInput" placeholder="Contoh: :61:2303010228CK366336,2NTRF atau :20:REF12345" 
+            <input type="text" id="sandboxInput" placeholder="Contoh: :61:2303010228CK366336,2NTRF atau {1:F01GSCRUS30XXXX3614000002}" 
                    onkeydown="if(event.key === 'Enter') runSandboxTest()"
                    style="width: 100%; padding: 12px 16px; border: 1.5px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 14px; background: var(--paper); color: var(--ink); outline: none; transition: border-color 0.2s;" />
           </div>
@@ -3228,6 +3228,177 @@ JOHN DOE
   </div>
 
   <script>
+    const ENVELOPE_DATA = [
+      // Parent blocks
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "", 
+        "name": "Basic Header Block (Blok Header Dasar)", "name_en": "Basic Header Block", 
+        "len": "F01 / A01 / L01...", "mo": "m", 
+        "sample": "{1:F01GSCRUS30XXXX3614000002}", 
+        "desc": "Blok pertama wajib berisi detail pengirim, nomor sesi, dan nomor urut.", 
+        "desc_en": "Mandatory first block containing core sender details, session number, and sequence number.",
+        "rules": "Format tetap 25 karakter setelah kode blok.", 
+        "rules_en": "Fixed 25-character layout after block identifier.", 
+        "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{2}", "sub": "", 
+        "name": "Application Header Block (Blok Header Aplikasi)", "name_en": "Application Header Block", 
+        "len": "I940 / O940...", "mo": "m", 
+        "sample": "{2:I940GSCRUS30XXXXN}", 
+        "desc": "Blok kedua wajib menentukan tipe pesan, arah (Input/Output), penerima, dan prioritas.", 
+        "desc_en": "Mandatory second block defining message type, direction (Input/Output), receiver, and priority.",
+        "rules": "Struktur bervariasi bergantung arah pesan: Input (17-18 karakter) atau Output (47 karakter).", 
+        "rules_en": "Structure varies based on direction: Input (17-18 chars) or Output (47 chars).", 
+        "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{3}", "sub": "", 
+        "name": "User Header Block (Blok Header Pengguna)", "name_en": "User Header Block", 
+        "len": "Sub-tags", "mo": "o", 
+        "sample": "{3:{108:REF12345}{121:uetr-uuid}}", 
+        "desc": "Blok ketiga opsional berisi referensi pelacakan tambahan (MUR, UETR gpi).", 
+        "desc_en": "Optional third block containing tracking references (MUR, UETR gpi).",
+        "rules": "Berisi tag bersarang seperti {108} (MUR) dan {121} (UETR).", 
+        "rules_en": "Contains nested tags such as {108} (MUR) and {121} (UETR).", 
+        "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{4}", "sub": "", 
+        "name": "Text Block (Blok Data Utama / Payload)", "name_en": "Text Block (Payload)", 
+        "len": "Tag SWIFT", "mo": "m", 
+        "sample": "{4:\n:20:REF1234\n-}", 
+        "desc": "Blok keempat berisi pesan transaksi utama (financial payload) yang diawali dengan tag standar.", 
+        "desc_en": "Mandatory fourth block containing the actual financial payload of standard tags.",
+        "rules": "Selalu diakhiri dengan baris baru yang berisi tanda penutup '-}'.", 
+        "rules_en": "Always terminated by a hyphen and closing bracket '-}' on a new line.", 
+        "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{5}", "sub": "", 
+        "name": "Trailer Block (Blok Penutup / Trailer)", "name_en": "Trailer Block", 
+        "len": "Sub-tags", "mo": "o", 
+        "sample": "{5:{MAC:12345678}}", 
+        "desc": "Blok kelima opsional berisi kode keamanan (MAC), checksum (CHK), atau kode penanganan khusus.", 
+        "desc_en": "Optional fifth block containing security signatures (MAC), checksums (CHK), or special handlings.",
+        "rules": "Dihasilkan secara otomatis oleh antarmuka sistem penanganan pesan.", 
+        "rules_en": "Generated automatically by the messaging interface system.", 
+        "source": "system"
+      },
+
+      // Subfields for {1}
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "1", 
+        "name": "ID Aplikasi (Application ID)", "name_en": "Application ID", 
+        "len": "1a", "mo": "m", "sample": "F", 
+        "desc": "Mengidentifikasi aplikasi SWIFT. F = Financial (Pesan Keuangan), A = Application System (Sistem), L = Common", 
+        "desc_en": "Identifies the SWIFT application. F = Financial, A = Application System, L = Common",
+        "rules": "Hanya 1 karakter alfabet.", "rules_en": "Single alphabetic character.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "2", 
+        "name": "ID Layanan (Service ID)", "name_en": "Service ID", 
+        "len": "2n", "mo": "m", "sample": "01", 
+        "desc": "Mengidentifikasi tipe layanan pesan. 01 = GPA (General Purpose Application), 21 = ACK/NAK", 
+        "desc_en": "Identifies the message service type. 01 = GPA, 21 = ACK/NAK",
+        "rules": "2 digit angka.", "rules_en": "2 numeric digits.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "3", 
+        "name": "Alamat Logical Terminal (BIC pengirim)", "name_en": "Logical Terminal Address (Sender BIC)", 
+        "len": "12x", "mo": "m", "sample": "GSCRUS30XXXX", 
+        "desc": "Alamat BIC12 lengkap dari terminal pengirim asli. Karakter ke-9 melambangkan kode lokasi sesi terminal.", 
+        "desc_en": "Complete 12-character BIC of the sender terminal. 9th character represents location/session code.",
+        "rules": "12 karakter alfanumerik.", "rules_en": "12 alphanumeric characters.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "4", 
+        "name": "Nomor Sesi (Session Number)", "name_en": "Session Number", 
+        "len": "4n", "mo": "m", "sample": "3614", 
+        "desc": "Nomor sesi login pengirim saat pesan tersebut ditransmisikan.", 
+        "desc_en": "Four-digit session ID under which the message was generated.",
+        "rules": "4 digit angka.", "rules_en": "4 numeric digits.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{1}", "sub": "5", 
+        "name": "Nomor Urut Pesan (Sequence Number)", "name_en": "Sequence Number", 
+        "len": "6n", "mo": "m", "sample": "000002", 
+        "desc": "Nomor urut pesan dalam sesi login yang sedang berlangsung.", 
+        "desc_en": "Six-digit sequential number of the message within the session.",
+        "rules": "6 digit angka.", "rules_en": "6 numeric digits.", "source": "system"
+      },
+
+      // Subfields for {2}
+      {
+        "msg": "envelope", "tag": "{2}", "sub": "1", 
+        "name": "Arah Pesan (Direction)", "name_en": "Direction", 
+        "len": "1a", "mo": "m", "sample": "I", 
+        "desc": "Arah aliran pesan. I = Input (dikirim ke SWIFT), O = Output (diterima dari SWIFT).", 
+        "desc_en": "Direction of flow. I = Input (sent to SWIFT), O = Output (received from SWIFT).",
+        "rules": "I atau O.", "rules_en": "Either I or O.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{2}", "sub": "2", 
+        "name": "Tipe Pesan (Message Type)", "name_en": "Message Type", 
+        "len": "3n", "mo": "m", "sample": "940", 
+        "desc": "Tipe pesan SWIFT MT 3 digit angka (misal: 103 untuk Transfer Dana, 940 untuk Rekening Koran).", 
+        "desc_en": "3-digit SWIFT MT message type code (e.g. 103 for Funds Transfer, 940 for Account Statement).",
+        "rules": "3 digit angka.", "rules_en": "3 numeric digits.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{2}", "sub": "3", 
+        "name": "Alamat Terminal Tujuan/Asal (Destination/Source BIC)", "name_en": "Destination/Source BIC Address", 
+        "len": "12x", "mo": "m", "sample": "GSCRUS30XXXX", 
+        "desc": "Alamat BIC12 lengkap tujuan (untuk pesan Input) atau asal pengirim asli (untuk pesan Output).", 
+        "desc_en": "12-character BIC of the target receiver (Input) or original sender (Output).",
+        "rules": "12 karakter alfanumerik.", "rules_en": "12 alphanumeric characters.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{2}", "sub": "4", 
+        "name": "Prioritas Pengiriman (Priority)", "name_en": "Delivery Priority", 
+        "len": "1a", "mo": "o", "sample": "N", 
+        "desc": "Prioritas prioritas pengiriman. N = Normal, U = Urgent (Penting), S = System (Sistem)", 
+        "desc_en": "Delivery priority code. N = Normal, U = Urgent, S = System",
+        "rules": "1 karakter alfabet.", "rules_en": "1 alphabetic character.", "source": "system"
+      },
+
+      // Subfields for {3}
+      {
+        "msg": "envelope", "tag": "{3}", "sub": "108", 
+        "name": "Message User Reference (MUR)", "name_en": "Message User Reference (MUR)", 
+        "len": "16x", "mo": "o", "sample": "REF12345", 
+        "desc": "Referensi pengenal transaksi unik yang dibuat oleh aplikasi pengirim.", 
+        "desc_en": "Unique transaction tracking ID defined by the sender's application.",
+        "rules": "Maksimal 16 karakter alfanumerik.", "rules_en": "Up to 16 alphanumeric characters.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{3}", "sub": "121", 
+        "name": "End-to-End Transaction Reference (UETR)", "name_en": "End-to-End Transaction Reference (UETR)", 
+        "len": "36x", "mo": "o", "sample": "d9a2a7cf-e00f-4bdf-87f5-19e07532a821", 
+        "desc": "UUIDv4 unik global untuk pelacakan transaksi pembayaran end-to-end (gpi tracker).", 
+        "desc_en": "Globally unique UUIDv4 used to trace the transaction flow end-to-end across the SWIFT gpi network.",
+        "rules": "Format UUID standar 36 karakter (8-4-4-4-12).", "rules_en": "Standard 36-character UUID format (8-4-4-4-12).", "source": "system"
+      },
+
+      // Subfields for {5}
+      {
+        "msg": "envelope", "tag": "{5}", "sub": "MAC", 
+        "name": "Message Authentication Code (MAC)", "name_en": "Message Authentication Code (MAC)", 
+        "len": "8h", "mo": "o", "sample": "E1A2D3F4", 
+        "desc": "Kode keamanan otentikasi data yang dihasilkan oleh SWIFT Interface untuk menjamin integritas.", 
+        "desc_en": "Hexadecimal security key generated to verify the message's content integrity.",
+        "rules": "8 digit kode heksadesimal.", "rules_en": "8 hex digits.", "source": "system"
+      },
+      {
+        "msg": "envelope", "tag": "{5}", "sub": "CHK", 
+        "name": "Checksum (CHK)", "name_en": "Checksum (CHK)", 
+        "len": "12h", "mo": "o", "sample": "1234567890AB", 
+        "desc": "Nilai kontrol checksum yang dihitung secara otomatis untuk memvalidasi integritas transmisi.", 
+        "desc_en": "Verification checksum value computed to check transmission success.",
+        "rules": "12 digit kode heksadesimal.", "rules_en": "12 hex digits.", "source": "system"
+      }
+    ];
+
     let DATA = [];
     let CUSTOM = JSON.parse(localStorage.getItem('swift_custom') || '[]');
     const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -3278,6 +3449,11 @@ JOHN DOE
           document.getElementById('dataSourceInfo').innerHTML = '<span class="source-dot manual"></span>Data lokal';
         }
       }
+      // Inject SWIFT Envelope block records into DATA if not already loaded from DB/API
+      if (typeof ENVELOPE_DATA !== 'undefined' && !DATA.some(d => d.msg === 'envelope')) {
+        DATA.push(...ENVELOPE_DATA);
+      }
+
       if (typeof loadComplianceRules === 'function') {
         await loadComplianceRules();
       }
@@ -3484,10 +3660,19 @@ JOHN DOE
       }
     }
 
-    const MSG_LABEL = { mt940: "MT 940", mt942: "MT 942", mt950: "MT 950", mt564: "MT 564" };
+    const MSG_LABEL = { 
+      mt940: "MT 940", 
+      mt942: "MT 942", 
+      mt950: "MT 950", 
+      mt564: "MT 564",
+      envelope: "Envelope"
+    };
     function getMsgLabel(msg) {
       if (!msg) return '';
       const key = msg.toLowerCase();
+      if (key === 'envelope') {
+        return currentLang === 'en' ? 'SWIFT Envelope' : 'Amplop SWIFT';
+      }
       if (MSG_LABEL[key]) return MSG_LABEL[key];
       if (key.startsWith('mt') && key.length > 2 && !isNaN(key.substring(2))) {
         return 'MT ' + key.substring(2);
@@ -3639,7 +3824,7 @@ JOHN DOE
         for (const r of rows) {
           const tr = document.createElement('tr');
           const badgeCls = r.source === 'manual' ? 'badge-msg badge-custom' : 'badge-msg ' + r.msg;
-          const tagFmt = `:${r.tag}:`;
+          const tagFmt = r.msg === 'envelope' ? r.tag : `:${r.tag}:`;
           const dName = currentLang === 'en' && r.name_en ? r.name_en : r.name;
           const dDesc = currentLang === 'en' && r.desc_en ? r.desc_en : r.desc;
           const moText = r.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
@@ -3705,7 +3890,7 @@ JOHN DOE
     /* ── Subfield Popup Modal ── */
     function openSubfieldModal(parentRow, subFields) {
       const dName = currentLang === 'en' && parentRow.name_en ? parentRow.name_en : parentRow.name;
-      const tagLabel = `:${parentRow.tag}:`;
+      const tagLabel = parentRow.msg === 'envelope' ? parentRow.tag : `:${parentRow.tag}:`;
       const msgLabel = getMsgLabel(parentRow.msg);
       const moText = parentRow.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
 
@@ -3756,7 +3941,7 @@ JOHN DOE
     function openSubPage(parentRow, subFields) {
       const dName = currentLang === 'en' && parentRow.name_en ? parentRow.name_en : parentRow.name;
       const dDesc = currentLang === 'en' && parentRow.desc_en ? parentRow.desc_en : parentRow.desc;
-      const tagLabel = `:${parentRow.tag}:`;
+      const tagLabel = parentRow.msg === 'envelope' ? parentRow.tag : `:${parentRow.tag}:`;
       const msgLabel = getMsgLabel(parentRow.msg);
       const moText = parentRow.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
 
@@ -3932,14 +4117,21 @@ JOHN DOE
         return;
       }
 
-      // Pattern 1: :TAG:VALUE or TAG:VALUE (e.g. :61:2303010228CK366336,2NTRF)
-      const match = rawVal.match(/^:?([0-9A-Z]+):([\s\S]*)$/i);
-      
       let tagName = '';
       let tagVal = '';
-      if (match) {
-        tagName = match[1].toUpperCase();
-        tagVal = match[2];
+      
+      const envMatch = rawVal.match(/^\{([1-5])\}(?::)?([\s\S]*)$/i) || rawVal.match(/^\{([1-5]):([\s\S]*)\}$/i) || rawVal.match(/^\{([1-5]):([\s\S]*)$/i);
+      const stdMatch = rawVal.match(/^:?([0-9A-Z]+):([\s\S]*)$/i);
+      
+      if (envMatch) {
+        tagName = `{${envMatch[1]}}`;
+        tagVal = envMatch[2];
+        if (tagVal.endsWith('}')) {
+          tagVal = tagVal.slice(0, -1);
+        }
+      } else if (stdMatch) {
+        tagName = stdMatch[1].toUpperCase();
+        tagVal = stdMatch[2];
       } else {
         resultEl.style.display = 'block';
         resultEl.innerHTML = `
@@ -3947,8 +4139,8 @@ JOHN DOE
             ⚠️ Format Input Tidak Dikenali / Invalid Input Format
           </div>
           <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5;">
-            Harap masukkan data dengan format lengkap <b>:TAG:NILAI</b>.<br>
-            <i>Contoh:</i> <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">:61:2303010228CK366336,2NTRF</code> atau <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">:20:REFERENSI123</code>
+            Harap masukkan data dengan format lengkap <b>:TAG:NILAI</b> atau <b>{BLOCK}:NILAI</b>.<br>
+            <i>Contoh:</i> <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">:61:2303010228CK366336,2NTRF</code>, <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">{1:F01GSCRUS30XXXX3614000002}</code>, atau <code style="background: var(--line); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px;">{1}:F01GSCRUS30XXXX3614000002</code>
           </div>
         `;
         return;
@@ -3961,10 +4153,10 @@ JOHN DOE
         resultEl.style.display = 'block';
         resultEl.innerHTML = `
           <div style="color: var(--debit-color); font-weight: 700; font-size: 14px; margin-bottom: 8px;">
-            🔍 Tag :${tagName}: Tidak Ditemukan / Tag Not Found
+            🔍 Tag ${tagName.startsWith('{') ? tagName : ':' + tagName + ':'} Tidak Ditemukan / Tag Not Found
           </div>
           <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5;">
-            Tag ini tidak terdaftar dalam kamus referensi pesan SWIFT (MT103, MT202, MT940, dll.) di database.
+            Tag atau blok ini tidak terdaftar dalam kamus referensi pesan SWIFT di database.
           </div>
         `;
         return;
@@ -3984,7 +4176,7 @@ JOHN DOE
         <div style="border-bottom: 1.5px dashed var(--line); padding-bottom: 14px; margin-bottom: 16px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <div style="font-family: var(--mono); font-size: 16.5px; font-weight: 800; color: var(--ink);">
-              Tag :${tagName}: <span style="font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--ink-soft);">${name}</span>
+              ${tagName.startsWith('{') ? 'Block ' + tagName : 'Tag :' + tagName + ':'} <span style="font-family: var(--sans); font-size: 14.5px; font-weight: 600; color: var(--ink-soft);">${name}</span>
             </div>
             <span style="font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: var(--line); color: var(--ink-soft); text-transform: uppercase;">
               ${primaryMatch.mo.toLowerCase() === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional')}
@@ -4033,15 +4225,49 @@ JOHN DOE
           ];
         }
       }
-      else if (['52A', '52D', '53A', '53D', '54A', '54D', '56A', '56D', '57A', '57D', '58A', '58D', '59', '59A'].includes(tagName)) {
-        parsedObj = parseInstitution(tagVal);
+      else if (tagName === '{1}') {
+        parsedObj = parseEnvelopeBlock1(tagVal);
         if (parsedObj) {
           parsedFields = [
-            { label: currentLang === 'en' ? 'Account Number' : 'Nomor Rekening', value: parsedObj.account || '—' },
-            { label: currentLang === 'en' ? 'BIC Code / Name' : 'Kode BIC / Nama', value: parsedObj.bicOrName || '—' },
-            { label: currentLang === 'en' ? 'Address' : 'Alamat', value: parsedObj.address || '—' }
+            { label: currentLang === 'en' ? 'Application ID' : 'ID Aplikasi', value: parsedObj.appId },
+            { label: currentLang === 'en' ? 'Service ID' : 'ID Layanan', value: parsedObj.serviceId },
+            { label: currentLang === 'en' ? 'Logical Terminal Address' : 'Alamat Logical Terminal', value: parsedObj.ltAddress },
+            { label: currentLang === 'en' ? 'Session Number' : 'Nomor Sesi', value: parsedObj.sessionNum },
+            { label: currentLang === 'en' ? 'Sequence Number' : 'Nomor Urut', value: parsedObj.seqNum }
           ];
         }
+      }
+      else if (tagName === '{2}') {
+        parsedObj = parseEnvelopeBlock2(tagVal);
+        if (parsedObj) {
+          if (parsedObj.direction === 'Input') {
+            parsedFields = [
+              { label: currentLang === 'en' ? 'Direction' : 'Arah Pesan', value: 'Input (I)' },
+              { label: currentLang === 'en' ? 'Message Type' : 'Tipe Pesan', value: 'MT ' + parsedObj.msgType },
+              { label: currentLang === 'en' ? 'Destination BIC' : 'BIC Tujuan', value: parsedObj.bic },
+              { label: currentLang === 'en' ? 'Priority' : 'Prioritas', value: parsedObj.priority }
+            ];
+          } else {
+            parsedFields = [
+              { label: currentLang === 'en' ? 'Direction' : 'Arah Pesan', value: 'Output (O)' },
+              { label: currentLang === 'en' ? 'Message Type' : 'Tipe Pesan', value: 'MT ' + parsedObj.msgType },
+              { label: currentLang === 'en' ? 'Input Time' : 'Waktu Input', value: parsedObj.inputTime },
+              { label: currentLang === 'en' ? 'Input Date' : 'Tanggal Input', value: formatYYMMDD(parsedObj.inputDate) },
+              { label: currentLang === 'en' ? 'Sender BIC' : 'BIC Pengirim', value: parsedObj.inputBic },
+              { label: currentLang === 'en' ? 'Session Number' : 'Nomor Sesi', value: parsedObj.sessionNum },
+              { label: currentLang === 'en' ? 'Sequence Number' : 'Nomor Urut', value: parsedObj.seqNum },
+              { label: currentLang === 'en' ? 'Output Date' : 'Tanggal Output', value: formatYYMMDD(parsedObj.outputDate) },
+              { label: currentLang === 'en' ? 'Output Time' : 'Waktu Output', value: parsedObj.outputTime },
+              { label: currentLang === 'en' ? 'Priority' : 'Prioritas', value: parsedObj.priority }
+            ];
+          }
+        }
+      }
+      else if (tagName === '{3}') {
+        parsedFields = parseEnvelopeBlock3(tagVal) || [];
+      }
+      else if (tagName === '{5}') {
+        parsedFields = parseEnvelopeBlock5(tagVal) || [];
       }
 
       if (parsedFields.length > 0) {
@@ -4061,7 +4287,13 @@ JOHN DOE
           </div>
         `;
       } else {
-        const subfields = DATA.filter(d => d.msg === primaryMatch.msg && d.tag === primaryMatch.tag && d.sub !== '').sort((a,b) => parseInt(a.sub) - parseInt(b.sub));
+        const subfields = DATA.filter(d => d.msg === primaryMatch.msg && d.tag === primaryMatch.tag && d.sub !== '')
+                              .sort((a, b) => {
+                                const na = parseInt(a.sub);
+                                const nb = parseInt(b.sub);
+                                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                                return a.sub.localeCompare(b.sub);
+                              });
         
         let dynamicParsedFields = [];
         let parsedSuccess = false;
@@ -4235,18 +4467,20 @@ JOHN DOE
       const moText = r.mo === 'm' ? (currentLang === 'en' ? 'Mandatory' : 'Wajib') : (currentLang === 'en' ? 'Optional' : 'Opsional');
 
       document.getElementById('dp-name').textContent = dName || '—';
+      const tagText = r.msg === 'envelope' ? r.tag : `:${r.tag}:`;
+      const tagLabelText = r.msg === 'envelope' ? `Block ${r.tag}` : `Tag :${r.tag}:`;
       document.getElementById('dp-sub').textContent =
-        `${getMsgLabel(r.msg)}  ·  Tag :${r.tag}:${r.sub ? '  Sub-field ' + r.sub : ''}  ·  ${moText}`;
+        `${getMsgLabel(r.msg)}  ·  ${tagLabelText}${r.sub ? '  Sub-field ' + r.sub : ''}  ·  ${moText}`;
       const grid = document.getElementById('dp-grid');
       const rows = currentLang === 'id' ? [
-        ['Tag', `:${r.tag}:`],
+        ['Tag', tagText],
         ['Sub-field', r.sub || '—'],
         ['Format / Panjang', r.len || '—'],
         ['Contoh', r.sample || '—'],
         ['Keterangan', dDesc || '—'],
         ['Sumber', r.source === 'manual' ? 'Input Manual' : 'GS Docs'],
       ] : [
-        ['Tag', `:${r.tag}:`],
+        ['Tag', tagText],
         ['Sub-field', r.sub || '—'],
         ['Format / Length', r.len || '—'],
         ['Sample', r.sample || '—'],
@@ -4580,7 +4814,7 @@ JOHN DOE
       const msgTypes = new Set();
       
       DATA.forEach(d => {
-        if (d.msg && d.msg.toLowerCase() !== 'category') {
+        if (d.msg && d.msg.toLowerCase() !== 'category' && d.msg.toLowerCase() !== 'envelope') {
           msgTypes.add(d.msg.toUpperCase());
         }
       });
@@ -4729,6 +4963,84 @@ JOHN DOE
         bicOrName,
         address: address.join(', ')
       };
+    }
+
+    function parseEnvelopeBlock1(val) {
+      const clean = val.replace(/\s/g, '');
+      if (clean.length < 25) return null;
+      return {
+        appId: clean.substring(0, 1),
+        serviceId: clean.substring(1, 3),
+        ltAddress: clean.substring(3, 15),
+        sessionNum: clean.substring(15, 19),
+        seqNum: clean.substring(19, 25)
+      };
+    }
+
+    function parseEnvelopeBlock2(val) {
+      const clean = val.replace(/\s/g, '');
+      if (clean.startsWith('I') || clean.startsWith('i')) {
+        if (clean.length < 16) return null;
+        return {
+          direction: 'Input',
+          msgType: clean.substring(1, 4),
+          bic: clean.substring(4, 16),
+          priority: clean.substring(16, 17) || '—'
+        };
+      } else if (clean.startsWith('O') || clean.startsWith('o')) {
+        if (clean.length < 47) return null;
+        return {
+          direction: 'Output',
+          msgType: clean.substring(1, 4),
+          inputTime: clean.substring(4, 8),
+          inputDate: clean.substring(8, 14),
+          inputBic: clean.substring(14, 26),
+          sessionNum: clean.substring(26, 30),
+          seqNum: clean.substring(30, 36),
+          outputDate: clean.substring(36, 42),
+          outputTime: clean.substring(42, 46),
+          priority: clean.substring(46, 47)
+        };
+      }
+      return null;
+    }
+
+    function parseEnvelopeBlock3(val) {
+      const clean = val.trim();
+      const tagRegex = /\{([a-zA-Z0-9]+):([^{}]+)\}/g;
+      let match;
+      const fields = [];
+      while ((match = tagRegex.exec(clean)) !== null) {
+        const key = match[1];
+        const value = match[2];
+        if (key === '108') {
+          fields.push({ label: currentLang === 'en' ? 'Message User Reference (MUR) [#108]' : 'Referensi Pengguna Pesan (MUR) [#108]', value: value });
+        } else if (key === '121') {
+          fields.push({ label: currentLang === 'en' ? 'End-to-End Transaction Reference (UETR) [#121]' : 'Referensi Transaksi End-to-End (UETR) [#121]', value: value });
+        } else {
+          fields.push({ label: `Tag #${key}`, value: value });
+        }
+      }
+      return fields.length > 0 ? fields : null;
+    }
+
+    function parseEnvelopeBlock5(val) {
+      const clean = val.trim();
+      const tagRegex = /\{([a-zA-Z0-9]+):([^{}]+)\}/g;
+      let match;
+      const fields = [];
+      while ((match = tagRegex.exec(clean)) !== null) {
+        const key = match[1];
+        const value = match[2];
+        if (key.toUpperCase() === 'MAC') {
+          fields.push({ label: 'Message Authentication Code (MAC)', value: value });
+        } else if (key.toUpperCase() === 'CHK') {
+          fields.push({ label: 'Checksum (CHK)', value: value });
+        } else {
+          fields.push({ label: `Tag #${key}`, value: value });
+        }
+      }
+      return fields.length > 0 ? fields : null;
     }
 
     function parseMT910(rawText) {
@@ -10221,6 +10533,18 @@ JAKARTA, INDONESIA
     };
 
     const HOME_MSG_INFO = {
+      envelope: {
+        id: {
+          category: "Blok Amplop SWIFT",
+          title: "Struktur Amplop Pesan (Envelope Blocks)",
+          desc: "Blok amplop standar SWIFT (Blok 1-5) yang membungkus payload pesan keuangan untuk otentikasi, perutean, dan identifikasi sistem."
+        },
+        en: {
+          category: "SWIFT Envelope Blocks",
+          title: "Message Envelope Blocks",
+          desc: "SWIFT standard message envelope blocks (Blocks 1-5) enclosing the financial payload for system routing, authentication, and tracking."
+        }
+      },
       mt940: {
         id: {
           category: "Kategori 9: Manajemen Kas",
@@ -10368,6 +10692,13 @@ JAKARTA, INDONESIA
     };
 
     function resolveCategory(msgType, categoryKeyFromDb) {
+      if (msgType.toLowerCase() === 'envelope') {
+        return {
+          key: 'envelope',
+          icon: '✉️',
+          name: currentLang === 'en' ? 'SWIFT Envelope Blocks' : 'Blok Amplop SWIFT'
+        };
+      }
       let catKey = categoryKeyFromDb;
       if (!catKey) {
         const mt = msgType.toLowerCase();
@@ -10596,7 +10927,7 @@ JAKARTA, INDONESIA
       const searchInput = document.getElementById('homeSearchInput');
       const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-      const popularTypes = ['mt940', 'mt942', 'mt950', 'mt910', 'mt103', 'mt101', 'mt564', 'mt202', 'mt202cov'];
+      const popularTypes = ['envelope', 'mt940', 'mt942', 'mt950', 'mt910', 'mt103', 'mt101', 'mt564', 'mt202', 'mt202cov'];
       const msgTypesSet = new Set();
       
       if (q) {
@@ -10788,7 +11119,7 @@ JAKARTA, INDONESIA
             rowsHtml += `
               <tr onclick="handleDetailTagClick('${t.msg}', '${t.tag}')" style="cursor: pointer;">
                 <td style="font-family: var(--mono); font-weight: 700; color: var(--accent); padding: 12px 8px; vertical-align: top;">
-                  :${t.tag}
+                  ${t.msg === 'envelope' ? t.tag : ':' + t.tag}
                   ${subIndicator}
                 </td>
                 <td style="font-weight: 600; color: var(--ink); padding: 12px 8px; vertical-align: top;">${tagName}</td>
