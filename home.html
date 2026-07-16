@@ -10535,25 +10535,264 @@ ${tagElements}    </Payload>
       return [...new Set(missing)];
     }
 
+    function runSemanticValidation(msgType, stmt) {
+      const issues = [];
+      const type = (msgType || '').toUpperCase();
+      const tags = stmt.tags || {};
+      
+      // Rule 1: Validate date formats in common tags
+      function checkDate(tag, val) {
+        if (!val) return;
+        const dateStr = val.substring(0, 6);
+        if (!/^\d{6}$/.test(dateStr)) {
+          issues.push({
+            type: 'warning',
+            field: `Tag :${tag}:`,
+            message_id: `Format tanggal tidak valid pada Tag :${tag}: ("${dateStr}"). Harus YYMMDD.`,
+            message_en: `Invalid date format on Tag :${tag}: ("${dateStr}"). Must be YYMMDD.`
+          });
+          return;
+        }
+        
+        const yy = parseInt(dateStr.substring(0, 2), 10);
+        const mm = parseInt(dateStr.substring(2, 4), 10);
+        const dd = parseInt(dateStr.substring(4, 6), 10);
+        
+        if (mm < 1 || mm > 12) {
+          issues.push({
+            type: 'error',
+            field: `Tag :${tag}:`,
+            message_id: `Bulan tidak valid pada tanggal Tag :${tag}: (${mm}).`,
+            message_en: `Invalid month in date for Tag :${tag}: (${mm}).`
+          });
+          return;
+        }
+        
+        const isLeap = (yy % 4 === 0);
+        const daysInMonth = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        if (dd < 1 || dd > daysInMonth[mm - 1]) {
+          issues.push({
+            type: 'error',
+            field: `Tag :${tag}:`,
+            message_id: `Tanggal tidak valid untuk bulan tersebut pada Tag :${tag}: (${dd}).`,
+            message_en: `Invalid day for the month on Tag :${tag}: (${dd}).`
+          });
+        }
+      }
+
+      if (tags['32A']) checkDate('32A', tags['32A']);
+      if (tags['30']) checkDate('30', tags['30']);
+      
+      // Rule 2: Validate BIC format
+      function checkBIC(tag, bicVal) {
+        if (!bicVal) return;
+        const cleanBic = bicVal.replace(/\n/g, ' ').trim();
+        if (!/^[A-Z0-9]{8}$|^[A-Z0-9]{11}$/i.test(cleanBic)) {
+          issues.push({
+            type: 'warning',
+            field: `Tag :${tag}:`,
+            message_id: `Format kode BIC/SWIFT pada Tag :${tag}: tidak standar: "${cleanBic}". Harus 8 atau 11 karakter alfanumerik.`,
+            message_en: `BIC/SWIFT code format on Tag :${tag}: is non-standard: "${cleanBic}". Must be 8 or 11 alphanumeric characters.`
+          });
+        }
+      }
+      
+      const bicTags = ['51A', '52A', '53A', '54A', '55A', '56A', '57A', '58A'];
+      bicTags.forEach(tag => {
+        if (tags[tag]) {
+          const lines = tags[tag].split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length > 0) {
+            const lastLine = lines[lines.length - 1];
+            if (lastLine.length >= 8 && lastLine.length <= 11) {
+              checkBIC(tag, lastLine);
+            }
+          }
+        }
+      });
+
+      // Rule 3: Transaction Amount value check
+      function checkAmount(tag, amtVal) {
+        if (amtVal === undefined || amtVal === null) return;
+        if (amtVal <= 0) {
+          issues.push({
+            type: 'error',
+            field: `Tag :${tag}:`,
+            message_id: `Nominal transaksi pada Tag :${tag}: harus lebih besar dari nol (Bernilai: ${amtVal}).`,
+            message_en: `Transaction amount on Tag :${tag}: must be greater than zero (Value: ${amtVal}).`
+          });
+        }
+      }
+      
+      if (stmt.settledAmount && stmt.settledAmount.amount !== undefined) {
+        checkAmount('32A', stmt.settledAmount.amount);
+      }
+
+      // Rule 4: Cross-Field Currency Rules (MT103)
+      if (type === 'MT103') {
+        if (tags['33B'] && tags['32A']) {
+          if (tags['33B'].length >= 3 && tags['32A'].length >= 9) {
+            const currency33B = tags['33B'].substring(0, 3);
+            const currency32A = tags['32A'].substring(6, 9);
+            
+            if (currency33B !== currency32A && !tags['36']) {
+              issues.push({
+                type: 'error',
+                field: 'Tag :36:',
+                message_id: `Tag :36: (Exchange Rate) wajib diisi karena mata uang instruksi (${currency33B}) berbeda dengan mata uang setelmen (${currency32A}).`,
+                message_en: `Tag :36: (Exchange Rate) is mandatory because Instructed Currency (${currency33B}) differs from Settlement Currency (${currency32A}).`
+              });
+            }
+          }
+        }
+        
+        // Rule 5: Charges Code Word Validation (Tag 71A)
+        if (tags['71A']) {
+          const chargeCode = tags['71A'].trim().toUpperCase();
+          const validCodes = ['OUR', 'BEN', 'SHA'];
+          if (!validCodes.includes(chargeCode)) {
+            issues.push({
+              type: 'error',
+              field: 'Tag :71A:',
+              message_id: `Kode biaya tidak valid pada Tag :71A: "${chargeCode}". Harus OUR, BEN, atau SHA.`,
+              message_en: `Invalid charge code on Tag :71A: "${chargeCode}". Must be OUR, BEN, or SHA.`
+            });
+          }
+        }
+        
+        // Rule 6: Bank Operation Code (Tag 23B)
+        if (tags['23B']) {
+          const opCode = tags['23B'].trim().toUpperCase();
+          const validOps = ['CRED', 'SPAY', 'SSTD', 'SPDU'];
+          if (!validOps.includes(opCode)) {
+            issues.push({
+              type: 'warning',
+              field: 'Tag :23B:',
+              message_id: `Kode operasi bank tidak standar pada Tag :23B: "${opCode}". Umumnya berisi CRED, SPAY, SSTD, atau SPDU.`,
+              message_en: `Non-standard Bank Operation Code on Tag :23B: "${opCode}". Typically contains CRED, SPAY, SSTD, or SPDU.`
+            });
+          }
+        }
+      }
+      
+      // Rule 7: Balances & Reconciliation Validation for statements
+      const statementTypes = ['MT940', 'MT942', 'MT950'];
+      if (statementTypes.includes(type)) {
+        if (stmt.openingBalance && stmt.closingBalance) {
+          if (stmt.openingBalance.currency !== stmt.closingBalance.currency) {
+            issues.push({
+              type: 'error',
+              field: 'Balances',
+              message_id: `Ketidakcocokan mata uang: Saldo Pembuka (${stmt.openingBalance.currency}) tidak sama dengan Saldo Penutup (${stmt.closingBalance.currency}).`,
+              message_en: `Currency mismatch: Opening Balance (${stmt.openingBalance.currency}) does not match Closing Balance (${stmt.closingBalance.currency}).`
+            });
+          }
+        }
+        
+        if (stmt.openingBalance && stmt.closingBalance && stmt.transactions) {
+          let totalCredits = 0;
+          let totalDebits = 0;
+          stmt.transactions.forEach(t => {
+            if (t.sign === '+') totalCredits += t.amount;
+            else totalDebits += t.amount;
+          });
+          const netChange = totalCredits - totalDebits;
+          
+          const opnAmt = stmt.openingBalance.amount * (stmt.openingBalance.sign === '-' ? -1 : 1);
+          const clsAmt = stmt.closingBalance.amount * (stmt.closingBalance.sign === '-' ? -1 : 1);
+          const expectedNet = clsAmt - opnAmt;
+          
+          if (Math.abs(netChange - expectedNet) > 0.015) {
+            issues.push({
+              type: 'warning',
+              field: 'Reconciliation',
+              message_id: `Selisih rekonsiliasi terdeteksi! Perubahan bersih transaksi (${netChange.toFixed(2)}) tidak sama dengan selisih saldo pembuka & penutup (${expectedNet.toFixed(2)}).`,
+              message_en: `Reconciliation discrepancy detected! Net transaction change (${netChange.toFixed(2)}) does not match the difference between opening & closing balances (${expectedNet.toFixed(2)}).`
+            });
+          }
+        }
+      }
+      
+      return issues;
+    }
+
     function injectGlobalParserAddons() {
       const dashboard = document.querySelector('#parserOutput .visualizer-dashboard');
       if (!dashboard) return;
       
-      const errors = validateMessageTags(activeStatement.msgType);
+      // 1. Gather missing mandatory tag errors
+      const missingErrors = validateMessageTags(activeStatement.msgType);
+      const issues = [];
       
-      let warningHtml = '';
-      if (errors.length > 0) {
-        const title = currentLang === 'id' ? 'Peringatan Validasi Format' : 'Format Validation Warning';
-        const desc = currentLang === 'id' 
-          ? `Tag wajib berikut tidak ditemukan dalam pesan: ` 
-          : `The following mandatory tags were not found in the message: `;
-        const tagBadges = errors.map(t => `<code style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin: 0 2px;">:${t}:</code>`).join(' ');
-        warningHtml = `
-          <div style="background: rgba(239, 68, 68, 0.08); border: 1.5px solid rgba(239, 68, 68, 0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; font-family: var(--sans);">
-            <div style="font-size: 20px; line-height: 1;">⚠️</div>
-            <div style="flex: 1; font-size: 13px; color: var(--ink);">
-              <div style="font-weight: 700; color: #ef4444; margin-bottom: 4px;">${title}</div>
-              <div>${desc} ${tagBadges}</div>
+      missingErrors.forEach(t => {
+        issues.push({
+          type: 'error',
+          field: `Tag :${t}:`,
+          message_id: `Tag wajib :${t}: tidak ditemukan dalam pesan SWIFT.`,
+          message_en: `Mandatory tag :${t}: was not found in the SWIFT message.`
+        });
+      });
+      
+      // 2. Gather semantic validation issues
+      const semanticIssues = runSemanticValidation(activeStatement.msgType, activeStatement);
+      issues.push(...semanticIssues);
+      
+      // 3. Render the compliance card
+      let complianceHtml = '';
+      
+      if (issues.length === 0) {
+        // SUCCESS CARD
+        complianceHtml = `
+          <div style="background: rgba(16, 185, 129, 0.06); border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; font-family: var(--sans); box-shadow: var(--shadow);">
+            <div style="font-size: 24px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));">🟢</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 800; color: #10b981; font-size: 14.5px; margin-bottom: 2px; text-align: left;">
+                ${currentLang === 'id' ? 'Validasi Semantik & Skema: LULUS' : 'Schema & Semantic Validation: PASSED'}
+              </div>
+              <div style="font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; text-align: left;">
+                ${currentLang === 'id' 
+                  ? 'Pesan ini sepenuhnya mematuhi aturan bisnis semantik SWIFT dan bebas dari kesalahan fatal.' 
+                  : 'This message fully complies with SWIFT semantic business rules and is free from critical errors.'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        // ERROR / WARNING CARD
+        const hasErrors = issues.some(i => i.type === 'error');
+        const borderColor = hasErrors ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)';
+        const titleColor = hasErrors ? '#ef4444' : '#d97706';
+        
+        let issuesListHtml = '';
+        issues.forEach(issue => {
+          const badgeBg = issue.type === 'error' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)';
+          const badgeColor = issue.type === 'error' ? '#ef4444' : '#d97706';
+          const badgeLabel = issue.type === 'error' ? (currentLang === 'id' ? 'TOLAK' : 'REJECT') : (currentLang === 'id' ? 'PERINGATAN' : 'WARNING');
+          
+          issuesListHtml += `
+            <div style="display: flex; gap: 12px; align-items: flex-start; font-family: var(--sans); font-size: 13px; border-bottom: 1.5px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; justify-content: flex-start;">
+              <span style="font-weight: 800; font-family: var(--mono); background: ${badgeBg}; color: ${badgeColor}; padding: 3px 6px; border-radius: 4px; font-size: 11px; white-space: nowrap; margin-top: 1px;">
+                ${issue.field}
+              </span>
+              <span style="font-weight: 700; color: ${badgeColor}; font-size: 11px; padding: 3px 6px; border-radius: 4px; background: ${badgeBg}; text-transform: uppercase;">
+                ${badgeLabel}
+              </span>
+              <div style="flex: 1; color: var(--ink); line-height: 1.5; text-align: left;">
+                ${currentLang === 'id' ? issue.message_id : issue.message_en}
+              </div>
+            </div>
+          `;
+        });
+        
+        complianceHtml = `
+          <div style="border: 1.5px solid ${borderColor}; border-radius: 12px; overflow: hidden; background: var(--panel); margin-bottom: 20px; box-shadow: var(--shadow);">
+            <div style="background: ${hasErrors ? 'rgba(239, 68, 68, 0.04)' : 'rgba(245, 158, 11, 0.04)'}; border-bottom: 1.5px solid var(--line); padding: 14px 20px; display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">${hasErrors ? '❌' : '⚠️'}</span>
+              <span style="font-family: var(--serif); font-size: 15px; font-weight: 800; color: ${titleColor};">
+                ${currentLang === 'id' ? 'Laporan Validasi Semantik SWIFT' : 'SWIFT Semantic Validation Report'}
+              </span>
+            </div>
+            <div style="padding: 16px 20px; display: flex; flex-direction: column;">
+              ${issuesListHtml}
             </div>
           </div>
         `;
@@ -10581,7 +10820,7 @@ ${tagElements}    </Payload>
       `;
       
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = warningHtml + utilsHtml;
+      tempDiv.innerHTML = complianceHtml + utilsHtml;
       
       while (tempDiv.childNodes.length > 0) {
         dashboard.insertBefore(tempDiv.childNodes[0], dashboard.firstChild);
