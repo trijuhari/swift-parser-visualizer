@@ -9133,6 +9133,85 @@ JOHN DOE
           </div>
 
           <div id="parser-tab-content-mx" class="parser-tab-content" style="display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow);">
+            <style>
+              .toggle-group .toggle-btn {
+                background: transparent;
+                border: none;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--ink-soft);
+                cursor: pointer;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                font-family: var(--sans);
+              }
+              .toggle-group .toggle-btn.active {
+                background: var(--accent) !important;
+                color: #ffffff !important;
+                box-shadow: var(--shadow);
+              }
+              .xml-tree-node {
+                margin-left: 16px;
+                border-left: 1px dashed var(--line);
+                padding-left: 8px;
+                font-family: var(--mono);
+                font-size: 12.5px;
+                line-height: 1.7;
+              }
+              .xml-tree-toggle {
+                cursor: pointer;
+                font-size: 10px;
+                color: var(--ink-soft);
+                margin-right: 6px;
+                user-select: none;
+                display: inline-block;
+                width: 12px;
+                text-align: center;
+                transition: transform 0.15s ease;
+              }
+              .xml-tree-tag-name {
+                color: #2563eb;
+                font-weight: 700;
+                cursor: pointer;
+                padding: 1px 4px;
+                border-radius: 4px;
+                transition: all 0.15s;
+              }
+              html.dark .xml-tree-tag-name {
+                color: #60a5fa;
+              }
+              .xml-tree-tag-name:hover {
+                background-color: var(--row-hover);
+                color: var(--accent);
+              }
+              .xml-tree-tag-name.selected {
+                background-color: var(--accent-soft);
+                color: var(--accent) !important;
+                box-shadow: 0 0 0 1.5px var(--accent);
+              }
+              .xml-tree-attr-name {
+                color: #b45309;
+                font-weight: 500;
+              }
+              html.dark .xml-tree-attr-name {
+                color: #fbbf24;
+              }
+              .xml-tree-attr-val {
+                color: #059669;
+              }
+              html.dark .xml-tree-attr-val {
+                color: #34d399;
+              }
+              .xml-tree-text {
+                color: var(--ink);
+                font-weight: 600;
+              }
+              .xml-tree-children {
+                transition: display 0.2s ease;
+              }
+            </style>
+            
             <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
               <div>
                 <h3 style="margin: 0; font-family: var(--serif); font-size: 18px; color: var(--ink);">${currentLang === 'en' ? 'ISO 20022 XML Translation (MX)' : 'Terjemahan ISO 20022 XML (MX)'}</h3>
@@ -9140,7 +9219,17 @@ JOHN DOE
                   ${currentLang === 'en' ? 'Real-time simulated conversion from legacy SWIFT MT to XML schema.' : 'Simulasi konversi real-time dari legacy SWIFT MT ke skema XML.'}
                 </div>
               </div>
-              <div style="display: flex; gap: 8px;">
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <!-- View Mode Toggle -->
+                <div class="toggle-group" style="display: flex; background: var(--paper); border: 1.5px solid var(--line); border-radius: 8px; padding: 2px;">
+                  <button class="toggle-btn active" id="mx-btn-tree" onclick="setMXViewMode('tree')">
+                    🌳 Tree View
+                  </button>
+                  <button class="toggle-btn" id="mx-btn-raw" onclick="setMXViewMode('raw')">
+                    📄 Raw XML
+                  </button>
+                </div>
+                
                 <span class="badge-msg" id="mx-schema-badge" style="font-size: 11px; font-weight: 700; color: #fff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                   ${getMXSchemaName(activeStatement.msgType)}
                 </span>
@@ -9150,14 +9239,123 @@ JOHN DOE
               </div>
             </div>
             
-            <div style="position: relative; border-radius: 8px; overflow: hidden; background: #0f172a; border: 1px solid #1e293b;">
+            <!-- Raw XML View -->
+            <div id="mx-raw-container" style="display: none; position: relative; border-radius: 8px; overflow: hidden; background: #0f172a; border: 1px solid #1e293b;">
               <pre style="margin: 0; padding: 18px; font-family: var(--mono); font-size: 12.5px; color: #38bdf8; overflow-x: auto; max-height: 520px; line-height: 1.5; text-align: left; direction: ltr;"><code id="xml-content-code">${escapeHtml(xmlPayload)}</code></pre>
+            </div>
+            
+            <!-- Collapsible XML Tree & Inspector split view -->
+            <div id="mx-tree-container" style="display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; margin-top: 10px;">
+              <!-- Indented Collapsible tree -->
+              <div style="flex: 1.3; min-width: 320px; border-radius: 8px; background: var(--paper); border: 1.5px solid var(--line); padding: 18px; max-height: 520px; overflow-y: auto; box-sizing: border-box; box-shadow: var(--shadow);">
+                <div id="xml-tree-root" class="xml-tree-root" style="font-family: var(--mono); font-size: 12.5px; color: var(--ink); text-align: left; direction: ltr;">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+              
+              <!-- Selected element details -->
+              <div style="flex: 0.9; min-width: 260px; border-radius: 8px; background: var(--panel); border: 1.5px solid var(--line); padding: 18px; max-height: 520px; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; box-shadow: var(--shadow);">
+                <h4 style="margin-top: 0; margin-bottom: 12px; font-family: var(--serif); font-size: 14px; font-weight: 800; color: var(--ink); border-bottom: 1.5px solid var(--line); padding-bottom: 8px;">
+                  ℹ️ ${currentLang === 'en' ? 'ISO 20022 Element Inspector' : 'Inspektur Elemen ISO 20022'}
+                </h4>
+                <div id="mx-inspector-placeholder" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--ink-soft); padding: 40px 20px;">
+                  <span style="font-size: 32px; margin-bottom: 10px;">🔍</span>
+                  <p style="font-size: 13px; margin: 0; line-height: 1.5;">
+                    ${currentLang === 'en' ? 'Click on any XML tag in the tree explorer to view its business definition and mapping.' : 'Klik tag XML di penelusuri pohon untuk melihat definisi bisnis dan pemetaannya.'}
+                  </p>
+                </div>
+                <div id="mx-inspector-details" style="display: none; flex-direction: column; gap: 14px; text-align: left;">
+                  <!-- Populated by click -->
+                </div>
+              </div>
             </div>
           </div>
         </div>
       `;
 
       injectGlobalParserAddons();
+
+      // Render interactive XML Tree View for ISO 20022
+      setTimeout(() => {
+        const xmlRoot = document.getElementById('xml-tree-root');
+        if (xmlRoot) {
+          try {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlPayload, "text/xml");
+            xmlRoot.innerHTML = '';
+            
+            const parserError = xmlDoc.querySelector('parsererror');
+            if (parserError) {
+              xmlRoot.innerHTML = `<div style="color:var(--debit-color); padding:10px;">${currentLang === 'en' ? '⚠️ Error generating interactive tree: Invalid XML structure.' : '⚠️ Gagal menghasilkan struktur pohon: Format XML tidak valid.'}</div>`;
+            } else {
+              const treeHtml = xmlDomToHtml(xmlDoc.documentElement);
+              if (treeHtml) {
+                // Remove the default extra left-margin on root element to make it flush
+                treeHtml.style.marginLeft = '0';
+                treeHtml.style.borderLeft = 'none';
+                treeHtml.style.paddingLeft = '0';
+                xmlRoot.appendChild(treeHtml);
+                
+                // Highlight the root element by default
+                const rootTagName = xmlDoc.documentElement.nodeName;
+                const rootTagNameEl = treeHtml.querySelector('.xml-tree-tag-name');
+                if (rootTagNameEl) rootTagNameEl.classList.add('selected');
+                
+                // Update inspector with root node details
+                const cleanName = rootTagName.replace(/^[a-zA-Z]+:/, '');
+                const info = iso20022Mapping[cleanName] || {
+                  name_id: rootTagName,
+                  name_en: rootTagName,
+                  desc_id: 'Elemen akar yang membungkus seluruh dokumen pesan ISO 20022.',
+                  desc_en: 'The root element wrapping the entire ISO 20022 message document.',
+                  source: 'N/A'
+                };
+                
+                const details = document.getElementById('mx-inspector-details');
+                const placeholder = document.getElementById('mx-inspector-placeholder');
+                if (details && placeholder) {
+                  placeholder.style.display = 'none';
+                  details.style.display = 'flex';
+                  details.innerHTML = `
+                    <div>
+                      <div style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Tag / Element</div>
+                      <div style="font-family: var(--mono); font-weight: 800; font-size: 16px; color: var(--ink);">&lt;${rootTagName}&gt;</div>
+                    </div>
+                    <div>
+                      <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+                        ${currentLang === 'en' ? 'Business Term' : 'Nama Bisnis'}
+                      </div>
+                      <div style="font-size: 14px; font-weight: 700; color: var(--ink);">
+                        ${currentLang === 'en' ? info.name_en : info.name_id}
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+                        ${currentLang === 'en' ? 'Description' : 'Deskripsi'}
+                      </div>
+                      <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
+                        ${currentLang === 'en' ? info.desc_en : info.desc_id}
+                      </div>
+                    </div>
+                    <div style="background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 8px; padding: 10px 12px; margin-top: 8px;">
+                      <div style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+                        ${currentLang === 'en' ? 'Legacy MT Source Tag' : 'Sumber Tag Legacy MT'}
+                      </div>
+                      <div style="font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 16px;">🔁</span>
+                        <span>${info.source}</span>
+                      </div>
+                    </div>
+                  `;
+                }
+              }
+            }
+          } catch(err) {
+            console.error('Tree view rendering error:', err);
+            xmlRoot.innerHTML = `<div style="color:var(--debit-color); padding:10px;">Error: ${err.message}</div>`;
+          }
+        }
+      }, 50);
     }
 
     function switchParserTab(tabId) {
@@ -9495,6 +9693,695 @@ ${entriesXml}      <Bal>
 ${tagElements}    </Payload>
   </GenericMessage>
 </Document>`;
+    }
+
+    // ── ISO 20022 XML tree view helper functions and metadata database ──
+    const iso20022Mapping = {
+      'Document': {
+        name_id: 'Dokumen',
+        name_en: 'Document',
+        desc_id: 'Elemen akar yang membungkus seluruh dokumen XML pesan ISO 20022.',
+        desc_en: 'The root element wrapping the entire ISO 20022 XML message document.',
+        source: 'N/A'
+      },
+      'FIToFICstmrCdtTrf': {
+        name_id: 'Transfer Kredit Pelanggan Antar Bank',
+        name_en: 'Financial Institution to Financial Institution Customer Credit Transfer',
+        desc_id: 'Pesan transfer dana pelanggan antar lembaga keuangan (pacs.008).',
+        desc_en: 'Customer credit transfer message sent between financial institutions (pacs.008).',
+        source: 'N/A'
+      },
+      'FICreditTrf': {
+        name_id: 'Transfer Kredit Lembaga Keuangan',
+        name_en: 'Financial Institution Credit Transfer',
+        desc_id: 'Pesan transfer dana antar bank langsung tanpa nasabah ritel (pacs.009).',
+        desc_en: 'Financial institution direct credit transfer message without retail customer (pacs.009).',
+        source: 'N/A'
+      },
+      'GenericMessage': {
+        name_id: 'Pesan Generik',
+        name_en: 'Generic Message',
+        desc_id: 'Skema pembungkus generik untuk pesan SWIFT yang tidak memiliki skema ISO khusus di sistem.',
+        desc_en: 'Generic wrapper schema for SWIFT messages that do not have a dedicated ISO schema in the system.',
+        source: 'N/A'
+      },
+      'GrpHdr': {
+        name_id: 'Header Grup',
+        name_en: 'Group Header',
+        desc_id: 'Berisi informasi kontrol yang berlaku untuk semua transaksi individual dalam pesan.',
+        desc_en: 'Set of characteristics shared by all individual transactions included in the message.',
+        source: 'Block 3 / Tag 20'
+      },
+      'MsgId': {
+        name_id: 'Identifikasi Pesan',
+        name_en: 'Message Identifier',
+        desc_id: 'Poin referensi unik yang ditentukan oleh pihak pengirim untuk mengidentifikasi pesan secara unik.',
+        desc_en: 'Point-to-point reference, as assigned by the instructing party, to unambiguously identify the message.',
+        source: 'Tag 20'
+      },
+      'CreDtTm': {
+        name_id: 'Tanggal & Waktu Pembuatan',
+        name_en: 'Creation Date and Time',
+        desc_id: 'Tanggal dan waktu pembuatan pesan oleh pengirim.',
+        desc_en: 'Date and time at which the message was created.',
+        source: 'System Generated'
+      },
+      'NbOfTxs': {
+        name_id: 'Jumlah Transaksi',
+        name_en: 'Number of Transactions',
+        desc_id: 'Jumlah total transaksi individual yang terdapat di dalam pesan.',
+        desc_en: 'Number of individual transactions contained in the message.',
+        source: 'System Generated'
+      },
+      'SttlmInf': {
+        name_id: 'Informasi Setelmen',
+        name_en: 'Settlement Information',
+        desc_id: 'Menentukan bagaimana transaksi diselesaikan secara finansial (misal: bilateral atau melalui agen).',
+        desc_en: 'Specifies how the transaction is financially settled (e.g., bilateral or via clearing).',
+        source: 'Tag 53a / Tag 54a'
+      },
+      'SttlmMtd': {
+        name_id: 'Metode Setelmen',
+        name_en: 'Settlement Method',
+        desc_id: 'Metode yang digunakan untuk menyelesaikan kewajiban transfer dana (misal: CLRG = Kliring, COVE = Cover).',
+        desc_en: 'Method used to settle the fund transfer obligation (e.g., CLRG = Clearing, COVE = Cover).',
+        source: 'MT Type Context'
+      },
+      'ClrSys': {
+        name_id: 'Sistem Kliring',
+        name_en: 'Clearing System',
+        desc_id: 'Sistem kliring pembayaran yang disukai untuk memproses setelmen transfer ini.',
+        desc_en: 'Preferred payment clearing system to process the settlement of this credit transfer.',
+        source: 'System Preference'
+      },
+      'Prtry': {
+        name_id: 'Proprietary / Nama Sistem',
+        name_en: 'Proprietary System Name',
+        desc_id: 'Kode lokal/proprietary untuk mengidentifikasi sistem pembayaran (misalnya TARGET2, BI-RTGS).',
+        desc_en: 'Local/proprietary code to identify the payment clearing system (e.g. TARGET2, BI-RTGS).',
+        source: 'System Preference'
+      },
+      'CdtTrfTxInf': {
+        name_id: 'Informasi Transaksi Transfer Kredit',
+        name_en: 'Credit Transfer Transaction Information',
+        desc_id: 'Berisi rincian spesifik untuk setiap transaksi pembayaran individual.',
+        desc_en: 'Contains details specific to each individual payment transaction.',
+        source: 'Block 4'
+      },
+      'PmtId': {
+        name_id: 'Identifikasi Pembayaran',
+        name_en: 'Payment Identification',
+        desc_id: 'Grup referensi unik untuk transaksi pembayaran.',
+        desc_en: 'Group of unique references for the payment transaction.',
+        source: 'Tag 20 / Tag 23'
+      },
+      'EndToEndId': {
+        name_id: 'Identifikasi End-to-End',
+        name_en: 'End-to-End Identifier',
+        desc_id: 'Referensi unik yang dikirimkan oleh pihak pengirim sepanjang rantai pembayaran untuk rekonsiliasi.',
+        desc_en: 'Unique reference assigned by the initiating party to identify the transaction from end-to-end.',
+        source: 'Tag 20 / Tag 23'
+      },
+      'UETR': {
+        name_id: 'UETR (Referensi Transaksi End-to-End Unik)',
+        name_en: 'Unique End-to-End Transaction Reference',
+        desc_id: 'UUID 36-karakter standar global untuk melacak pembayaran di seluruh jaringan SWIFT gpi.',
+        desc_en: 'Globally unique 36-character UUID used to track payments across the SWIFT gpi network.',
+        source: 'Block 3 Tag 121'
+      },
+      'IntrBkSttlmAmt': {
+        name_id: 'Jumlah Setelmen Antar Bank',
+        name_en: 'Interbank Settlement Amount',
+        desc_id: 'Jumlah uang yang dipindahkan antara lembaga pengirim dan penerima.',
+        desc_en: 'Amount of money moved between the instructing and instructed bank.',
+        source: 'Tag 32A'
+      },
+      'IntrBkSttlmDt': {
+        name_id: 'Tanggal Setelmen Antar Bank',
+        name_en: 'Interbank Settlement Date',
+        desc_id: 'Tanggal di mana setelmen dana antar bank dijadwalkan terjadi.',
+        desc_en: 'Date on which the interbank settlement of funds is scheduled to take place.',
+        source: 'Tag 32A'
+      },
+      'ChrgBr': {
+        name_id: 'Alokasi Biaya (Charges)',
+        name_en: 'Charge Bearer',
+        desc_id: 'Menentukan siapa yang menanggung biaya transfer (OUR = Pengirim, BEN = Penerima, SHA = Bagi rata).',
+        desc_en: 'Specifies who bears the transaction fees (OUR = Sender, BEN = Beneficiary, SHA = Shared).',
+        source: 'Tag 71A'
+      },
+      'Dbtr': {
+        name_id: 'Debitur (Pengirim)',
+        name_en: 'Debtor (Sender)',
+        desc_id: 'Pihak yang memiliki rekening sumber dana dan memerintahkan transfer.',
+        desc_en: 'The party that owes an amount of money to the creditor (sender/ordering customer).',
+        source: 'Tag 50a / 50K'
+      },
+      'Nm': {
+        name_id: 'Nama Lengkap',
+        name_en: 'Full Name',
+        desc_id: 'Nama resmi atau nama lengkap entitas/orang.',
+        desc_en: 'Official name or full name of the entity or person.',
+        source: 'Tag 50/59/56/57'
+      },
+      'PstlAdr': {
+        name_id: 'Alamat Surat',
+        name_en: 'Postal Address',
+        desc_id: 'Alamat fisik dari entitas/orang.',
+        desc_en: 'Physical address of the entity or person.',
+        source: 'Tag 50/59/56/57'
+      },
+      'DbtrAcct': {
+        name_id: 'Rekening Debitur',
+        name_en: 'Debtor Account',
+        desc_id: 'Rekening bank debitur dari mana dana akan didebit.',
+        desc_en: 'Account of the debtor from which the funds will be debited.',
+        source: 'Tag 50a Account Option'
+      },
+      'Id': {
+        name_id: 'Identifikasi / Nomor Rekening',
+        name_en: 'Identification / Account Number',
+        desc_id: 'Nomor rekening atau kode identitas entitas.',
+        desc_en: 'Account number or unique entity identification.',
+        source: 'Tag 50/59/56/57'
+      },
+      'Othr': {
+        name_id: 'Lainnya / Rekening Lokal',
+        name_en: 'Other / Local Account',
+        desc_id: 'Mengidentifikasi rekening selain format internasional IBAN.',
+        desc_en: 'Identification of an account other than IBAN.',
+        source: 'Tag 50/59 Account'
+      },
+      'DbtrAgt': {
+        name_id: 'Agen Debitur (Bank Pengirim)',
+        name_en: 'Debtor Agent (Sending Bank)',
+        desc_id: 'Lembaga keuangan yang melayani rekening debitur (bank tempat transaksi diinisiasi).',
+        desc_en: 'Financial institution that services the debtor account (sending bank).',
+        source: 'Block 1 / Block 2 BIC'
+      },
+      'FinInstnId': {
+        name_id: 'Identitas Lembaga Keuangan',
+        name_en: 'Financial Institution Identification',
+        desc_id: 'Kode identifikasi lembaga keuangan (BIC atau kode kliring nasional).',
+        desc_en: 'Identification of the financial institution using BIC or national routing code.',
+        source: 'BIC Code (Tag 51A/52A/etc)'
+      },
+      'BICFI': {
+        name_id: 'BIC Lembaga Keuangan',
+        name_en: 'BIC of Financial Institution',
+        desc_id: 'Business Identifier Code (BIC) resmi yang terdaftar di SWIFT untuk bank ini.',
+        desc_en: 'Official Business Identifier Code (BIC) registered with SWIFT for this bank.',
+        source: 'BIC Code'
+      },
+      'CdtrAgt': {
+        name_id: 'Agen Kreditur (Bank Penerima)',
+        name_en: 'Creditor Agent (Receiving Bank)',
+        desc_id: 'Lembaga keuangan yang melayani rekening kreditur (bank tempat dana akan dikreditkan).',
+        desc_en: 'Financial institution that services the creditor account (receiving bank).',
+        source: 'Tag 57a'
+      },
+      'Cdtr': {
+        name_id: 'Kreditur (Penerima Manfaat)',
+        name_en: 'Creditor (Beneficiary)',
+        desc_id: 'Pihak penerima transfer dana akhir.',
+        desc_en: 'The party that is the ultimate recipient of the funds transfer (beneficiary).',
+        source: 'Tag 59'
+      },
+      'CdtrAcct': {
+        name_id: 'Rekening Kreditur',
+        name_en: 'Creditor Account',
+        desc_id: 'Rekening bank penerima di mana dana akan dikreditkan.',
+        desc_en: 'Account of the creditor to which the funds will be credited.',
+        source: 'Tag 59 Account Option'
+      },
+      'RmtInf': {
+        name_id: 'Informasi Pengiriman / Berita',
+        name_en: 'Remittance Information',
+        desc_id: 'Informasi tambahan untuk mencocokkan pembayaran (berita transfer/invoice).',
+        desc_en: 'Information sent to enable reconciliation of the payment (remittance/invoice details).',
+        source: 'Tag 86 / Tag 70'
+      },
+      'Ustrd': {
+        name_id: 'Berita Tidak Terstruktur',
+        name_en: 'Unstructured Remittance Info',
+        desc_id: 'Informasi pengiriman uang dalam format teks bebas tanpa struktur tambahan.',
+        desc_en: 'Free-text remittance information for the beneficiary.',
+        source: 'Tag 70 / Tag 86'
+      },
+      'InstgAgt': {
+        name_id: 'Agen Pengirim Instruksi',
+        name_en: 'Instructing Agent',
+        desc_id: 'Lembaga keuangan pengirim langsung dalam jalur pembayaran saat ini.',
+        desc_en: 'Financial institution instructing the next agent in the payment path.',
+        source: 'Sender BIC'
+      },
+      'InstdAgt': {
+        name_id: 'Agen Penerima Instruksi',
+        name_en: 'Instructed Agent',
+        desc_id: 'Lembaga keuangan penerima langsung dalam jalur pembayaran saat ini.',
+        desc_en: 'Financial institution being instructed by the instructing agent.',
+        source: 'Receiver BIC'
+      },
+      'IntrmyAgt1': {
+        name_id: 'Agen Perantara 1 (Intermediary Bank)',
+        name_en: 'Intermediary Agent 1',
+        desc_id: 'Lembaga perantara keuangan pertama antara bank pengirim dan bank penerima.',
+        desc_en: 'First financial institution between instructing and instructed agent.',
+        source: 'Tag 56a'
+      },
+      
+      // Statement elements (camt.053)
+      'BkToCstmrStmt': {
+        name_id: 'Laporan Rekening Bank ke Pelanggan',
+        name_en: 'Bank to Customer Statement',
+        desc_id: 'Laporan mutasi rekening harian/berkala lengkap (camt.053).',
+        desc_en: 'Daily or periodic bank account statement message (camt.053).',
+        source: 'N/A'
+      },
+      'BkToCstmrAcctRpt': {
+        name_id: 'Laporan Rekening Bank ke Pelanggan (Interim)',
+        name_en: 'Bank to Customer Account Report (Interim)',
+        desc_id: 'Laporan mutasi rekening berjalan/interim (camt.052).',
+        desc_en: 'Interim bank account statement/report message (camt.052).',
+        source: 'N/A'
+      },
+      'Stmt': {
+        name_id: 'Laporan Rekening',
+        name_en: 'Statement Block',
+        desc_id: 'Mengelompokkan data mutasi dan saldo untuk satu rekening tertentu.',
+        desc_en: 'Groups account transactions and balances for a specific account.',
+        source: 'Block 4'
+      },
+      'Rpt': {
+        name_id: 'Laporan Rekening (Interim Block)',
+        name_en: 'Report Block',
+        desc_id: 'Mengelompokkan data mutasi berjalan untuk satu rekening tertentu.',
+        desc_en: 'Groups interim transactions and balances for a specific account.',
+        source: 'Block 4'
+      },
+      'Acct': {
+        name_id: 'Rekening Bank',
+        name_en: 'Bank Account Info',
+        desc_id: 'Mengidentifikasi rekening bank yang dilaporkan.',
+        desc_en: 'Identifies the bank account being reported.',
+        source: 'Tag 25'
+      },
+      'Bal': {
+        name_id: 'Saldo Rekening',
+        name_en: 'Account Balance',
+        desc_id: 'Rincian saldo pembuka, saldo penutup, saldo berjalan, dll.',
+        desc_en: 'Details of opening, closing, book or interim balances.',
+        source: 'Tag 60F / Tag 62F'
+      },
+      'Tp': {
+        name_id: 'Tipe Saldo',
+        name_en: 'Balance Type',
+        desc_id: 'Menentukan jenis saldo (misal: OPBD = Opening Booked, CLBD = Closing Booked).',
+        desc_en: 'Specifies the type of balance (e.g. OPBD = Opening Booked, CLBD = Closing Booked).',
+        source: 'Tag 60/62 Context'
+      },
+      'Cd': {
+        name_id: 'Kode Tipe Saldo',
+        name_en: 'Balance Type Code',
+        desc_id: 'Kode standar untuk jenis saldo (OPBD/CLBD).',
+        desc_en: 'Standard code representing the type of balance.',
+        source: 'Tag 60/62 Context'
+      },
+      'CdOrPrTry': {
+        name_id: 'Kode atau Proprietary',
+        name_en: 'Code or Proprietary',
+        desc_id: 'Memilih kode tipe saldo standar atau nama lokal.',
+        desc_en: 'Choice element for standard balance type code or proprietary format.',
+        source: 'Tag 60/62 Context'
+      },
+      'Amt': {
+        name_id: 'Jumlah Nilai',
+        name_en: 'Amount Value',
+        desc_id: 'Nilai nominal uang.',
+        desc_en: 'Nominal value of the funds.',
+        source: 'Tag 60/62/61 Amount'
+      },
+      'CdtDbtInd': {
+        name_id: 'Indikator Kredit/Debit',
+        name_en: 'Credit/Debit Indicator',
+        desc_id: 'Menunjukkan apakah dana bertambah (CRDT = Credit) atau berkurang (DBIT = Debit).',
+        desc_en: 'Indicates whether the balance/amount is a credit (CRDT) or a debit (DBIT).',
+        source: 'Tag 60/62 Sign (C/D)'
+      },
+      'Dt': {
+        name_id: 'Tanggal',
+        name_en: 'Date',
+        desc_id: 'Tanggal terjadinya saldo atau transaksi.',
+        desc_en: 'Date associated with the balance or transaction.',
+        source: 'Tag 60/62/61 Date'
+      },
+      'Ntry': {
+        name_id: 'Entri Transaksi (Mutasi)',
+        name_en: 'Statement Entry',
+        desc_id: 'Membungkus rincian mutasi transaksi tunggal dalam laporan rekening.',
+        desc_en: 'Wraps the details of a single transaction entry in the statement.',
+        source: 'Tag 61'
+      },
+      'NtryRef': {
+        name_id: 'Referensi Entri',
+        name_en: 'Entry Reference',
+        desc_id: 'Nomor urut entri transaksi harian.',
+        desc_en: 'Unique sequential number referencing this transaction entry.',
+        source: 'System Generated'
+      },
+      'Status': {
+        name_id: 'Status Transaksi',
+        name_en: 'Transaction Status',
+        desc_id: 'Status mutasi, biasanya BOOK (Booked) artinya sudah dibukukan.',
+        desc_en: 'Current status of the entry, usually BOOK (Booked).',
+        source: 'Tag 61'
+      },
+      'BookgDt': {
+        name_id: 'Tanggal Pembukuan',
+        name_en: 'Booking Date',
+        desc_id: 'Tanggal transaksi resmi dibukukan di ledger bank.',
+        desc_en: 'Date when the transaction was officially booked in the bank ledger.',
+        source: 'Tag 61 Date'
+      },
+      'ValDt': {
+        name_id: 'Tanggal Valuta',
+        name_en: 'Value Date',
+        desc_id: 'Tanggal di mana bunga mulai diperhitungkan atau dana tersedia.',
+        desc_en: 'Date when interest calculation starts or funds become available.',
+        source: 'Tag 61 Date'
+      },
+      'NtryDtls': {
+        name_id: 'Rincian Entri',
+        name_en: 'Entry Details',
+        desc_id: 'Membungkus rincian rinci mutasi transaksi.',
+        desc_en: 'Wraps the detailed breakdown of the transaction entry.',
+        source: 'Tag 61'
+      },
+      'AmtDtls': {
+        name_id: 'Rincian Jumlah',
+        name_en: 'Amount Details',
+        desc_id: 'Rincian jumlah transaksi mutasi.',
+        desc_en: 'Breakdown of the transaction amount details.',
+        source: 'Tag 61 Amount'
+      },
+      'TxDtls': {
+        name_id: 'Rincian Transaksi',
+        name_en: 'Transaction Details',
+        desc_id: 'Rincian lawan transaksi, berita, referensi, dll.',
+        desc_en: 'Detailed party information, remittance info, and references.',
+        source: 'Tag 61 / Tag 86'
+      },
+      'Refs': {
+        name_id: 'Referensi Transaksi',
+        name_en: 'Transaction References',
+        desc_id: 'Kumpulan referensi transaksi (Customer Reference, Bank Reference, dll).',
+        desc_en: 'Set of transaction identifiers.',
+        source: 'Tag 61 References'
+      },
+      'InstrId': {
+        name_id: 'Identifikasi Instruksi',
+        name_en: 'Instruction Identification',
+        desc_id: 'Referensi instruksi unik dari nasabah.',
+        desc_en: 'Customer instruction reference identifier.',
+        source: 'Tag 61 Customer Reference'
+      },
+      'TxId': {
+        name_id: 'Identifikasi Transaksi Bank',
+        name_en: 'Transaction Identifier',
+        desc_id: 'ID transaksi internal bank.',
+        desc_en: 'Bank transaction reference identifier.',
+        source: 'Tag 61 Bank Reference'
+      },
+      'RltdPties': {
+        name_id: 'Pihak Terkait',
+        name_en: 'Related Parties',
+        desc_id: 'Mengelompokkan pihak lawan transaksi (Debitur/Kreditur).',
+        desc_en: 'Groups counterparties involved in the transaction.',
+        source: 'Tag 86 / Tag 61'
+      },
+      'DbtrLvl': {
+        name_id: 'Informasi Debitur',
+        name_en: 'Debtor Information',
+        desc_id: 'Pihak pembayar pada mutasi ini.',
+        desc_en: 'Paying party information for this transaction entry.',
+        source: 'Tag 86 DBNM'
+      },
+      'CdtrLvl': {
+        name_id: 'Informasi Kreditur',
+        name_en: 'Creditor Information',
+        desc_id: 'Pihak penerima pembayaran pada mutasi ini.',
+        desc_en: 'Receiving party information for this transaction entry.',
+        source: 'Tag 86 CRNM'
+      }
+    };
+
+    function setMXViewMode(mode) {
+      const treeContainer = document.getElementById('mx-tree-container');
+      const rawContainer = document.getElementById('mx-raw-container');
+      const btnTree = document.getElementById('mx-btn-tree');
+      const btnRaw = document.getElementById('mx-btn-raw');
+      
+      if (mode === 'tree') {
+        if (treeContainer) treeContainer.style.display = 'flex';
+        if (rawContainer) rawContainer.style.display = 'none';
+        if (btnTree) btnTree.classList.add('active');
+        if (btnRaw) btnRaw.classList.remove('active');
+      } else {
+        if (treeContainer) treeContainer.style.display = 'none';
+        if (rawContainer) rawContainer.style.display = 'block';
+        if (btnTree) btnTree.classList.remove('active');
+        if (btnRaw) btnRaw.classList.add('active');
+      }
+    }
+
+    function xmlDomToHtml(node) {
+      if (node.nodeType === 3 && node.nodeValue.trim() === '') {
+        return null;
+      }
+      
+      if (node.nodeType === 3) {
+        const span = document.createElement('span');
+        span.className = 'xml-tree-text';
+        span.innerText = node.nodeValue.trim();
+        return span;
+      }
+      
+      if (node.nodeType === 1) {
+        const container = document.createElement('div');
+        container.className = 'xml-tree-node';
+        
+        const tagLine = document.createElement('div');
+        tagLine.style.display = 'flex';
+        tagLine.style.alignItems = 'center';
+        tagLine.style.flexWrap = 'wrap';
+        
+        const hasChildren = node.childNodes.length > 0 && Array.from(node.childNodes).some(c => c.nodeType === 1);
+        
+        if (hasChildren) {
+          const toggle = document.createElement('span');
+          toggle.className = 'xml-tree-toggle';
+          toggle.innerHTML = '▼';
+          toggle.onclick = (e) => {
+            e.stopPropagation();
+            const childrenDiv = container.querySelector('.xml-tree-children');
+            if (childrenDiv) {
+              if (childrenDiv.style.display === 'none') {
+                childrenDiv.style.display = 'block';
+                toggle.innerHTML = '▼';
+              } else {
+                childrenDiv.style.display = 'none';
+                toggle.innerHTML = '▶';
+              }
+            }
+          };
+          tagLine.appendChild(toggle);
+        } else {
+          const spacer = document.createElement('span');
+          spacer.className = 'xml-tree-toggle';
+          spacer.style.visibility = 'hidden';
+          tagLine.appendChild(spacer);
+        }
+        
+        const openBr = document.createElement('span');
+        openBr.style.color = 'var(--ink-soft)';
+        openBr.innerText = '<';
+        tagLine.appendChild(openBr);
+        
+        const tagName = document.createElement('span');
+        tagName.className = 'xml-tree-tag-name';
+        tagName.innerText = node.nodeName;
+        tagName.onclick = (e) => {
+          e.stopPropagation();
+          selectXMLNode(node.nodeName, node);
+        };
+        tagLine.appendChild(tagName);
+        
+        if (node.attributes && node.attributes.length > 0) {
+          for (let i = 0; i < node.attributes.length; i++) {
+            const attr = node.attributes[i];
+            
+            const space = document.createElement('span');
+            space.innerHTML = '&nbsp;';
+            tagLine.appendChild(space);
+            
+            const attrName = document.createElement('span');
+            attrName.className = 'xml-tree-attr-name';
+            attrName.innerText = attr.name;
+            tagLine.appendChild(attrName);
+            
+            const equals = document.createElement('span');
+            equals.style.color = 'var(--ink-soft)';
+            equals.innerText = '=';
+            tagLine.appendChild(equals);
+            
+            const attrVal = document.createElement('span');
+            attrVal.className = 'xml-tree-attr-val';
+            attrVal.innerText = `"${attr.value}"`;
+            tagLine.appendChild(attrVal);
+          }
+        }
+        
+        const closeBr = document.createElement('span');
+        closeBr.style.color = 'var(--ink-soft)';
+        closeBr.innerText = '>';
+        tagLine.appendChild(closeBr);
+        
+        container.appendChild(tagLine);
+        
+        if (node.childNodes.length > 0) {
+          const childrenDiv = document.createElement('div');
+          childrenDiv.className = 'xml-tree-children';
+          childrenDiv.style.marginLeft = '10px';
+          
+          let directText = '';
+          let hasElementChildren = false;
+          
+          node.childNodes.forEach(child => {
+            if (child.nodeType === 1) {
+              hasElementChildren = true;
+              const childHtml = xmlDomToHtml(child);
+              if (childHtml) childrenDiv.appendChild(childHtml);
+            } else if (child.nodeType === 3) {
+              directText += child.nodeValue.trim();
+            }
+          });
+          
+          if (hasElementChildren) {
+            container.appendChild(childrenDiv);
+            
+            const closeTagLine = document.createElement('div');
+            closeTagLine.style.paddingLeft = '16px';
+            closeTagLine.style.color = 'var(--ink-soft)';
+            closeTagLine.innerHTML = `&lt;/<span style="color:var(--ink-soft); font-weight:700;">${node.nodeName}</span>&gt;`;
+            container.appendChild(closeTagLine);
+          } else if (directText) {
+            const textSpan = document.createElement('span');
+            textSpan.className = 'xml-tree-text';
+            textSpan.style.margin = '0 4px';
+            textSpan.innerText = directText;
+            tagLine.appendChild(textSpan);
+            
+            const closeTagInline = document.createElement('span');
+            closeTagInline.style.color = 'var(--ink-soft)';
+            closeTagInline.innerHTML = `&lt;/${node.nodeName}&gt;`;
+            tagLine.appendChild(closeTagInline);
+          } else {
+            tagLine.removeChild(closeBr);
+            const selfClose = document.createElement('span');
+            selfClose.style.color = 'var(--ink-soft)';
+            selfClose.innerText = '/>';
+            tagLine.appendChild(selfClose);
+          }
+        }
+        
+        return container;
+      }
+      
+      return null;
+    }
+
+    function selectXMLNode(tagName, domNode) {
+      document.querySelectorAll('.xml-tree-tag-name').forEach(el => {
+        el.classList.remove('selected');
+      });
+      
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('selected');
+      }
+
+      const placeholder = document.getElementById('mx-inspector-placeholder');
+      const details = document.getElementById('mx-inspector-details');
+      
+      if (placeholder && details) {
+        placeholder.style.display = 'none';
+        details.style.display = 'flex';
+        
+        const cleanName = tagName.replace(/^[a-zA-Z]+:/, '');
+        const info = iso20022Mapping[cleanName] || {
+          name_id: tagName,
+          name_en: tagName,
+          desc_id: 'Elemen data terstruktur dalam dokumen pesan ISO 20022.',
+          desc_en: 'Structured data element in the ISO 20022 message document.',
+          source: 'N/A'
+        };
+        
+        let val = '';
+        if (domNode.childNodes.length === 1 && domNode.childNodes[0].nodeType === 3) {
+          val = domNode.childNodes[0].nodeValue;
+        } else {
+          const attrs = [];
+          if (domNode.attributes && domNode.attributes.length > 0) {
+            for (let i = 0; i < domNode.attributes.length; i++) {
+              attrs.push(`${domNode.attributes[i].name}="${domNode.attributes[i].value}"`);
+            }
+          }
+          val = attrs.length > 0 ? `Attributes: [${attrs.join(', ')}]` : '(Container Element)';
+        }
+
+        details.innerHTML = `
+          <div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Tag / Element</div>
+            <div style="font-family: var(--mono); font-weight: 800; font-size: 16px; color: var(--ink);">&lt;${tagName}&gt;</div>
+          </div>
+          
+          <div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+              ${currentLang === 'en' ? 'Business Term' : 'Nama Bisnis'}
+            </div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--ink);">
+              ${currentLang === 'en' ? info.name_en : info.name_id}
+            </div>
+          </div>
+          
+          <div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+              ${currentLang === 'en' ? 'Value' : 'Nilai'}
+            </div>
+            <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; word-break: break-all; color: var(--ink);">
+              ${escapeHtml(val) || '<span style="color:var(--ink-soft); font-style:italic;">Empty</span>'}
+            </div>
+          </div>
+          
+          <div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+              ${currentLang === 'en' ? 'Description' : 'Deskripsi'}
+            </div>
+            <div style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
+              ${currentLang === 'en' ? info.desc_en : info.desc_id}
+            </div>
+          </div>
+          
+          <div style="background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 8px; padding: 10px 12px; margin-top: 8px;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+              ${currentLang === 'en' ? 'Legacy MT Source Tag' : 'Sumber Tag Legacy MT'}
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 16px;">🔁</span>
+              <span>${info.source}</span>
+            </div>
+          </div>
+        `;
+      }
     }
 
     function showTransactionDetail(idx) {
